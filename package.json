@@ -1,0 +1,36 @@
+{
+  "name": "contextdrop",
+  "version": "1.0.0",
+  "description": "AI-powered content analysis bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@grammyjs/conversations": "^2.1.1",
+    "@notionhq/client": "^5.16.0",
+    "@supabase/supabase-js": "^2.101.1",
+    "apify-client": "^2.22.3",
+    "dotenv": "^17.4.0",
+    "express": "^5.2.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "grammy": "^1.42.0",
+    "openai": "^6.33.0",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/fluent-ffmpeg": "^2.1.28",
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
