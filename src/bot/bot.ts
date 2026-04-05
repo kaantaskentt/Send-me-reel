@@ -10,6 +10,7 @@ import {
   handleCredits,
   handleProfile,
   handleReset,
+  handleDashboard,
 } from "./commands.js";
 import { handleMessage } from "./messageHandler.js";
 import * as analyses from "../db/analyses.js";
@@ -37,6 +38,7 @@ export function createBot(): Bot<MyContext> {
   bot.command("credits", handleCredits);
   bot.command("profile", handleProfile);
   bot.command("reset", handleReset);
+  bot.command("dashboard", handleDashboard);
   bot.command("notion", async (ctx) => {
     await ctx.conversation.enter("notionSetup");
   });

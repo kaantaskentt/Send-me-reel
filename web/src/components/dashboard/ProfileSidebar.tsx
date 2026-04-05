@@ -75,10 +75,10 @@ export default function ProfileSidebar({ user, context, credits }: Props) {
       {/* Links */}
       <div className="space-y-1 pt-2 border-t border-zinc-800">
         <a
-          href="https://t.me/contextdrop2027bot?start=reset"
-          className="block text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1"
+          href="/context"
+          className="block text-xs text-blue-400 hover:text-blue-300 transition-colors py-1 font-medium"
         >
-          Update profile in Telegram
+          Edit your profile
         </a>
         <a
           href="https://t.me/contextdrop2027bot?start=notion"

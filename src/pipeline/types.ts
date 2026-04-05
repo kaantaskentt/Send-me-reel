@@ -37,6 +37,7 @@ export interface UserContext {
   role: string;
   goal: string;
   contentPreferences: string;
+  extendedContext?: string;
 }
 
 export class ServiceError extends Error {

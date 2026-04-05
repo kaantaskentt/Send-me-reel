@@ -75,6 +75,11 @@ function buildUserPrompt(input: VerdictInput): string {
   parts.push(`Current focus: ${input.userContext.goal}`);
   parts.push(`Priority topics: ${input.userContext.contentPreferences}`);
 
+  if (input.userContext.extendedContext) {
+    parts.push(`\n--- EXTENDED PROFILE ---`);
+    parts.push(input.userContext.extendedContext);
+  }
+
   parts.push(`\n--- CONTENT FROM ${input.platform.toUpperCase()} ---`);
   parts.push(`Source: ${input.sourceUrl}`);
 

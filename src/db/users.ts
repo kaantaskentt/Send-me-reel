@@ -92,7 +92,7 @@ export async function upsertContext(
 export async function getContext(userId: string): Promise<UserContext | null> {
   const { data } = await supabase
     .from("user_contexts")
-    .select("role, goal, content_preferences")
+    .select("role, goal, content_preferences, extended_context")
     .eq("user_id", userId)
     .single();
 
@@ -101,7 +101,26 @@ export async function getContext(userId: string): Promise<UserContext | null> {
     role: data.role,
     goal: data.goal,
     contentPreferences: data.content_preferences,
+    extendedContext: data.extended_context ?? undefined,
   };
+}
+
+export async function updateExtendedContext(
+  userId: string,
+  extendedContext: string,
+): Promise<void> {
+  const { data: existing } = await supabase
+    .from("user_contexts")
+    .select("id")
+    .eq("user_id", userId)
+    .single();
+
+  if (existing) {
+    await supabase
+      .from("user_contexts")
+      .update({ extended_context: extendedContext })
+      .eq("id", existing.id);
+  }
 }
 
 export async function saveNotionToken(

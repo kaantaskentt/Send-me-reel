@@ -12,6 +12,7 @@ export interface UserContext {
   role: string;
   goal: string;
   content_preferences: string;
+  extended_context?: string;
 }
 
 export interface Credits {

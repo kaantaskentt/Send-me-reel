@@ -1,6 +1,8 @@
+import { SignJWT } from "jose";
 import type { MyContext } from "./context.js";
 import * as users from "../db/users.js";
 import * as credits from "../db/credits.js";
+import { config } from "../config.js";
 
 export async function handleStart(ctx: MyContext) {
   const from = ctx.from;
@@ -25,6 +27,7 @@ export async function handleStart(ctx: MyContext) {
       "Commands:\n" +
       "/credits — Check your balance\n" +
       "/profile — View your context profile\n" +
+      "/dashboard — Open your web dashboard\n" +
       "/reset — Update your profile",
     { parse_mode: "HTML" },
   );
@@ -43,6 +46,7 @@ export async function handleHelp(ctx: MyContext) {
       "/start — Get started or see welcome message\n" +
       "/credits — Check your credit balance\n" +
       "/profile — View your context profile\n" +
+      "/dashboard — Open your web dashboard\n" +
       "/reset — Update your profile",
     { parse_mode: "HTML" },
   );
@@ -87,16 +91,56 @@ export async function handleProfile(ctx: MyContext) {
     return;
   }
 
+  const hasExtended = context.extendedContext ? "Yes" : "No";
+
   await ctx.reply(
     `<b>Your Profile</b>\n\n` +
       `<b>Role:</b> ${context.role}\n` +
       `<b>Focus:</b> ${context.goal}\n` +
-      `<b>Priorities:</b> ${context.contentPreferences}\n\n` +
-      "Use /reset to update your profile.",
+      `<b>Priorities:</b> ${context.contentPreferences}\n` +
+      `<b>Deep Profile:</b> ${hasExtended}\n\n` +
+      "Use /reset to update basics, or /dashboard to edit your full profile on the web.",
     { parse_mode: "HTML" },
   );
 }
 
 export async function handleReset(ctx: MyContext) {
   await ctx.conversation.enter("onboarding");
+}
+
+export async function handleDashboard(ctx: MyContext) {
+  const from = ctx.from;
+  if (!from) return;
+
+  const user = await users.getByTelegramId(from.id);
+  if (!user) {
+    await ctx.reply("Please /start first to create your account.");
+    return;
+  }
+
+  if (!config.jwtSecret) {
+    await ctx.reply("Dashboard is not configured yet. Coming soon!");
+    return;
+  }
+
+  const secret = new TextEncoder().encode(config.jwtSecret);
+  const token = await new SignJWT({
+    sub: user.id,
+    username: user.telegram_username || String(from.id),
+    tid: from.id,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("30d")
+    .setIssuedAt()
+    .sign(secret);
+
+  const dashboardUrl = `${config.appUrl}/auth?token=${token}`;
+
+  await ctx.reply(
+    `<b>Your Dashboard</b>\n\n` +
+      `Tap below to open your personal dashboard:\n\n` +
+      `<a href="${dashboardUrl}">Open Dashboard</a>\n\n` +
+      `<i>This link is personal — don't share it.</i>`,
+    { parse_mode: "HTML" },
+  );
 }
