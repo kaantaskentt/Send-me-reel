@@ -57,7 +57,7 @@ export default function HeroSection() {
           >
             <div className="badge-orange mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-              10 free analyses · No signup
+              Free to try · No account needed
             </div>
 
             <h1 className="text-[2.6rem] sm:text-5xl md:text-[3.25rem] text-[#1a1a1a] mb-5 leading-[1.1] font-[800] tracking-[-0.03em]">
@@ -67,10 +67,10 @@ export default function HeroSection() {
             </h1>
 
             <p className="text-lg text-slate-500 mb-3 leading-relaxed max-w-[480px] font-normal">
-              Send any Instagram, TikTok, or X video link to ContextDrop on
-              Telegram. In 60 seconds, get a personalized AI verdict — what it
-              contains, what tools are mentioned, and why it matters{" "}
-              <em>to you</em>.
+              You just watched a reel about an AI tool. By tomorrow, you
+              won&apos;t remember what it was called. Send the link to
+              ContextDrop — in 60 seconds, you&apos;ll know exactly what it
+              is, what tools were mentioned, and what to do next.
             </p>
 
             <p className="text-sm text-orange-400/80 mb-8 mono">
@@ -99,29 +99,6 @@ export default function HeroSection() {
               </span>
             </div>
 
-            <div className="mt-8 flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {[
-                  { bg: "#F97316", letter: "A" },
-                  { bg: "#8B5CF6", letter: "M" },
-                  { bg: "#10B981", letter: "J" },
-                  { bg: "#3B82F6", letter: "K" },
-                ].map((u, i) => (
-                  <div
-                    key={i}
-                    className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] text-white font-bold"
-                    style={{ background: u.bg }}
-                  >
-                    {u.letter}
-                  </div>
-                ))}
-              </div>
-              <span className="text-slate-400 text-sm">
-                Joined by{" "}
-                <strong className="text-slate-600">2,400+</strong> creators
-                &amp; founders
-              </span>
-            </div>
           </div>
 
           <div

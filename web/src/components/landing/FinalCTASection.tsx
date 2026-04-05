@@ -30,8 +30,8 @@ export default function FinalCTASection() {
             </h2>
 
             <p className="text-slate-500 text-lg mb-3 leading-relaxed font-normal">
-              Your first 10 analyses are free. No credit card. No signup. Just
-              send a link and see what happens.
+              Your first analyses are free. No credit card. No account.
+              Just a Telegram message.
             </p>
 
             <p className="text-orange-400 text-sm mb-10 mono">
@@ -57,7 +57,7 @@ export default function FinalCTASection() {
 
             <div className="flex flex-wrap items-center justify-center gap-5 mt-8">
               {[
-                { emoji: "✅", text: "10 free analyses" },
+                { emoji: "✅", text: "Always free to start" },
                 { emoji: "🔒", text: "No account needed" },
                 { emoji: "⚡", text: "60-second verdicts" },
                 { emoji: "📱", text: "Works in groups" },

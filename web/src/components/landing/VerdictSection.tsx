@@ -160,8 +160,8 @@ export default function VerdictSection() {
               <span className="text-[#F97316]">A verdict.</span>
             </h2>
             <p className="text-slate-500 text-lg mb-8 leading-relaxed font-normal">
-              Every analysis answers three questions: what is this, how do I use
-              it, and why does it matter to me? Then you decide in one tap.
+              Summaries tell you what happened. Verdicts tell you what to do.
+              Every analysis is tailored to your role, your goals, your stack.
             </p>
 
             <div className="space-y-5">
@@ -169,17 +169,17 @@ export default function VerdictSection() {
                 {
                   emoji: "📚",
                   label: "Learn",
-                  desc: "Get a deeper breakdown — use cases, alternatives, and how to get started.",
+                  desc: "Save it to your knowledge base. Come back when you're ready to dig in.",
                 },
                 {
                   emoji: "✅",
                   label: "Apply",
-                  desc: "Get a step-by-step action plan tailored to your workflow.",
+                  desc: "This is relevant now. Save it with a clear next step.",
                 },
                 {
                   emoji: "⏭️",
                   label: "Skip",
-                  desc: "Not relevant? Dismiss it. ContextDrop learns your preferences over time.",
+                  desc: "Not for you. Move on. No clutter.",
                 },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-4">

@@ -12,13 +12,14 @@ export default function PersonalizationSection() {
         <div ref={headlineRef} className="fade-up text-center mb-14">
           <span className="section-label block mb-3">Personalization</span>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl text-[#1a1a1a] mb-4 font-[800] tracking-[-0.025em]">
-            Context is everything.
+            Same video.
             <br />
-            <span className="text-[#F97316]">It learns who you are.</span>
+            <span className="text-[#F97316]">Different verdict.</span>
           </h2>
           <p className="text-slate-500 text-lg max-w-lg mx-auto leading-relaxed font-normal">
-            The same video. Two completely different verdicts. Because
-            you&apos;re not the same person as the person next to you.
+            A founder sees product integration opportunities. A student
+            sees a study path. The AI knows the difference because you
+            told it who you are.
           </p>
         </div>
 
@@ -92,17 +93,17 @@ export default function PersonalizationSection() {
           </div>
 
           <div className="text-center mt-8">
-            <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
+            <a
+              href="/context"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-orange-100"
               style={{
                 background: "#fff5ee",
                 border: "1px solid #fde8d4",
                 color: "#EA6C0A",
               }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
-              Auto-extract your context from Claude/ChatGPT — coming soon
-            </div>
+              Set up your profile →
+            </a>
           </div>
         </div>
       </div>

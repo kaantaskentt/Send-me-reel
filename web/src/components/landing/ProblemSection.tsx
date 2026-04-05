@@ -38,10 +38,9 @@ export default function ProblemSection() {
             <br className="hidden sm:block" /> goes to die.
           </h2>
           <p className="text-slate-500 text-lg max-w-xl mx-auto leading-relaxed font-normal">
-            You&apos;re not lazy. You&apos;re overwhelmed. The feed is
-            relentless, the content is dense, and the gap between
-            &quot;saving&quot; and &quot;understanding&quot; has never been
-            wider.
+            You&apos;re not lazy. The problem isn&apos;t you — it&apos;s
+            the gap between watching and doing. Every saved reel is a
+            promise you&apos;ll break.
           </p>
         </div>
 

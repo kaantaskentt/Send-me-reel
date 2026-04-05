@@ -45,6 +45,12 @@ export default function NavBar() {
           >
             How it works
           </a>
+          <a
+            href="#pricing"
+            className="animated-link text-slate-500 hover:text-slate-800 transition-colors text-sm font-medium"
+          >
+            Pricing
+          </a>
         </div>
 
         <a

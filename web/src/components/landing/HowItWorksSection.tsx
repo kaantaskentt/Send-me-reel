@@ -7,20 +7,20 @@ const STEPS = [
   {
     number: "1",
     emoji: "\ud83d\udcce",
-    title: "Send a link",
-    body: "Drop any Instagram Reel, TikTok, or X video URL directly into the ContextDrop Telegram chat. That\u2019s it.",
+    title: "Paste a link",
+    body: "Instagram Reel, TikTok, X video, or any article. Paste it into the Telegram bot.",
   },
   {
     number: "2",
     emoji: "\ud83e\udde0",
-    title: "AI analyzes it",
-    body: "ContextDrop watches the video, transcribes the audio, identifies tools and resources mentioned \u2014 in under 60 seconds.",
+    title: "We break it down",
+    body: "Audio transcribed. Screen analyzed. Every tool, link, and concept extracted \u2014 in under 60 seconds.",
   },
   {
     number: "3",
     emoji: "\u26a1",
     title: "You decide",
-    body: "Get a structured verdict: what it contains, what tools are mentioned, and why it matters to you. Tap Learn, Apply, or Skip.",
+    body: "A clear verdict: what\u2019s in it, why it matters to you, and what to do next. One tap \u2014 Learn, Apply, or Skip.",
   },
 ];
 
@@ -42,8 +42,7 @@ export default function HowItWorksSection() {
             <span className="text-[#F97316]">60 seconds.</span>
           </h2>
           <p className="text-slate-500 text-lg max-w-md mx-auto font-normal">
-            From link to actionable insight, faster than you can scroll past the
-            next video.
+            Faster than scrolling to the next video.
           </p>
         </div>
 
