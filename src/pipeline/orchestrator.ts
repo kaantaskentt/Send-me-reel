@@ -13,20 +13,37 @@ import * as visualAnalyzer from "../services/visualAnalyzer.js";
 import * as verdictGenerator from "../services/verdictGenerator.js";
 import { InlineKeyboard } from "grammy";
 
+/**
+ * Helper to reply in the right context — in groups, replies to the original message.
+ */
+function replyOpts(ctx: MyContext, replyToId?: number) {
+  const isGroup =
+    ctx.chat?.type === "group" || ctx.chat?.type === "supergroup";
+  if (isGroup && replyToId) {
+    return { reply_parameters: { message_id: replyToId } };
+  }
+  return {};
+}
+
 export async function runPipeline(
   ctx: MyContext,
   url: string,
+  replyToMessageId?: number,
 ): Promise<void> {
   const from = ctx.from!;
   const user = await users.getByTelegramId(from.id);
   if (!user) {
-    await ctx.reply("Please /start first to create your account.");
+    await ctx.reply(
+      "Please /start first to create your account.",
+      replyOpts(ctx, replyToMessageId),
+    );
     return;
   }
 
   if (!user.onboarded) {
     await ctx.reply(
       "Please complete onboarding first. Send /start to set up your profile.",
+      replyOpts(ctx, replyToMessageId),
     );
     return;
   }
@@ -35,8 +52,8 @@ export async function runPipeline(
   const balance = await credits.getBalance(user.id);
   if (balance <= 0) {
     await ctx.reply(
-      "You're out of credits! Each analysis costs 1 credit.\n\n" +
-        "Credit top-ups are coming soon. Stay tuned!",
+      "You're out of credits! Each analysis costs 1 credit.\n\nCredit top-ups are coming soon.",
+      replyOpts(ctx, replyToMessageId),
     );
     return;
   }
@@ -46,6 +63,7 @@ export async function runPipeline(
   if (platform === "unknown") {
     await ctx.reply(
       "I don't recognize that URL. Send me a link from Instagram, TikTok, X, or any article URL.",
+      replyOpts(ctx, replyToMessageId),
     );
     return;
   }
@@ -53,7 +71,7 @@ export async function runPipeline(
   // Deduct credit upfront
   const deducted = await credits.deduct(user.id);
   if (!deducted) {
-    await ctx.reply("You're out of credits!");
+    await ctx.reply("You're out of credits!", replyOpts(ctx, replyToMessageId));
     return;
   }
 
@@ -65,17 +83,19 @@ export async function runPipeline(
   });
 
   // Acknowledge receipt
-  await ctx.reply("Got it. Analyzing now — back in about 30-60 seconds...");
+  await ctx.reply(
+    "Got it. Analyzing now — back in about 30-60 seconds...",
+    replyOpts(ctx, replyToMessageId),
+  );
 
   try {
     if (platform === "article") {
-      await runArticlePipeline(ctx, user.id, analysisId, url);
+      await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
     } else {
-      await runVideoPipeline(ctx, user.id, analysisId, url, platform);
+      await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId);
     }
   } catch (err) {
     console.error("Pipeline error:", err);
-    // Refund credit on failure
     await credits.refund(user.id);
 
     const message =
@@ -89,9 +109,8 @@ export async function runPipeline(
     });
 
     await ctx.reply(
-      `Sorry, I couldn't analyze that link. Your credit has been refunded.\n\n` +
-        `<i>Error: ${message}</i>`,
-      { parse_mode: "HTML" },
+      `Sorry, I couldn't analyze that link. Your credit has been refunded.\n\n<i>Error: ${message}</i>`,
+      { parse_mode: "HTML", ...replyOpts(ctx, replyToMessageId) },
     );
   } finally {
     await storage.cleanup(analysisId);
@@ -104,33 +123,28 @@ async function runVideoPipeline(
   analysisId: string,
   url: string,
   platform: Platform,
+  replyToMessageId?: number,
 ): Promise<void> {
-  // Step 1: Scrape metadata via yt-dlp
   await analyses.updateStatus(analysisId, "scraping");
   const scraped = await scraper.scrapeVideo(platform, url);
 
-  // Step 2: Download video via yt-dlp
   const videoPath = await storage.downloadVideo(url, analysisId);
 
-  // Step 3: Parallel transcription + frame extraction
   await analyses.updateStatus(analysisId, "transcribing");
   const [transcript, framePaths] = await Promise.all([
     transcriber.transcribe(videoPath),
     frameExtractor.extractFrames(videoPath),
   ]);
 
-  // Step 4: Visual analysis
   await analyses.updateStatus(analysisId, "analyzing");
   const frameAnalyses = await visualAnalyzer.analyzeFrames(framePaths);
   const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
 
-  // Step 5: Load user context
   const userContext = await users.getContext(userId);
   if (!userContext) {
     throw new ServiceError("NO_CONTEXT", "User has no context profile");
   }
 
-  // Step 6: Generate verdict
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
     transcript,
@@ -142,7 +156,6 @@ async function runVideoPipeline(
     sourceUrl: url,
   });
 
-  // Step 7: Save result
   await analyses.updateResult(analysisId, {
     transcript,
     frameDescriptions: frameAnalyses,
@@ -153,8 +166,7 @@ async function runVideoPipeline(
     status: "done",
   });
 
-  // Step 8: Reply
-  await sendVerdict(ctx, analysisId, verdict);
+  await sendVerdict(ctx, analysisId, verdict, replyToMessageId);
 }
 
 async function runArticlePipeline(
@@ -162,30 +174,27 @@ async function runArticlePipeline(
   userId: string,
   analysisId: string,
   url: string,
+  replyToMessageId?: number,
 ): Promise<void> {
-  // Step 1: Fetch article
   await analyses.updateStatus(analysisId, "scraping");
   const article = await scraper.scrapeArticle(url);
 
-  // Step 2: Load user context
   const userContext = await users.getContext(userId);
   if (!userContext) {
     throw new ServiceError("NO_CONTEXT", "User has no context profile");
   }
 
-  // Step 3: Generate verdict (no video processing needed)
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
     transcript: null,
     visualSummary: "",
-    caption: article.text.slice(0, 3000), // Limit article text
+    caption: article.text.slice(0, 3000),
     metadata: { title: article.title, ...article.metadata },
     userContext,
     platform: "article",
     sourceUrl: url,
   });
 
-  // Step 4: Save result
   await analyses.updateResult(analysisId, {
     transcript: null,
     caption: article.title,
@@ -194,21 +203,24 @@ async function runArticlePipeline(
     status: "done",
   });
 
-  // Step 5: Reply
-  await sendVerdict(ctx, analysisId, verdict);
+  await sendVerdict(ctx, analysisId, verdict, replyToMessageId);
 }
 
 async function sendVerdict(
   ctx: MyContext,
   analysisId: string,
   verdict: string,
+  replyToMessageId?: number,
 ): Promise<void> {
-  const username = ctx.from?.username || ctx.from?.id || "user";
+  const from = ctx.from!;
+  const username = from.username || from.id || "user";
+  const telegramId = from.id;
 
+  // Encode telegram ID in callback data so only the sender can tap buttons
   const keyboard = new InlineKeyboard()
-    .text("📚 Learn", `intent_learn_${analysisId}`)
-    .text("⚡ Apply", `intent_apply_${analysisId}`)
-    .text("🗑 Skip", `intent_ignore_${analysisId}`);
+    .text("📚 Learn", `intent_learn_${analysisId}_${telegramId}`)
+    .text("⚡ Apply", `intent_apply_${analysisId}_${telegramId}`)
+    .text("🗑 Skip", `intent_ignore_${analysisId}_${telegramId}`);
 
   const formatted =
     `${verdict}\n\n` +
@@ -216,5 +228,6 @@ async function sendVerdict(
 
   await ctx.reply(formatted, {
     reply_markup: keyboard,
+    ...replyOpts(ctx, replyToMessageId),
   });
 }

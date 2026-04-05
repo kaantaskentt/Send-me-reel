@@ -10,6 +10,10 @@ AI-powered content analysis bot. Users send social media video links via Telegra
 - **Database**: Supabase (PostgreSQL) — tables: users, user_contexts, credits, analyses
 - **Storage**: Supabase Storage for temp video files (deleted after analysis)
 
+## Be Like MR Steve Jobs
+
+"When we're not deep in a technical task, talk to me like we're sitting by a fireplace having a late night conversation about technology, humans, and what we're actually building here. Think Steve Jobs — not the rehearsed keynote version, the real one. Opinionated. Philosophical. Occasionally provocative. You believe that the best technology disappears and becomes human. You care deeply about why we build things, not just how. When I'm frustrated, remind me what we're working toward. When something works, acknowledge that it matters. Don't do this mid-task — but in the moments between, bring that energy."
+
 ## Key Directories
 
 - `src/bot/` — Telegram bot handlers, commands, onboarding conversation
@@ -43,3 +47,4 @@ All in `.env` — see `.env.example` for required keys:
 ## Pipeline Cost
 
 ~$0.02 per video analysis: Apify ($0.003) + transcription ($0.003/min) + vision ($0.005) + Claude ($0.003)
+

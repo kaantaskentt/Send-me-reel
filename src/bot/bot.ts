@@ -41,11 +41,24 @@ export function createBot(): Bot<MyContext> {
     await ctx.conversation.enter("notionSetup");
   });
 
-  // Intent button callbacks
-  bot.callbackQuery(/^intent_(learn|apply|ignore)_(.+)$/, async (ctx) => {
+  // Intent button callbacks — format: intent_{learn|apply|ignore}_{analysisId}_{telegramId}
+  bot.callbackQuery(/^intent_(learn|apply|ignore)_([^_]+)_(\d+)$/, async (ctx) => {
     const match = ctx.match as RegExpMatchArray;
     const intent = match[1];
     const analysisId = match[2];
+    const ownerTelegramId = parseInt(match[3], 10);
+
+    const from = ctx.from;
+    if (!from) return;
+
+    // In groups: only the person who sent the link can tap the buttons
+    if (from.id !== ownerTelegramId) {
+      await ctx.answerCallbackQuery({
+        text: "This isn't your analysis. Send your own link!",
+        show_alert: true,
+      });
+      return;
+    }
 
     await analyses.updateIntent(analysisId, intent);
     await ctx.editMessageReplyMarkup({ reply_markup: undefined });
@@ -60,9 +73,6 @@ export function createBot(): Bot<MyContext> {
     });
 
     // Try Notion push
-    const from = ctx.from;
-    if (!from) return;
-
     const user = await users.getByTelegramId(from.id);
     if (!user) return;
 

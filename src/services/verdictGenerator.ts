@@ -1,9 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { config } from "../config.js";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, UserContext } from "../pipeline/types.js";
 
-const anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
+const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
 export interface VerdictInput {
   transcript: string | null;
@@ -43,19 +43,21 @@ export async function generateVerdict(input: VerdictInput): Promise<string> {
   const userPrompt = buildUserPrompt(input);
 
   try {
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4.1",
       max_tokens: 600,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
     });
 
-    const content = message.content[0];
-    if (content.type !== "text") {
-      throw new ServiceError("VERDICT_EMPTY", "Claude returned non-text content");
+    const text = response.choices[0]?.message?.content;
+    if (!text) {
+      throw new ServiceError("VERDICT_EMPTY", "OpenAI returned empty content");
     }
 
-    return content.text;
+    return text;
   } catch (err) {
     if (err instanceof ServiceError) throw err;
     throw new ServiceError(

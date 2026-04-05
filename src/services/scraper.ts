@@ -5,47 +5,128 @@ import type { Platform, ScrapedVideo, ScrapedArticle } from "../pipeline/types.j
 
 const execAsync = promisify(exec);
 
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 3000;
+
 /**
- * Scrape video metadata using yt-dlp.
- * Works for Instagram, TikTok, and X/Twitter — no Apify needed.
+ * Scrape video metadata using yt-dlp with retry logic.
+ * Returns null if the URL is not a video (e.g. image post).
  */
 export async function scrapeVideo(
   platform: Platform,
   url: string,
 ): Promise<ScrapedVideo> {
-  try {
-    console.log(`[scraper] yt-dlp metadata for ${platform}: ${url}`);
-    const { stdout } = await execAsync(
-      `yt-dlp --dump-json --no-download "${url}" 2>/dev/null`,
-      { timeout: 45000 },
-    );
+  let lastError: Error | null = null;
 
-    const data = JSON.parse(stdout.trim());
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[scraper] Retry ${attempt}/${MAX_RETRIES}...`);
+        await new Promise((r) => setTimeout(r, RETRY_DELAY));
+      }
 
-    return {
-      videoUrl: url, // yt-dlp will download from original URL later
-      caption: data.description || data.title || "",
-      authorName: data.uploader || data.channel || "",
-      authorUsername: data.uploader_id || data.channel_id || "",
-      likes: data.like_count || 0,
-      views: data.view_count || 0,
-      hashtags: data.tags || [],
-      metadata: {
-        id: data.id,
-        duration: data.duration,
-        timestamp: data.timestamp,
-        comment_count: data.comment_count,
-        thumbnail: data.thumbnail,
-        webpage_url: data.webpage_url,
-      },
-    };
-  } catch (err) {
-    throw new ServiceError(
-      "SCRAPE_FAILED",
-      `Failed to scrape ${platform}: ${err instanceof Error ? err.message : String(err)}`,
-      true,
-    );
+      console.log(`[scraper] yt-dlp metadata for ${platform}: ${url}`);
+
+      // Use stderr to capture errors, don't suppress them
+      const { stdout, stderr } = await execAsync(
+        `yt-dlp --dump-json --no-download "${url}" 2>&1 || true`,
+        { timeout: 45000, maxBuffer: 10 * 1024 * 1024 },
+      );
+
+      const output = stdout.trim();
+
+      // Check for common non-video errors
+      if (!output || output.length < 10) {
+        // yt-dlp returned nothing — likely not a video
+        const combined = (stdout + stderr).toLowerCase();
+        if (
+          combined.includes("no video") ||
+          combined.includes("not a video") ||
+          combined.includes("unable to extract") ||
+          combined.includes("unsupported url")
+        ) {
+          throw new ServiceError(
+            "NOT_A_VIDEO",
+            "This link doesn't contain a video. Send a Reel, TikTok, or video post.",
+            false,
+          );
+        }
+        throw new Error("yt-dlp returned empty output");
+      }
+
+      // Try to find the JSON line (yt-dlp may print warnings before JSON)
+      const jsonLine = output.split("\n").find((line) => line.startsWith("{"));
+      if (!jsonLine) {
+        // Check if this is a connection error (retryable)
+        if (
+          output.includes("Connection refused") ||
+          output.includes("timed out") ||
+          output.includes("Network is unreachable")
+        ) {
+          throw new Error(`Network error: ${output.slice(0, 200)}`);
+        }
+
+        // Check if it's a "not a video" situation
+        if (
+          output.includes("no video formats") ||
+          output.includes("Unsupported URL") ||
+          output.includes("Unable to extract")
+        ) {
+          throw new ServiceError(
+            "NOT_A_VIDEO",
+            "This link doesn't contain a video. Try sending a Reel or video post instead.",
+            false,
+          );
+        }
+
+        throw new Error("No JSON found in yt-dlp output");
+      }
+
+      const data = JSON.parse(jsonLine);
+
+      // Check if there's actually video content
+      if (!data.duration && !data.formats?.length) {
+        throw new ServiceError(
+          "NOT_A_VIDEO",
+          "This is an image post, not a video. Send a Reel or video post.",
+          false,
+        );
+      }
+
+      return {
+        videoUrl: url,
+        caption: data.description || data.title || "",
+        authorName: data.uploader || data.channel || "",
+        authorUsername: data.uploader_id || data.channel_id || "",
+        likes: data.like_count || 0,
+        views: data.view_count || 0,
+        hashtags: data.tags || [],
+        metadata: {
+          id: data.id,
+          duration: data.duration,
+          timestamp: data.timestamp,
+          comment_count: data.comment_count,
+          thumbnail: data.thumbnail,
+          webpage_url: data.webpage_url,
+        },
+      };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      // Don't retry non-retryable errors
+      if (err instanceof ServiceError && !err.retryable) {
+        throw err;
+      }
+
+      console.error(`[scraper] Attempt ${attempt} failed:`, lastError.message);
+    }
   }
+
+  throw new ServiceError(
+    "SCRAPE_FAILED",
+    `Failed to scrape ${platform} after ${MAX_RETRIES + 1} attempts: ${lastError?.message || "unknown error"}`,
+    false,
+  );
 }
 
 export async function scrapeArticle(url: string): Promise<ScrapedArticle> {
