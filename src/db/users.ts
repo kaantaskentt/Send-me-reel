@@ -27,6 +27,21 @@ export async function getOrCreate(
     .single();
 
   if (existing) {
+    // Update username/firstName if they've changed
+    const updates: Record<string, string> = {};
+    if (username && existing.telegram_username !== username)
+      updates.telegram_username = username;
+    if (firstName && existing.first_name !== firstName)
+      updates.first_name = firstName;
+
+    if (Object.keys(updates).length > 0) {
+      await supabase
+        .from("users")
+        .update(updates)
+        .eq("telegram_id", telegramId);
+      Object.assign(existing, updates);
+    }
+
     return { user: existing as DbUser, isNew: false };
   }
 
