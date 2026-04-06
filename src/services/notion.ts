@@ -94,7 +94,7 @@ export async function setupWorkspace(accessToken: string): Promise<{
 
 /**
  * Push an analysis to the user's ContextDrop Notion database.
- * Returns the URL of the created page.
+ * Returns the URL of the created page, or existing page URL if already saved.
  */
 export async function pushAnalysis(
   accessToken: string,
@@ -108,28 +108,103 @@ export async function pushAnalysis(
     intent: string;
   },
 ): Promise<string> {
-  const notion = new Client({ auth: accessToken });
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  };
 
-  // Extract title from verdict
-  const titleMatch = analysis.verdict.match(/🔷\s*(.+)/);
-  const title = titleMatch ? titleMatch[1].trim() : "Untitled Analysis";
+  // Dedup: check if this URL is already in the database
+  const queryRes = await fetch(
+    `https://api.notion.com/v1/databases/${databaseId}/query`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        filter: {
+          property: "Source URL",
+          url: { equals: analysis.sourceUrl },
+        },
+        page_size: 1,
+      }),
+    },
+  );
+  const queryData = (await queryRes.json()) as {
+    results: Array<{ id: string; url: string }>;
+  };
+  if (queryData.results?.length > 0) {
+    const existing = queryData.results[0];
+    return existing.url || `https://notion.so/${existing.id.replace(/-/g, "")}`;
+  }
 
-  const status = "Saved";
+  // Parse verdict into structured parts
+  const parsed = parseVerdict(analysis.verdict);
   const platformName =
     analysis.platform.charAt(0).toUpperCase() + analysis.platform.slice(1);
 
-  const children: any[] = [];
+  // Build structured page content
+  const children: Record<string, unknown>[] = [];
 
-  // Callout with the verdict
-  children.push({
-    object: "block",
-    type: "callout",
-    callout: {
-      rich_text: [{ text: { content: analysis.verdict.slice(0, 2000) } }],
-      icon: { emoji: "⚡" },
-      color: "blue_background",
-    },
-  });
+  // What it is
+  if (parsed.whatItIs) {
+    children.push({
+      object: "block",
+      type: "callout",
+      callout: {
+        rich_text: [{ text: { content: parsed.whatItIs } }],
+        icon: { emoji: "🧠" },
+        color: "blue_background",
+      },
+    });
+  }
+
+  // What's inside
+  if (parsed.whatsInside) {
+    children.push({
+      object: "block",
+      type: "callout",
+      callout: {
+        rich_text: [{ text: { content: parsed.whatsInside } }],
+        icon: { emoji: "🔧" },
+        color: "gray_background",
+      },
+    });
+  }
+
+  // Real-world context
+  if (parsed.realWorld) {
+    children.push({
+      object: "block",
+      type: "callout",
+      callout: {
+        rich_text: [{ text: { content: parsed.realWorld } }],
+        icon: { emoji: "💡" },
+        color: "yellow_background",
+      },
+    });
+  }
+
+  // Link
+  if (parsed.link) {
+    children.push({
+      object: "block",
+      type: "bookmark",
+      bookmark: { url: parsed.link },
+    });
+  }
+
+  // Tags
+  if (parsed.tags) {
+    children.push({
+      object: "block",
+      type: "paragraph",
+      paragraph: {
+        rich_text: [
+          { text: { content: parsed.tags }, annotations: { color: "gray" } },
+        ],
+      },
+    });
+  }
 
   children.push({ object: "block", type: "divider", divider: {} });
 
@@ -166,27 +241,32 @@ export async function pushAnalysis(
     paragraph: {
       rich_text: [
         { text: { content: "Source: " } },
-        { text: { content: analysis.sourceUrl, link: { url: analysis.sourceUrl } } },
+        {
+          text: {
+            content: analysis.sourceUrl,
+            link: { url: analysis.sourceUrl },
+          },
+        },
       ],
     },
   });
 
-  // Use REST API directly (SDK version has type issues with properties)
+  // Create page
   const res = await fetch("https://api.notion.com/v1/pages", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Notion-Version": "2022-06-28",
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({
       parent: { database_id: databaseId },
-      icon: { emoji: analysis.intent === "learn" ? "📚" : "⚡" },
+      icon: { emoji: "⚡" },
       properties: {
-        Name: { title: [{ text: { content: title } }] },
-        Status: { select: { name: status } },
+        Name: {
+          title: [{ text: { content: parsed.title } }],
+        },
+        Status: { select: { name: "Saved" } },
         Platform: { select: { name: platformName } },
-        "Date Saved": { date: { start: new Date().toISOString().split("T")[0] } },
+        "Date Saved": {
+          date: { start: new Date().toISOString().split("T")[0] },
+        },
         "Source URL": { url: analysis.sourceUrl },
       },
       children,
@@ -195,10 +275,60 @@ export async function pushAnalysis(
 
   const page = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
-    throw new ServiceError("NOTION_PAGE_CREATE", `Failed to create page: ${(page as any).message}`);
+    throw new ServiceError(
+      "NOTION_PAGE_CREATE",
+      `Failed to create page: ${(page as { message?: string }).message}`,
+    );
   }
 
-  return (page.url as string) || `https://notion.so/${(page.id as string).replace(/-/g, "")}`;
+  return (
+    (page.url as string) ||
+    `https://notion.so/${(page.id as string).replace(/-/g, "")}`
+  );
+}
+
+/**
+ * Parse verdict text into structured parts for Notion blocks.
+ */
+function parseVerdict(verdict: string): {
+  title: string;
+  whatItIs: string;
+  whatsInside: string;
+  realWorld: string;
+  link: string;
+  tags: string;
+} {
+  const lines = verdict.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  let title = "Untitled Analysis";
+  let whatItIs = "";
+  let whatsInside = "";
+  let realWorld = "";
+  let link = "";
+  let tags = "";
+
+  for (const line of lines) {
+    if (line.startsWith("🔷")) {
+      title = line.replace(/^🔷\s*/, "").trim();
+    } else if (line.startsWith("🧠")) {
+      whatItIs = line.replace(/^🧠\s*/, "").trim();
+    } else if (line.startsWith("🔧")) {
+      whatsInside = line.replace(/^🔧\s*/, "").trim();
+    } else if (line.startsWith("💡")) {
+      realWorld = line.replace(/^💡\s*/, "").trim();
+    } else if (line.startsWith("🔗")) {
+      link = line.replace(/^🔗\s*/, "").trim();
+    } else if (line.match(/^[🆓💰🔓💻☁️🐍📦]/)) {
+      tags = line.trim();
+    }
+  }
+
+  // Fallback: if parsing found nothing, use the whole verdict
+  if (!whatItIs && !whatsInside) {
+    whatItIs = verdict.slice(0, 2000);
+  }
+
+  return { title, whatItIs, whatsInside, realWorld, link, tags };
 }
 
 function splitIntoBlocks(text: string) {
