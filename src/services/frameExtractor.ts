@@ -13,10 +13,9 @@ export function getVideoDuration(videoPath: string): Promise<number> {
   });
 }
 
-const MAX_FRAMES = 4;
-
 export async function extractFrames(
   videoPath: string,
+  intervalSec: number = 3,
 ): Promise<string[]> {
   const dir = path.dirname(videoPath);
   const framesDir = path.join(dir, "frames");
@@ -27,9 +26,6 @@ export async function extractFrames(
     if (duration === 0) {
       throw new ServiceError("NO_DURATION", "Could not determine video duration");
     }
-
-    // Space frames evenly, max 4
-    const intervalSec = Math.max(3, Math.ceil(duration / MAX_FRAMES));
 
     // Extract frames at interval using ffmpeg
     const rawPattern = path.join(framesDir, "raw_%04d.jpg");
