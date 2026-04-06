@@ -1,4 +1,5 @@
 import { Bot, session } from "grammy";
+import { SignJWT } from "jose";
 import { conversations, createConversation } from "@grammyjs/conversations";
 import type { MyContext, SessionData } from "./context.js";
 import { config } from "../config.js";
@@ -16,6 +17,22 @@ import { handleMessage } from "./messageHandler.js";
 import * as analyses from "../db/analyses.js";
 import * as users from "../db/users.js";
 import * as notion from "../services/notion.js";
+
+async function makeDashboardLink(user: { id: string; telegram_username: string | null }, telegramId: number): Promise<string> {
+  if (!config.jwtSecret) return `${config.appUrl}`;
+  const secret = new TextEncoder().encode(config.jwtSecret);
+  const username = user.telegram_username || String(telegramId);
+  const token = await new SignJWT({
+    sub: user.id,
+    username,
+    tid: telegramId,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("30d")
+    .setIssuedAt()
+    .sign(secret);
+  return `${config.appUrl}/auth?token=${token}`;
+}
 
 export function createBot(): Bot<MyContext> {
   const bot = new Bot<MyContext>(config.telegramBotToken);
@@ -70,18 +87,19 @@ export function createBot(): Bot<MyContext> {
       return;
     }
 
-    // Confirm save
-    const username = from.username || String(from.id);
+    // Confirm save with authenticated dashboard link
+    const user = await users.getByTelegramId(from.id);
     await ctx.answerCallbackQuery({
       text: intent === "learn" ? "📚 Saved!" : "⚡ Saved!",
     });
-    await ctx.reply(
-      `📌 Saved → <a href="https://contextdrop.app/${username}">Open Dashboard</a>`,
-      { parse_mode: "HTML" },
-    );
 
-    // Silent Notion push if connected
-    const user = await users.getByTelegramId(from.id);
+    if (user) {
+      const dashLink = await makeDashboardLink(user, from.id);
+      await ctx.reply(
+        `📌 Saved → <a href="${dashLink}">Open Dashboard</a>`,
+        { parse_mode: "HTML" },
+      );
+    }
     if (!user) return;
 
     const notionInfo = await users.getNotionInfo(user.id);
