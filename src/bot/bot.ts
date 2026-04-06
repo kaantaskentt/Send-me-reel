@@ -96,12 +96,15 @@ export function createBot(): Bot<MyContext> {
     const notionInfo = await users.getNotionInfo(user.id);
 
     if (!notionInfo) {
-      // Not connected — guide them to OAuth
+      // Not connected — send to dashboard with auth (they can connect Notion there)
       await ctx.answerCallbackQuery({ text: "Let's connect Notion first" });
       const dashLink = await makeDashboardLink(user, from.id);
       await ctx.reply(
-        "To save to Notion, connect your workspace first (takes 5 seconds):\n\n" +
-          `<a href="${dashLink}">Connect Notion →</a>`,
+        "To save to Notion, connect your workspace first:\n\n" +
+          `1. <a href="${dashLink}">Open your dashboard</a>\n` +
+          `2. Click "Connect Notion" in the sidebar\n` +
+          `3. Then tap "Save to Notion" again here\n\n` +
+          "Takes about 10 seconds.",
         { parse_mode: "HTML" },
       );
       return;
