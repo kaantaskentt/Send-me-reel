@@ -96,17 +96,45 @@ export function createBot(): Bot<MyContext> {
     const notionInfo = await users.getNotionInfo(user.id);
 
     if (!notionInfo) {
-      // Not connected — send to dashboard with auth (they can connect Notion there)
-      await ctx.answerCallbackQuery({ text: "Let's connect Notion first" });
-      const dashLink = await makeDashboardLink(user, from.id);
-      await ctx.reply(
-        "To save to Notion, connect your workspace first:\n\n" +
-          `1. <a href="${dashLink}">Open your dashboard</a>\n` +
-          `2. Click "Connect Notion" in the sidebar\n` +
-          `3. Then tap "Save to Notion" again here\n\n` +
-          "Takes about 10 seconds.",
-        { parse_mode: "HTML" },
-      );
+      // Not connected — send direct OAuth link that auto-saves after connecting
+      await ctx.answerCallbackQuery({ text: "Let's connect Notion" });
+
+      if (!config.jwtSecret) {
+        await ctx.reply("Notion connection is not configured.");
+        return;
+      }
+
+      const secret = new TextEncoder().encode(config.jwtSecret);
+      const username = user.telegram_username || String(from.id);
+      const token = await new SignJWT({
+        sub: user.id,
+        username,
+        tid: from.id,
+      })
+        .setProtectedHeader({ alg: "HS256" })
+        .setExpirationTime("1h")
+        .setIssuedAt()
+        .sign(secret);
+
+      const connectUrl = `${config.appUrl}/api/auth/notion/connect?token=${token}&analysisId=${analysisId}`;
+
+      const connectMessage =
+        `<a href="${connectUrl}">Connect Notion & Save</a>\n\n` +
+        "One tap — takes 10 seconds.";
+
+      // In groups, send the connect link via DM to avoid exposing the auth token
+      const isGroup = ctx.chat?.type === "group" || ctx.chat?.type === "supergroup";
+      if (isGroup) {
+        try {
+          await ctx.api.sendMessage(from.id, connectMessage, { parse_mode: "HTML" });
+          await ctx.reply("Check your DMs — I sent a link to connect Notion.");
+        } catch {
+          // DM failed (user hasn't started bot in DM), fall back to group reply
+          await ctx.reply(connectMessage, { parse_mode: "HTML" });
+        }
+      } else {
+        await ctx.reply(connectMessage, { parse_mode: "HTML" });
+      }
       return;
     }
 

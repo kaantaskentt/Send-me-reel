@@ -181,7 +181,7 @@ async function runVideoPipeline(
     status: "done",
   });
 
-  await sendVerdict(ctx, analysisId, verdict, replyToMessageId);
+  await sendVerdict(ctx, analysisId, verdict, url, replyToMessageId);
 }
 
 async function runArticlePipeline(
@@ -218,21 +218,22 @@ async function runArticlePipeline(
     status: "done",
   });
 
-  await sendVerdict(ctx, analysisId, verdict, replyToMessageId);
+  await sendVerdict(ctx, analysisId, verdict, url, replyToMessageId);
 }
 
 async function sendVerdict(
   ctx: MyContext,
   analysisId: string,
   verdict: string,
+  sourceUrl: string,
   replyToMessageId?: number,
 ): Promise<void> {
   const from = ctx.from!;
   const telegramId = from.id;
 
-  // Two action buttons — dashboard + Notion
+  // Two action buttons — view original + save to Notion
   const keyboard = new InlineKeyboard()
-    .text("📋 Open Dashboard", `action_dashboard_${analysisId}_${telegramId}`)
+    .url("👁 View Original", sourceUrl)
     .text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
 
   const formatted = verdict;

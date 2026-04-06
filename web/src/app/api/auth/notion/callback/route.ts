@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { pushToNotion } from "@/lib/notion-push";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
+  const state = request.nextUrl.searchParams.get("state"); // analysisId if coming from direct connect
   const baseUrl = request.nextUrl.origin;
 
   if (error || !code) {
@@ -158,7 +160,37 @@ export async function GET(request: NextRequest) {
     })
     .eq("id", session.sub);
 
-  // Redirect to dashboard with success
+  // If we have an analysisId from state, auto-push the analysis
+  if (state) {
+    try {
+      const { data: analysis } = await supabase
+        .from("analyses")
+        .select("verdict, transcript, visual_summary, source_url, platform, verdict_intent")
+        .eq("id", state)
+        .eq("user_id", session.sub)
+        .single();
+
+      if (analysis?.verdict) {
+        const result = await pushToNotion(accessToken, databaseId, analysis);
+        return NextResponse.redirect(
+          new URL(`/notion-success?url=${encodeURIComponent(result.url)}`, baseUrl),
+        );
+      }
+    } catch (err) {
+      console.error("Auto-push after Notion connect failed:", err);
+      // Connection succeeded even if push failed — show partial success
+      return NextResponse.redirect(
+        new URL("/notion-success?connected=true", baseUrl),
+      );
+    }
+
+    // analysisId was invalid but connection succeeded
+    return NextResponse.redirect(
+      new URL("/notion-success?connected=true", baseUrl),
+    );
+  }
+
+  // No state — standard dashboard redirect (existing behavior)
   const username = session.username || session.tid;
   return NextResponse.redirect(
     new URL(`/${username}?notion=connected`, baseUrl),
