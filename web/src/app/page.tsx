@@ -2,6 +2,7 @@ import NavBar from "@/components/landing/NavBar";
 import HeroSection from "@/components/landing/HeroSection";
 import ProblemSection from "@/components/landing/ProblemSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import TryItNowSection from "@/components/landing/TryItNowSection";
 import VerdictSection from "@/components/landing/VerdictSection";
 import PersonalizationSection from "@/components/landing/PersonalizationSection";
 import GroupChatSection from "@/components/landing/GroupChatSection";
@@ -15,6 +16,7 @@ export default function Home() {
       <HeroSection />
       <ProblemSection />
       <HowItWorksSection />
+      <TryItNowSection />
       <VerdictSection />
       <PersonalizationSection />
       <GroupChatSection />
