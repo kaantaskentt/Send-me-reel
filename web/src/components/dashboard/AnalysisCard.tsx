@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Analysis } from "@/lib/types";
 import { parseVerdict } from "@/lib/verdict-parser";
 import { formatDistanceToNow } from "date-fns";
@@ -15,9 +16,22 @@ const platformIcons: Record<string, typeof Camera> = {
 interface Props {
   analysis: Analysis;
   onClick: () => void;
+  notionConnected?: boolean;
 }
 
-export default function AnalysisCard({ analysis, onClick }: Props) {
+export default function AnalysisCard({ analysis, onClick, notionConnected }: Props) {
+  const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const sendToNotion = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setNotionStatus("sending");
+    const res = await fetch("/api/notion/push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ analysisId: analysis.id }),
+    });
+    setNotionStatus(res.ok ? "sent" : "error");
+  };
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const PlatformIcon = platformIcons[analysis.platform] || Globe;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), {
@@ -53,9 +67,9 @@ export default function AnalysisCard({ analysis, onClick }: Props) {
         </p>
       )}
 
-      {/* Intent badge */}
-      {analysis.verdict_intent && analysis.verdict_intent !== "ignore" && (
-        <div className="mt-3">
+      {/* Bottom row: intent badge + Notion button */}
+      <div className="mt-3 flex items-center gap-2">
+        {analysis.verdict_intent && analysis.verdict_intent !== "ignore" && (
           <span
             className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
               analysis.verdict_intent === "learn"
@@ -65,8 +79,25 @@ export default function AnalysisCard({ analysis, onClick }: Props) {
           >
             {analysis.verdict_intent === "learn" ? "Learn" : "Apply"}
           </span>
-        </div>
-      )}
+        )}
+        {notionConnected && analysis.verdict && notionStatus === "idle" && (
+          <button
+            onClick={sendToNotion}
+            className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors ml-auto"
+          >
+            Send to Notion
+          </button>
+        )}
+        {notionStatus === "sending" && (
+          <span className="text-xs text-zinc-500 ml-auto">Sending...</span>
+        )}
+        {notionStatus === "sent" && (
+          <span className="text-xs text-emerald-400 ml-auto">Sent to Notion</span>
+        )}
+        {notionStatus === "error" && (
+          <span className="text-xs text-red-400 ml-auto">Failed</span>
+        )}
+      </div>
     </button>
   );
 }

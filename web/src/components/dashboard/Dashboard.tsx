@@ -152,6 +152,7 @@ export default function Dashboard({ userId, username }: Props) {
                       key={a.id}
                       analysis={a}
                       onClick={() => setSelectedId(a.id)}
+                      notionConnected={!!profile?.user.notion_access_token}
                     />
                   ))}
 

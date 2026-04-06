@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { User, UserContext, Credits } from "@/lib/types";
+import NotionSetup from "./NotionSetup";
 
 interface Props {
   user: User;
@@ -9,6 +11,8 @@ interface Props {
 }
 
 export default function ProfileSidebar({ user, context, credits }: Props) {
+  const [notionConnected, setNotionConnected] = useState(!!user.notion_access_token);
+  const [showSetup, setShowSetup] = useState(false);
   const initial = (user.first_name?.[0] || "U").toUpperCase();
   const creditPercent = Math.min(100, (credits.balance / 10) * 100);
 
@@ -61,15 +65,33 @@ export default function ProfileSidebar({ user, context, credits }: Props) {
       </div>
 
       {/* Notion status */}
-      <div className="flex items-center gap-2">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            user.notion_access_token ? "bg-emerald-400" : "bg-zinc-600"
-          }`}
-        />
-        <span className="text-xs text-zinc-400">
-          Notion {user.notion_access_token ? "connected" : "not connected"}
-        </span>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              notionConnected ? "bg-emerald-400" : "bg-zinc-600"
+            }`}
+          />
+          <span className="text-xs text-zinc-400">
+            Notion {notionConnected ? "connected" : "not connected"}
+          </span>
+        </div>
+        {!notionConnected && !showSetup && (
+          <button
+            onClick={() => setShowSetup(true)}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
+          >
+            Connect Notion →
+          </button>
+        )}
+        {showSetup && !notionConnected && (
+          <NotionSetup
+            onConnected={() => {
+              setNotionConnected(true);
+              setShowSetup(false);
+            }}
+          />
+        )}
       </div>
 
       {/* Links */}
@@ -79,14 +101,6 @@ export default function ProfileSidebar({ user, context, credits }: Props) {
           className="block text-xs text-blue-400 hover:text-blue-300 transition-colors py-1 font-medium"
         >
           Edit your profile
-        </a>
-        <a
-          href="https://t.me/contextdrop2027bot?start=notion"
-          className="block text-xs text-zinc-500 hover:text-zinc-300 transition-colors py-1"
-        >
-          {user.notion_access_token
-            ? "Reconnect Notion"
-            : "Connect Notion"}
         </a>
       </div>
     </div>
