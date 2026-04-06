@@ -37,7 +37,7 @@ export async function downloadVideo(
     try {
       console.log(`[download] yt-dlp attempt ${attempt}: ${url}`);
       const { stdout, stderr } = await execAsync(
-        `yt-dlp -f "best[ext=mp4]/best" -o "${filePath}" --no-warnings --no-check-certificates "${url}" 2>&1`,
+        `yt-dlp -f "bv*+ba/b" --merge-output-format mp4 -o "${filePath}" --no-warnings --no-check-certificates --extractor-args "instagram:compatible_formats" "${url}" 2>&1`,
         { timeout: 90000, maxBuffer: 5 * 1024 * 1024 },
       );
 

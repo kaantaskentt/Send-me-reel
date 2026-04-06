@@ -98,19 +98,33 @@ export async function runPipeline(
     console.error("Pipeline error:", err);
     await credits.refund(user.id);
 
-    const message =
+    const rawMessage =
       err instanceof ServiceError
         ? err.message
         : "An unexpected error occurred";
 
+    // Clean error message for user — never show raw commands
+    let userMessage: string;
+    if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
+      userMessage = "Couldn't download this video. Instagram sometimes blocks automated access. Try again in a minute, or try a different link.";
+    } else if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
+      userMessage = "This link doesn't seem to contain a video. Try sending a Reel, TikTok, or video post.";
+    } else if (rawMessage.includes("SCRAPE_FAILED")) {
+      userMessage = "Couldn't access this content right now. The platform may be blocking access. Try again shortly.";
+    } else if (rawMessage.includes("Network") || rawMessage.includes("timeout")) {
+      userMessage = "Network issue — couldn't reach the platform. Try again in a moment.";
+    } else {
+      userMessage = "Something went wrong analyzing this link. Your credit has been refunded.";
+    }
+
     await analyses.updateResult(analysisId, {
       status: "failed",
-      errorMessage: message,
+      errorMessage: rawMessage,
     });
 
     await ctx.reply(
-      `Sorry, I couldn't analyze that link. Your credit has been refunded.\n\n<i>Error: ${message}</i>`,
-      { parse_mode: "HTML", ...replyOpts(ctx, replyToMessageId) },
+      `Sorry, I couldn't analyze that link. Your credit has been refunded.\n\n${userMessage}`,
+      replyOpts(ctx, replyToMessageId),
     );
   } finally {
     await storage.cleanup(analysisId);
