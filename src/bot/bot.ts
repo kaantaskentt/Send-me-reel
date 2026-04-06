@@ -66,33 +66,32 @@ export function createBot(): Bot<MyContext> {
     await ctx.editMessageReplyMarkup({ reply_markup: undefined });
 
     if (intent === "ignore") {
-      await ctx.answerCallbackQuery({ text: "🗑 Skipped" });
+      await ctx.answerCallbackQuery({ text: "⏭ Skipped" });
       return;
     }
 
+    // Confirm save
+    const username = from.username || String(from.id);
     await ctx.answerCallbackQuery({
-      text: intent === "learn" ? "📚 Saved" : "⚡ Saved",
+      text: intent === "learn" ? "📚 Saved!" : "⚡ Saved!",
     });
+    await ctx.reply(
+      `📌 Saved → <a href="https://contextdrop.app/${username}">Open Dashboard</a>`,
+      { parse_mode: "HTML" },
+    );
 
-    // Try Notion push
+    // Silent Notion push if connected
     const user = await users.getByTelegramId(from.id);
     if (!user) return;
 
     const notionInfo = await users.getNotionInfo(user.id);
+    if (!notionInfo) return;
 
-    if (!notionInfo) {
-      await ctx.reply(
-        "💡 Want this saved to Notion automatically?\n\nUse /notion to connect your workspace (takes 60 seconds).",
-      );
-      return;
-    }
-
-    // Push to Notion
     try {
       const analysis = await analyses.getById(analysisId);
       if (!analysis || !analysis.verdict) return;
 
-      const pageUrl = await notion.pushAnalysis(
+      await notion.pushAnalysis(
         notionInfo.token,
         notionInfo.databaseId,
         {
@@ -105,12 +104,9 @@ export function createBot(): Bot<MyContext> {
         },
       );
 
-      await ctx.reply(`✅ Saved to Notion → ${pageUrl}`);
+      await ctx.reply("✅ Also added to Notion");
     } catch (err) {
       console.error("Notion push error:", err);
-      await ctx.reply(
-        "⚠️ Couldn't push to Notion. Your token may have expired.\n\nUse /notion to reconnect.",
-      );
     }
   });
 
