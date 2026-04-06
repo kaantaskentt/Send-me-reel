@@ -53,7 +53,9 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
       `<b>Role:</b> ${role}\n` +
       `<b>Focus:</b> ${goal}\n` +
       `<b>Priorities:</b> ${contentPreferences}\n\n` +
-      "Now send me any Instagram, TikTok, or X video link and I'll analyze it for you.\n" +
+      "Try it right now — paste this link:\n\n" +
+      "https://www.instagram.com/reel/DFnVBmxx2Lj/\n\n" +
+      "Or send any Instagram, TikTok, X, or article link.\n" +
       "You have <b>10 free credits</b> to start.",
     { parse_mode: "HTML" },
   );

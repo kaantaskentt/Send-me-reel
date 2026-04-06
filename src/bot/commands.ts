@@ -20,10 +20,18 @@ export async function handleStart(ctx: MyContext) {
   }
 
   const balance = await credits.getBalance(user.id);
+  const used = await credits.getLifetimeUsed(user.id);
+
+  const demoPrompt =
+    used === 0
+      ? "\nTry it right now — paste this link:\nhttps://www.instagram.com/reel/DFnVBmxx2Lj/\n"
+      : "";
+
   await ctx.reply(
     `Welcome back, <b>${from.first_name ?? "there"}</b>!\n\n` +
-      `You have <b>${balance} credits</b> remaining.\n\n` +
-      "Send me any Instagram, TikTok, or X video link to analyze it.\n\n" +
+      `You have <b>${balance} credits</b> remaining.\n` +
+      demoPrompt +
+      "\nSend me any Instagram, TikTok, X, or article link to analyze it.\n\n" +
       "Commands:\n" +
       "/credits — Check your balance\n" +
       "/profile — View your context profile\n" +
@@ -40,8 +48,9 @@ export async function handleHelp(ctx: MyContext) {
       "1. Transcribe what's said\n" +
       "2. Analyze what's shown on screen\n" +
       "3. Extract all tools, links, and resources\n" +
-      "4. Tell you exactly why it matters to <i>you</i>\n\n" +
-      "You can also send article URLs for text-based analysis.\n\n" +
+      "4. Break it down for <i>you</i>\n\n" +
+      "You can also send article URLs.\n\n" +
+      "Try it now — paste this link:\nhttps://www.instagram.com/reel/DFnVBmxx2Lj/\n\n" +
       "Commands:\n" +
       "/start — Get started or see welcome message\n" +
       "/credits — Check your credit balance\n" +
