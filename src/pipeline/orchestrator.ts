@@ -153,7 +153,10 @@ async function runVideoPipeline(
 
   await analyses.updateStatus(analysisId, "analyzing");
   const frameAnalyses = await visualAnalyzer.analyzeFrames(framePaths);
-  const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
+  // Skip summarizeVisuals — pass frame descriptions directly to verdict
+  const visualSummary = frameAnalyses
+    .map((f) => `[${f.timestampSec}s] ${f.description}`)
+    .join("\n") || "No visual content analyzed.";
 
   const userContext = await users.getContext(userId);
   if (!userContext) {
