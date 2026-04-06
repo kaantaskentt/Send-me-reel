@@ -84,7 +84,7 @@ export async function runPipeline(
 
   // Acknowledge receipt
   await ctx.reply(
-    "Got it. Analyzing now — back in about 30-60 seconds...",
+    "Received your content. Give me about 30 seconds — I'll break it down for you.",
     replyOpts(ctx, replyToMessageId),
   );
 
