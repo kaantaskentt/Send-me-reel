@@ -61,8 +61,7 @@ export async function setupWorkspace(accessToken: string): Promise<{
         Status: {
           select: {
             options: [
-              { name: "To Learn", color: "blue" },
-              { name: "To Apply", color: "green" },
+              { name: "Saved", color: "blue" },
             ],
           },
         },
@@ -115,7 +114,7 @@ export async function pushAnalysis(
   const titleMatch = analysis.verdict.match(/🔷\s*(.+)/);
   const title = titleMatch ? titleMatch[1].trim() : "Untitled Analysis";
 
-  const status = analysis.intent === "learn" ? "To Learn" : "To Apply";
+  const status = "Saved";
   const platformName =
     analysis.platform.charAt(0).toUpperCase() + analysis.platform.slice(1);
 

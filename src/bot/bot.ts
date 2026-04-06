@@ -60,10 +60,10 @@ export function createBot(): Bot<MyContext> {
     await ctx.conversation.enter("notionSetup");
   });
 
-  // Intent button callbacks — format: intent_{learn|apply|ignore}_{analysisId}_{telegramId}
-  bot.callbackQuery(/^intent_(learn|apply|ignore)_([^_]+)_(\d+)$/, async (ctx) => {
+  // Action button callbacks — format: action_{dashboard|notion}_{analysisId}_{telegramId}
+  bot.callbackQuery(/^action_(dashboard|notion)_([^_]+)_(\d+)$/, async (ctx) => {
     const match = ctx.match as RegExpMatchArray;
-    const intent = match[1];
+    const action = match[1];
     const analysisId = match[2];
     const ownerTelegramId = parseInt(match[3], 10);
 
@@ -79,35 +79,43 @@ export function createBot(): Bot<MyContext> {
       return;
     }
 
-    await analyses.updateIntent(analysisId, intent);
-    await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+    const user = await users.getByTelegramId(from.id);
+    if (!user) return;
 
-    if (intent === "ignore") {
-      await ctx.answerCallbackQuery({ text: "⏭ Skipped" });
+    if (action === "dashboard") {
+      await ctx.answerCallbackQuery({ text: "Opening dashboard..." });
+      const dashLink = await makeDashboardLink(user, from.id);
+      await ctx.reply(
+        `📋 <a href="${dashLink}">Open your dashboard</a>`,
+        { parse_mode: "HTML" },
+      );
       return;
     }
 
-    // Confirm save with authenticated dashboard link
-    const user = await users.getByTelegramId(from.id);
-    await ctx.answerCallbackQuery({
-      text: intent === "learn" ? "📚 Saved!" : "⚡ Saved!",
-    });
+    // action === "notion"
+    const notionInfo = await users.getNotionInfo(user.id);
 
-    if (user) {
+    if (!notionInfo) {
+      // Not connected — guide them to OAuth
+      await ctx.answerCallbackQuery({ text: "Let's connect Notion first" });
       const dashLink = await makeDashboardLink(user, from.id);
       await ctx.reply(
-        `📌 Saved → <a href="${dashLink}">Open Dashboard</a>`,
+        "To save to Notion, connect your workspace first (takes 5 seconds):\n\n" +
+          `<a href="${dashLink}">Connect Notion →</a>`,
         { parse_mode: "HTML" },
       );
+      return;
     }
-    if (!user) return;
 
-    const notionInfo = await users.getNotionInfo(user.id);
-    if (!notionInfo) return;
+    // Connected — push to Notion
+    await ctx.answerCallbackQuery({ text: "Saving to Notion..." });
 
     try {
       const analysis = await analyses.getById(analysisId);
-      if (!analysis || !analysis.verdict) return;
+      if (!analysis || !analysis.verdict) {
+        await ctx.reply("Couldn't find this analysis. Try again.");
+        return;
+      }
 
       await notion.pushAnalysis(
         notionInfo.token,
@@ -118,13 +126,14 @@ export function createBot(): Bot<MyContext> {
           visualSummary: analysis.visual_summary,
           sourceUrl: analysis.source_url,
           platform: analysis.platform,
-          intent,
+          intent: "saved",
         },
       );
 
-      await ctx.reply("✅ Also added to Notion");
+      await ctx.reply("✅ Saved to Notion");
     } catch (err) {
       console.error("Notion push error:", err);
+      await ctx.reply("Couldn't save to Notion right now. Try again from your dashboard.");
     }
   });
 

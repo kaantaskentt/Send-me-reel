@@ -103,14 +103,14 @@ export async function runPipeline(
         ? err.message
         : "An unexpected error occurred";
 
-    // Clean error message for user — never show raw commands
+    // Clean error message for user — never show raw errors
     let userMessage: string;
-    if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
-      userMessage = "Couldn't download this video. Instagram sometimes blocks automated access. Try again in a minute, or try a different link.";
-    } else if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
+    if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
       userMessage = "This link doesn't seem to contain a video. Try sending a Reel, TikTok, or video post.";
-    } else if (rawMessage.includes("SCRAPE_FAILED")) {
-      userMessage = "Couldn't access this content right now. The platform may be blocking access. Try again shortly.";
+    } else if (rawMessage.includes("Both yt-dlp and") || rawMessage.includes("SCRAPE_FAILED")) {
+      userMessage = "We tried multiple methods but couldn't access this content. The link might be private, expired, or the platform is blocking access. Try again in a minute.";
+    } else if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
+      userMessage = "Couldn't download this video. Try again in a minute, or try a different link.";
     } else if (rawMessage.includes("Network") || rawMessage.includes("timeout")) {
       userMessage = "Network issue — couldn't reach the platform. Try again in a moment.";
     } else {
@@ -140,9 +140,10 @@ async function runVideoPipeline(
   replyToMessageId?: number,
 ): Promise<void> {
   await analyses.updateStatus(analysisId, "scraping");
-  const scraped = await scraper.scrapeVideo(platform, url);
+  const scraped = await scraper.scrapeVideoWithFallback(platform, url);
 
-  const videoPath = await storage.downloadVideo(url, analysisId);
+  const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
+  const videoPath = await storage.downloadWithFallback(url, analysisId, apifyVideoUrl);
 
   await analyses.updateStatus(analysisId, "transcribing");
   const [transcript, framePaths] = await Promise.all([
@@ -227,18 +228,14 @@ async function sendVerdict(
   replyToMessageId?: number,
 ): Promise<void> {
   const from = ctx.from!;
-  const username = from.username || from.id || "user";
   const telegramId = from.id;
 
-  // Encode telegram ID in callback data so only the sender can tap buttons
+  // Two action buttons — dashboard + Notion
   const keyboard = new InlineKeyboard()
-    .text("📚 Learn", `intent_learn_${analysisId}_${telegramId}`)
-    .text("⚡ Apply", `intent_apply_${analysisId}_${telegramId}`)
-    .text("🗑 Skip", `intent_ignore_${analysisId}_${telegramId}`);
+    .text("📋 Open Dashboard", `action_dashboard_${analysisId}_${telegramId}`)
+    .text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
 
-  const formatted =
-    `${verdict}\n\n` +
-    `📌 Saved → contextdrop.app/${username}`;
+  const formatted = verdict;
 
   await ctx.reply(formatted, {
     reply_markup: keyboard,
