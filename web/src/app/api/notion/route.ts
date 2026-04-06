@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
-import { Client } from "@notionhq/client";
 
 export async function GET() {
   const session = await getSession();
@@ -33,11 +32,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Token is required" }, { status: 400 });
   }
 
+  const notionHeaders = {
+    Authorization: `Bearer ${token}`,
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  };
+
   // Verify token works
-  const notion = new Client({ auth: token });
-  try {
-    await notion.users.me({});
-  } catch {
+  const meRes = await fetch("https://api.notion.com/v1/users/me", {
+    headers: notionHeaders,
+  });
+  if (!meRes.ok) {
     return NextResponse.json(
       { error: "Invalid Notion token. Please check and try again." },
       { status: 400 },
@@ -45,10 +50,15 @@ export async function POST(request: NextRequest) {
   }
 
   // Search for existing ContextDrop database
-  const allResults = await notion.search({ query: "ContextDrop" });
-  const dbResult = allResults.results.find(
-    (r) => (r as Record<string, unknown>).object === "database",
-  );
+  const searchRes = await fetch("https://api.notion.com/v1/search", {
+    method: "POST",
+    headers: notionHeaders,
+    body: JSON.stringify({ query: "ContextDrop" }),
+  });
+  const searchData = (await searchRes.json()) as {
+    results: Array<{ object: string; id: string }>;
+  };
+  const dbResult = searchData.results?.find((r) => r.object === "database");
 
   let databaseId: string;
 
@@ -56,33 +66,31 @@ export async function POST(request: NextRequest) {
     databaseId = dbResult.id;
   } else {
     // Find a page to use as parent
-    const pages = await notion.search({
-      filter: { value: "page", property: "object" } as Parameters<typeof notion.search>[0]["filter"],
-      page_size: 1,
+    const pagesRes = await fetch("https://api.notion.com/v1/search", {
+      method: "POST",
+      headers: notionHeaders,
+      body: JSON.stringify({
+        filter: { value: "page", property: "object" },
+        page_size: 1,
+      }),
     });
+    const pagesData = (await pagesRes.json()) as {
+      results: Array<{ id: string }>;
+    };
 
-    if (pages.results.length === 0) {
+    if (!pagesData.results?.length) {
       return NextResponse.json(
-        {
-          error:
-            "No pages found. Make sure you shared at least one page with your integration.",
-        },
+        { error: "No pages found. Make sure you shared at least one page with your integration." },
         { status: 400 },
       );
     }
 
-    const parentId = pages.results[0].id;
-
     // Create ContextDrop database
     const createRes = await fetch("https://api.notion.com/v1/databases", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Notion-Version": "2022-06-28",
-        "Content-Type": "application/json",
-      },
+      headers: notionHeaders,
       body: JSON.stringify({
-        parent: { type: "page_id", page_id: parentId },
+        parent: { type: "page_id", page_id: pagesData.results[0].id },
         title: [{ text: { content: "ContextDrop" } }],
         icon: { emoji: "\u26a1" },
         properties: {
@@ -111,15 +119,15 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const db = (await createRes.json()) as Record<string, unknown>;
+    const db = (await createRes.json()) as { id: string; message?: string };
     if (!createRes.ok) {
       return NextResponse.json(
-        { error: `Failed to create Notion database: ${(db as { message?: string }).message}` },
+        { error: `Failed to create Notion database: ${db.message}` },
         { status: 500 },
       );
     }
 
-    databaseId = db.id as string;
+    databaseId = db.id;
   }
 
   // Save to user record
