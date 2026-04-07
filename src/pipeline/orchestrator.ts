@@ -6,6 +6,7 @@ import * as users from "../db/users.js";
 import * as credits from "../db/credits.js";
 import * as analyses from "../db/analyses.js";
 import * as scraper from "../services/scraper.js";
+import { scrapeWithApify, downloadFromCdn } from "../services/apifyScraper.js";
 import * as storage from "../services/storage.js";
 import * as transcriber from "../services/transcriber.js";
 import * as frameExtractor from "../services/frameExtractor.js";
@@ -140,10 +141,47 @@ async function runVideoPipeline(
   replyToMessageId?: number,
 ): Promise<void> {
   await analyses.updateStatus(analysisId, "scraping");
-  const scraped = await scraper.scrapeVideoWithFallback(platform, url);
 
-  const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
-  const videoPath = await storage.downloadWithFallback(url, analysisId, apifyVideoUrl);
+  let scraped: Awaited<ReturnType<typeof scraper.scrapeVideoWithFallback>>;
+  let videoPath: string;
+
+  // Instagram/TikTok: go Apify-first (yt-dlp downloads are blocked by CDN)
+  // X/other: use yt-dlp first, Apify as fallback
+  if (platform === "instagram" || platform === "tiktok") {
+    console.log(`[pipeline] ${platform}: using Apify-first strategy`);
+    try {
+      const apifyResult = await scrapeWithApify(platform, url);
+      scraped = apifyResult;
+      if (apifyResult.apifyVideoUrl) {
+        videoPath = await downloadFromCdn(apifyResult.apifyVideoUrl, analysisId);
+      } else {
+        throw new ServiceError("APIFY_NO_VIDEO_URL", "Apify returned no video URL");
+      }
+    } catch (apifyErr) {
+      // Apify failed — try yt-dlp as last resort
+      console.log(`[pipeline] Apify failed, trying yt-dlp fallback: ${apifyErr instanceof Error ? apifyErr.message : apifyErr}`);
+      scraped = await scraper.scrapeVideo(platform, url);
+      videoPath = await storage.downloadVideo(url, analysisId);
+    }
+  } else {
+    scraped = await scraper.scrapeVideoWithFallback(platform, url);
+    const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
+    try {
+      videoPath = await storage.downloadWithFallback(url, analysisId, apifyVideoUrl);
+    } catch (dlErr) {
+      if (!apifyVideoUrl) {
+        console.log(`[pipeline] Download failed, trying Apify scrape for CDN URL...`);
+        const apifyResult = await scrapeWithApify(platform, url);
+        if (apifyResult.apifyVideoUrl) {
+          videoPath = await downloadFromCdn(apifyResult.apifyVideoUrl, analysisId);
+        } else {
+          throw dlErr;
+        }
+      } else {
+        throw dlErr;
+      }
+    }
+  }
 
   await analyses.updateStatus(analysisId, "transcribing");
   const [transcript, framePaths] = await Promise.all([
