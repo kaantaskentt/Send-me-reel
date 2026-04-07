@@ -44,16 +44,35 @@ export async function setupWorkspace(accessToken: string): Promise<{
 
   const parentId = pages.results[0].id;
 
-  // Create ContextDrop database via REST API (SDK version doesn't support properties on create)
-  const createRes = await fetch("https://api.notion.com/v1/databases", {
+  const notionHeaders = {
+    Authorization: `Bearer ${accessToken}`,
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  };
+
+  // Create a dedicated ContextDrop page (appears in sidebar)
+  const pageRes = await fetch("https://api.notion.com/v1/pages", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Notion-Version": "2022-06-28",
-      "Content-Type": "application/json",
-    },
+    headers: notionHeaders,
     body: JSON.stringify({
       parent: { type: "page_id", page_id: parentId },
+      icon: { emoji: "⚡" },
+      properties: {
+        title: { title: [{ text: { content: "ContextDrop" } }] },
+      },
+    }),
+  });
+  const pageData = (await pageRes.json()) as Record<string, unknown>;
+  if (!pageRes.ok) {
+    throw new ServiceError("NOTION_PAGE_CREATE", `Failed to create page: ${(pageData as any).message}`);
+  }
+
+  // Create ContextDrop database inside the new page
+  const createRes = await fetch("https://api.notion.com/v1/databases", {
+    method: "POST",
+    headers: notionHeaders,
+    body: JSON.stringify({
+      parent: { type: "page_id", page_id: pageData.id as string },
       title: [{ text: { content: "ContextDrop" } }],
       icon: { emoji: "⚡" },
       properties: {

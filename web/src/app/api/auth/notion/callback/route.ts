@@ -104,12 +104,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Create ContextDrop database
-    const createRes = await fetch("https://api.notion.com/v1/databases", {
+    // Create a dedicated ContextDrop page (appears in sidebar)
+    const pageRes = await fetch("https://api.notion.com/v1/pages", {
       method: "POST",
       headers: notionHeaders,
       body: JSON.stringify({
         parent: { type: "page_id", page_id: pagesData.results[0].id },
+        icon: { emoji: "\u26a1" },
+        properties: {
+          title: { title: [{ text: { content: "ContextDrop" } }] },
+        },
+      }),
+    });
+    const pageData = (await pageRes.json()) as { id: string; message?: string };
+    if (!pageRes.ok) {
+      console.error("Notion page create error:", pageData);
+      return NextResponse.redirect(
+        new URL("/?notion_error=db_create", baseUrl),
+      );
+    }
+
+    // Create ContextDrop database inside the new page
+    const createRes = await fetch("https://api.notion.com/v1/databases", {
+      method: "POST",
+      headers: notionHeaders,
+      body: JSON.stringify({
+        parent: { type: "page_id", page_id: pageData.id },
         title: [{ text: { content: "ContextDrop" } }],
         icon: { emoji: "\u26a1" },
         properties: {
