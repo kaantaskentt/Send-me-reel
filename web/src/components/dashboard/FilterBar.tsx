@@ -9,16 +9,23 @@ interface Props {
 
 const intents = [
   { value: "all", label: "All" },
-  { value: "learn", label: "Learn" },
-  { value: "apply", label: "Apply" },
+  { value: "learn", label: "📚 Learn" },
+  { value: "apply", label: "🚀 Apply" },
 ];
 
 function InstagramMini() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-      <defs><linearGradient id="ig2" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#f09433" /><stop offset="100%" stopColor="#bc1888" /></linearGradient></defs>
-      <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig2)" />
+      <defs>
+        <linearGradient id="ig-db" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#f09433" />
+          <stop offset="50%" stopColor="#e6683c" />
+          <stop offset="100%" stopColor="#bc1888" />
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig-db)" />
       <circle cx="12" cy="12" r="4.5" fill="none" stroke="white" strokeWidth="1.5" />
+      <circle cx="17.5" cy="6.5" r="1" fill="white" />
     </svg>
   );
 }
@@ -51,35 +58,61 @@ const platforms = [
 
 export default function FilterBar({ intent, onIntentChange, platform, onPlatformChange }: Props) {
   return (
-    <div className="space-y-3">
-      {/* Intent segmented control */}
-      <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1">
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          background: "#f5f1eb",
+          border: "1px solid #e7e2d9",
+          borderRadius: 12,
+          padding: 4,
+        }}
+      >
         {intents.map((item) => (
           <button
             key={item.value}
             onClick={() => onIntentChange(item.value)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${
-              intent === item.value
-                ? "bg-zinc-700 text-white shadow-sm"
-                : "text-zinc-500 hover:text-zinc-300"
-            }`}
+            style={{
+              flex: 1,
+              padding: "6px 0",
+              fontSize: 12,
+              fontWeight: 600,
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+              transition: "all 0.15s",
+              background: intent === item.value ? "#fff" : "transparent",
+              color: intent === item.value ? "#1c1917" : "#a8a29e",
+              boxShadow: intent === item.value ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+            }}
           >
             {item.label}
           </button>
         ))}
       </div>
-
-      {/* Platform pills */}
-      <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
         {platforms.map((item) => (
           <button
             key={item.value}
             onClick={() => onPlatformChange(item.value)}
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-1 text-xs rounded-full border transition-all ${
-              platform === item.value
-                ? "border-blue-500/50 bg-blue-500/10 text-blue-300"
-                : "border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"
-            }`}
+            style={{
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "5px 14px",
+              fontSize: 12,
+              fontWeight: 600,
+              borderRadius: 100,
+              border: platform === item.value ? "1.5px solid #f97316" : "1.5px solid #e7e2d9",
+              background: platform === item.value ? "#fff7ed" : "#fff",
+              color: platform === item.value ? "#f97316" : "#78716c",
+              cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+              transition: "all 0.15s",
+            }}
           >
             {item.icon}
             {item.label}

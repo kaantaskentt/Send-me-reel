@@ -13,14 +13,14 @@ import EmptyState from "./EmptyState";
 
 function CardSkeleton() {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 space-y-3 animate-pulse">
-      <div className="flex items-center gap-2">
-        <div className="w-4 h-4 rounded bg-zinc-800" />
-        <div className="h-3 w-12 rounded bg-zinc-800" />
-        <div className="h-3 w-16 rounded bg-zinc-800 ml-auto" />
+    <div style={{ borderRadius: 16, border: "1px solid #e7e2d9", background: "#fff", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 16, height: 16, borderRadius: 4, background: "#f0ebe4" }} />
+        <div style={{ height: 10, width: 48, borderRadius: 100, background: "#f0ebe4" }} />
+        <div style={{ height: 10, width: 60, borderRadius: 100, background: "#f0ebe4", marginLeft: "auto" }} />
       </div>
-      <div className="h-4 w-3/4 rounded bg-zinc-800" />
-      <div className="h-3 w-full rounded bg-zinc-800" />
+      <div style={{ height: 14, width: "70%", borderRadius: 100, background: "#f5f1eb" }} />
+      <div style={{ height: 11, width: "90%", borderRadius: 100, background: "#f5f1eb" }} />
     </div>
   );
 }
@@ -34,7 +34,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const [intent, setIntent] = useState("all");
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
@@ -65,137 +64,88 @@ export default function Dashboard() {
     fetchAnalyses(1);
   }, [fetchAnalyses]);
 
-  const loadMore = () => {
-    const next = page + 1;
-    setPage(next);
-    fetchAnalyses(next, true);
-  };
-
-  const handleToggle = (id: string) => {
-    setOpenId((prev) => (prev === id ? null : id));
-  };
-
+  const loadMore = () => { const next = page + 1; setPage(next); fetchAnalyses(next, true); };
+  const handleToggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
   const handleDeleted = (id: string) => {
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
     setTotal((t) => t - 1);
     if (openId === id) setOpenId(null);
   };
-
-  const clearFilters = () => {
-    setIntent("all");
-    setPlatform("all");
-    setSearch("");
-  };
+  const clearFilters = () => { setIntent("all"); setPlatform("all"); setSearch(""); };
 
   const learnCount = analyses.filter((a) => a.verdict_intent === "learn").length;
   const applyCount = analyses.filter((a) => a.verdict_intent === "apply").length;
 
   return (
-    <div className="dark min-h-screen bg-[#09090b] text-white font-sans">
-      {/* Top bar */}
-      <header className="sticky top-0 z-50 bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-800/80">
-        <div className="flex items-center justify-between px-4 h-14 max-w-7xl mx-auto">
-          <a href="/" className="text-base font-bold tracking-tight">
-            <span className="text-blue-400">Context</span>Drop
+    <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @media (max-width: 1023px) { .cd-sidebar { display: none !important; } .cd-sidebar.open { display: block !important; } .cd-menu-btn { display: flex !important; } }
+        @media (min-width: 1024px) { .cd-sidebar { display: block !important; } .cd-menu-btn { display: none !important; } }
+      `}</style>
+
+      <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,248,245,0.88)", backdropFilter: "blur(16px)", borderBottom: "1px solid #e7e2d9" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 1.25rem", height: 56, maxWidth: 1280, margin: "0 auto" }}>
+          <a href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Plus Jakarta Sans', DM Sans, sans-serif", color: "#1c1917" }}>
+            Context<span style={{ color: "#f97316" }}>Drop</span>
           </a>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-2 text-zinc-500 hover:text-white transition-colors rounded-lg hover:bg-zinc-800"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          <button className="cd-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}
+            style={{ display: "none", padding: 8, background: "none", border: "1px solid #e7e2d9", borderRadius: 10, cursor: "pointer", color: "#78716c", alignItems: "center" }}>
+            {sidebarOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
           </button>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto flex">
-        {/* Sidebar */}
-        <aside
-          className={`${
-            sidebarOpen ? "block" : "hidden"
-          } lg:block w-full lg:w-64 xl:w-72 shrink-0 border-r border-zinc-800/60 px-5 py-6 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] overflow-y-auto`}
-        >
-          {profile ? (
-            <ProfileSidebar profile={profile} />
-          ) : (
-            <div className="space-y-4 animate-pulse">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-zinc-800" />
-                <div className="space-y-1.5 flex-1">
-                  <div className="h-3 bg-zinc-800 rounded w-3/4" />
-                  <div className="h-2.5 bg-zinc-800 rounded w-1/2" />
+      <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex" }}>
+        <aside className={`cd-sidebar${sidebarOpen ? " open" : ""}`}
+          style={{ width: 260, flexShrink: 0, borderRight: "1px solid #e7e2d9", padding: "1.5rem 1.25rem", position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto", background: "#fff" }}>
+          {profile ? <ProfileSidebar profile={profile} /> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f0ebe4" }} />
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ height: 12, background: "#f0ebe4", borderRadius: 100, width: "75%" }} />
+                  <div style={{ height: 10, background: "#f5f1eb", borderRadius: 100, width: "50%" }} />
                 </div>
               </div>
-              <div className="h-2 bg-zinc-800 rounded" />
-              <div className="h-2 bg-zinc-800 rounded w-5/6" />
+              <div style={{ height: 8, background: "#f5f1eb", borderRadius: 100 }} />
+              <div style={{ height: 8, background: "#f5f1eb", borderRadius: 100, width: "85%" }} />
             </div>
           )}
         </aside>
 
-        {/* Feed */}
-        <main className="flex-1 min-w-0 px-4 lg:px-8 py-6">
-          <div className="max-w-2xl mx-auto space-y-5">
-            {/* Stats */}
+        <main style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 720 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <StatsBar total={total} learnCount={learnCount} applyCount={applyCount} />
-
-            {/* Search */}
             <SearchBar value={search} onChange={setSearch} />
-
-            {/* Filters */}
             <FilterBar intent={intent} onIntentChange={setIntent} platform={platform} onPlatformChange={setPlatform} />
 
-            {/* Result count */}
             {search && !loading && (
-              <p className="text-xs text-zinc-500">
-                {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
-              </p>
+              <p style={{ fontSize: 12, color: "#a8a29e" }}>{total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;</p>
             )}
 
-            {/* Cards */}
             {loading && analyses.length === 0 ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((i) => <CardSkeleton key={i} />)}
-              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3,4].map((i) => <CardSkeleton key={i} />)}</div>
             ) : analyses.length === 0 ? (
               <EmptyState isFiltered={isFiltered} onClearFilters={clearFilters} />
             ) : (
-              <motion.div layout className="space-y-3">
+              <motion.div layout style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <AnimatePresence initial={false}>
                   {analyses.map((a, i) => (
-                    <motion.div
-                      key={a.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04, duration: 0.2 }}
-                    >
-                      <AnalysisCard
-                        analysis={a}
-                        isOpen={openId === a.id}
-                        onToggle={() => handleToggle(a.id)}
-                        notionConnected={!!profile?.user.notion_access_token}
-                        onDeleted={handleDeleted}
-                      />
+                    <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, duration: 0.2 }}>
+                      <AnalysisCard analysis={a} isOpen={openId === a.id} onToggle={() => handleToggle(a.id)} notionConnected={!!profile?.user.notion_access_token} onDeleted={handleDeleted} />
                     </motion.div>
                   ))}
                 </AnimatePresence>
-
-                {/* Load more */}
                 {hasMore && (
-                  <div className="pt-2">
-                    <button
-                      onClick={loadMore}
-                      disabled={loading}
-                      className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-300 border border-zinc-800 hover:border-zinc-700 rounded-xl transition-all disabled:opacity-50"
-                    >
+                  <div style={{ paddingTop: 8 }}>
+                    <button onClick={loadMore} disabled={loading}
+                      style={{ width: "100%", padding: 12, fontSize: 13, fontWeight: 600, color: "#a8a29e", background: "#fff", border: "1px solid #e7e2d9", borderRadius: 12, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>
                       {loading ? "Loading…" : "Load more"}
                     </button>
                   </div>
                 )}
-
-                {/* Loading more skeletons */}
                 {loading && analyses.length > 0 && (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => <CardSkeleton key={`sk-${i}`} />)}
-                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3].map((i) => <CardSkeleton key={`sk-${i}`} />)}</div>
                 )}
               </motion.div>
             )}

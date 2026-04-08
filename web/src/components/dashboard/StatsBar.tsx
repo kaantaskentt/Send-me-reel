@@ -13,47 +13,82 @@ export default function StatsBar({ total, learnCount, applyCount }: Props) {
       label: "Saved",
       value: total,
       icon: Bookmark,
-      numColor: "text-zinc-100",
-      bg: "bg-zinc-800/60",
-      border: "border-zinc-700/50",
-      iconColor: "text-zinc-400",
+      numColor: "#1c1917",
+      iconColor: "#a8a29e",
+      iconBg: "#f5f1eb",
     },
     {
       label: "To Learn",
       value: learnCount,
       icon: GraduationCap,
-      numColor: "text-blue-300",
-      bg: "bg-blue-500/10",
-      border: "border-blue-500/20",
-      iconColor: "text-blue-400",
+      numColor: "#3b82f6",
+      iconColor: "#3b82f6",
+      iconBg: "#eff6ff",
     },
     {
       label: "To Apply",
       value: applyCount,
       icon: Rocket,
-      numColor: "text-emerald-300",
-      bg: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-      iconColor: "text-emerald-400",
+      numColor: "#f97316",
+      iconColor: "#f97316",
+      iconBg: "#fff7ed",
     },
   ];
+
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
       {items.map((s) => {
         const Icon = s.icon;
         return (
           <div
             key={s.label}
-            className={`rounded-xl border px-3 py-3 flex items-center gap-2.5 ${s.bg} ${s.border}`}
+            style={{
+              background: "#fff",
+              border: "1px solid #e7e2d9",
+              borderRadius: 14,
+              padding: "1rem 1.25rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.875rem",
+            }}
           >
-            <div className={`shrink-0 ${s.iconColor}`}>
-              <Icon className="w-4 h-4" />
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: s.iconBg,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon style={{ width: 16, height: 16, color: s.iconColor }} />
             </div>
-            <div className="min-w-0">
-              <p className={`text-xl font-bold tabular-nums leading-none ${s.numColor}`}>
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: s.numColor,
+                  lineHeight: 1,
+                  fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
+                }}
+              >
                 {s.value}
               </p>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5 font-medium">
+              <p
+                style={{
+                  fontSize: 10,
+                  color: "#a8a29e",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  fontWeight: 600,
+                  marginTop: 3,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
                 {s.label}
               </p>
             </div>

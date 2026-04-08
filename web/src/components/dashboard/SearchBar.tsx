@@ -1,31 +1,21 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useEffect, useState } from "react";
 
-interface Props {
-  value: string;
-  onChange: (v: string) => void;
-}
+interface Props { value: string; onChange: (v: string) => void; }
 
 export default function SearchBar({ value, onChange }: Props) {
-  const [local, setLocal] = useState(value);
-
-  // Debounce
-  useEffect(() => {
-    const timer = setTimeout(() => onChange(local), 300);
-    return () => clearTimeout(timer);
-  }, [local, onChange]);
-
   return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+    <div style={{ position: "relative", fontFamily: "'DM Sans', sans-serif" }}>
+      <Search style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", width: 15, height: 15, color: "#c4bdb5", pointerEvents: "none" }} />
       <input
         type="text"
-        placeholder="Search verdicts, transcripts..."
-        value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition-colors"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search your feed…"
+        style={{ width: "100%", paddingLeft: 40, paddingRight: 16, paddingTop: 10, paddingBottom: 10, fontSize: 13, background: "#fff", border: "1px solid #e7e2d9", borderRadius: 12, outline: "none", color: "#1c1917", fontFamily: "'DM Sans', sans-serif", boxSizing: "border-box", transition: "border-color 0.15s" }}
+        onFocus={(e) => (e.target.style.borderColor = "#f97316")}
+        onBlur={(e) => (e.target.style.borderColor = "#e7e2d9")}
       />
     </div>
   );

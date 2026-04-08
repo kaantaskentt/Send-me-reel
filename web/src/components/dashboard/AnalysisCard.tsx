@@ -7,6 +7,7 @@ import { parseVerdict } from "@/lib/verdict-parser";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ExternalLink, Share2, BookOpen, Trash2, Check, Loader2, X } from "lucide-react";
 
+// ── Platform icons ────────────────────────────────────────────────────────────
 function InstagramIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -25,7 +26,6 @@ function InstagramIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
-
 function TikTokIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -35,7 +35,6 @@ function TikTokIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
-
 function XIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -44,7 +43,6 @@ function XIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
-
 function ArticleIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -55,40 +53,59 @@ function ArticleIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
-
+function LinkedInIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <rect width="24" height="24" rx="5" fill="#0A66C2" />
+      <path d="M7.5 9.5h-2v7h2v-7zm-1-1.5a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5zm3 1.5v7h2v-3.5c0-1.1.9-2 2-2s2 .9 2 2v3.5h2v-4c0-2.2-1.8-4-4-4-1.1 0-2 .4-2.7 1.1V9.5h-1.3z" fill="white" />
+    </svg>
+  );
+}
 function PlatformIcon({ platform }: { platform: string }) {
   switch (platform) {
     case "instagram": return <InstagramIcon />;
     case "tiktok": return <TikTokIcon />;
     case "x": return <XIcon />;
+    case "linkedin": return <LinkedInIcon />;
     default: return <ArticleIcon />;
   }
 }
 
+// ── Intent badge ──────────────────────────────────────────────────────────────
 function IntentBadge({ intent }: { intent: string | null }) {
   if (!intent || intent === "ignore") return null;
-  const styles = intent === "learn"
-    ? "bg-blue-500/15 text-blue-300 border-blue-500/20"
-    : "bg-emerald-500/15 text-emerald-300 border-emerald-500/20";
+  const map: Record<string, { bg: string; color: string; border: string; label: string }> = {
+    learn: { bg: "#eff6ff", color: "#3b82f6", border: "#bfdbfe", label: "📚 Learn" },
+    apply: { bg: "#fff7ed", color: "#f97316", border: "#fed7aa", label: "🚀 Apply" },
+    skip:  { bg: "#f5f5f4", color: "#a8a29e", border: "#e7e5e4", label: "⏭ Skip" },
+  };
+  const s = map[intent] ?? map.skip;
   return (
-    <span className={`inline-flex items-center text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${styles}`}>
-      {intent === "learn" ? "Learn" : "Apply"}
+    <span style={{
+      display: "inline-flex", alignItems: "center",
+      fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+      padding: "2px 8px", borderRadius: 100,
+      background: s.bg, color: s.color, border: `1px solid ${s.border}`,
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
+      {s.label}
     </span>
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
-
 function fmtDuration(secs: number): string {
   const m = Math.floor(secs / 60);
   const s = Math.round(secs % 60);
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+// ── Props ─────────────────────────────────────────────────────────────────────
 interface Props {
   analysis: Analysis;
   isOpen: boolean;
@@ -97,6 +114,7 @@ interface Props {
   onDeleted: (id: string) => void;
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, onDeleted }: Props) {
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
@@ -112,6 +130,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   const duration = meta?.duration as number | undefined;
   const hasVideoMeta = views || likes || comments || duration;
 
+  // ── Handlers — all logic preserved exactly ───────────────────────────────
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
     await navigator.clipboard.writeText(`${window.location.origin}/a/${analysis.id}`).catch(() => {});
@@ -140,6 +159,15 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   };
   const cancelDelete = (e: React.MouseEvent) => { e.stopPropagation(); setDeleteState("idle"); };
 
+  // ── Shared button style ───────────────────────────────────────────────────
+  const btnBase: React.CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+    fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 10,
+    border: "1px solid #e7e2d9", background: "#fafaf9", color: "#78716c",
+    cursor: "pointer", transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif",
+    flex: 1,
+  };
+
   return (
     <motion.div
       layout
@@ -147,40 +175,54 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12, scale: 0.98 }}
       transition={{ duration: 0.2 }}
-      className={`rounded-xl border transition-colors duration-150 overflow-hidden ${
-        isOpen
-          ? "bg-zinc-900 border-blue-500/20 shadow-[0_0_0_1px_rgba(59,130,246,0.06),0_4px_24px_rgba(0,0,0,0.3)]"
-          : "bg-zinc-900 border-zinc-800 hover:border-zinc-700"
-      }`}
+      style={{
+        background: "#fff",
+        border: isOpen ? "1.5px solid #f97316" : "1px solid #e7e2d9",
+        borderRadius: 16,
+        overflow: "hidden",
+        transition: "border-color 0.2s, box-shadow 0.2s",
+        boxShadow: isOpen ? "0 4px 24px rgba(249,115,22,0.08)" : "0 1px 4px rgba(0,0,0,0.04)",
+        fontFamily: "'DM Sans', sans-serif",
+      }}
     >
-      {/* Collapsed header */}
-      <button onClick={onToggle} className="w-full text-left px-4 py-4 flex items-start gap-3 group">
-        <div className="mt-0.5 shrink-0"><PlatformIcon platform={analysis.platform} /></div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+      {/* ── Collapsed header ── */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: "100%", textAlign: "left", padding: "14px 16px",
+          display: "flex", alignItems: "flex-start", gap: 12,
+          cursor: "pointer", background: "none", border: "none",
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <div style={{ marginTop: 2, flexShrink: 0 }}>
+          <PlatformIcon platform={analysis.platform} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
             <IntentBadge intent={analysis.verdict_intent} />
-            <span className="text-[11px] text-zinc-600 ml-auto shrink-0">{timeAgo}</span>
+            <span style={{ fontSize: 11, color: "#c4bdb5", marginLeft: "auto", flexShrink: 0 }}>{timeAgo}</span>
           </div>
-          <h3 className="text-sm font-semibold text-zinc-100 leading-snug truncate">
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: "#1c1917", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {parsed?.title || "Untitled"}
           </h3>
           {(parsed?.subtitle || parsed?.explanation) && (
-            <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1 italic">
+            <p style={{ fontSize: 12, color: "#a8a29e", marginTop: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", fontStyle: "italic" }}>
               {parsed?.subtitle || parsed?.explanation}
             </p>
           )}
-          {authorUsername && <p className="text-[11px] text-zinc-600 mt-1">@{authorUsername}</p>}
+          {authorUsername && <p style={{ fontSize: 11, color: "#c4bdb5", marginTop: 4 }}>@{authorUsername}</p>}
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
-          className="shrink-0 mt-1 text-zinc-600 group-hover:text-zinc-400 transition-colors"
+          style={{ flexShrink: 0, marginTop: 4, color: "#c4bdb5" }}
         >
-          <ChevronDown className="w-4 h-4" />
+          <ChevronDown style={{ width: 16, height: 16 }} />
         </motion.div>
       </button>
 
-      {/* Expanded content */}
+      {/* ── Expanded content ── */}
       <AnimatePresence initial={false}>
         {isOpen && (
           <motion.div
@@ -189,49 +231,52 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ height: { duration: 0.28, ease: [0.4, 0, 0.2, 1] }, opacity: { duration: 0.2, delay: 0.08 } }}
+            style={{ overflow: "hidden" }}
           >
-            <div className="px-4 pb-4 space-y-4">
-              <div className="border-t border-zinc-800" />
+            <div style={{ padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ height: 1, background: "#f0ebe4" }} />
+
               {parsed && (
-                <div className="space-y-3.5">
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {parsed.explanation && (
                     <div>
-                      <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">🧠 What It Is</p>
-                      <p className="text-sm text-zinc-300 leading-relaxed">{parsed.explanation}</p>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 5 }}>🧠 What It Is</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65 }}>{parsed.explanation}</p>
                     </div>
                   )}
                   {parsed.howTo && (
                     <div>
-                      <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">🔧 What&apos;s Inside</p>
-                      <p className="text-sm text-zinc-300 leading-relaxed">{parsed.howTo}</p>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 5 }}>🔧 What&apos;s Inside</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65 }}>{parsed.howTo}</p>
                     </div>
                   )}
                   {parsed.realWorldUse && (
                     <div>
-                      <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">💡 Real-World Context</p>
-                      <p className="text-sm text-zinc-300 leading-relaxed">{parsed.realWorldUse}</p>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 5 }}>💡 Real-World Context</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65 }}>{parsed.realWorldUse}</p>
                     </div>
                   )}
                   {parsed.link && (
                     <a href={parsed.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 bg-blue-500/[0.08] border border-blue-500/15 px-3 py-1.5 rounded-lg transition-colors max-w-full">
-                      <ExternalLink className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{parsed.link}</span>
+                      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600 }}>
+                      <ExternalLink style={{ width: 12, height: 12 }} />
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{parsed.link}</span>
                     </a>
                   )}
                   {parsed.tags && parsed.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {parsed.tags.map((tag: string, i: number) => (
-                        <span key={i} className="text-[11px] bg-zinc-800 text-zinc-400 border border-zinc-700/50 px-2 py-0.5 rounded-full">{tag}</span>
+                        <span key={i} style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "2px 10px", borderRadius: 100 }}>{tag}</span>
                       ))}
                     </div>
                   )}
                 </div>
               )}
+
               {hasVideoMeta && (
                 <>
-                  <div className="border-t border-zinc-800/60" />
-                  <div className="flex items-center gap-4 text-xs text-zinc-600">
+                  <div style={{ height: 1, background: "#f0ebe4" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#a8a29e" }}>
                     {views && <span>{fmtCount(views)} views</span>}
                     {likes && <span>{fmtCount(likes)} likes</span>}
                     {comments && <span>{fmtCount(comments)} comments</span>}
@@ -239,35 +284,42 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                   </div>
                 </>
               )}
-              <div className="border-t border-zinc-800" />
+
+              <div style={{ height: 1, background: "#f0ebe4" }} />
+
+              {/* ── Action buttons ── */}
               <AnimatePresence mode="wait" initial={false}>
                 {deleteState === "confirm" ? (
-                  <motion.div key="confirm" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="flex items-center gap-3">
-                    <span className="text-sm text-zinc-300 flex-1">Delete this analysis?</span>
-                    <button onClick={cancelDelete} className="text-xs text-zinc-400 hover:text-white border border-zinc-700 px-3 py-1.5 rounded-lg transition-colors">Cancel</button>
-                    <button onClick={handleDeleteConfirm} className="text-xs text-red-400 hover:text-white hover:bg-red-500/20 border border-red-500/30 px-3 py-1.5 rounded-lg transition-colors">Delete</button>
+                  <motion.div key="confirm" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 13, color: "#44403c", flex: 1 }}>Delete this analysis?</span>
+                    <button onClick={cancelDelete} style={{ ...btnBase, flex: "none", color: "#78716c" }}>Cancel</button>
+                    <button onClick={handleDeleteConfirm} style={{ ...btnBase, flex: "none", color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" }}>Delete</button>
                   </motion.div>
                 ) : (
-                  <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }} className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
+                    style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                      className="flex items-center justify-center gap-1.5 text-xs text-zinc-400 hover:text-white border border-zinc-700/60 hover:border-zinc-600 bg-zinc-800/40 hover:bg-zinc-800 px-3 py-2 rounded-lg transition-all">
-                      <ExternalLink className="w-3.5 h-3.5" /> View
+                      style={{ ...btnBase, textDecoration: "none" }}>
+                      <ExternalLink style={{ width: 13, height: 13 }} /> View
                     </a>
                     <button onClick={handleShare}
-                      className={`flex items-center justify-center gap-1.5 text-xs border px-3 py-2 rounded-lg transition-all ${shareStatus === "copied" ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : "text-zinc-400 hover:text-white border-zinc-700/60 hover:border-zinc-600 bg-zinc-800/40 hover:bg-zinc-800"}`}>
-                      {shareStatus === "copied" ? <><Check className="w-3.5 h-3.5" /> Copied!</> : <><Share2 className="w-3.5 h-3.5" /> Share</>}
+                      style={{ ...btnBase, ...(shareStatus === "copied" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : {}) }}>
+                      {shareStatus === "copied" ? <><Check style={{ width: 13, height: 13 }} /> Copied!</> : <><Share2 style={{ width: 13, height: 13 }} /> Share</>}
                     </button>
                     <button onClick={handleNotion} disabled={notionStatus === "sending" || notionStatus === "sent"}
-                      className={`flex items-center justify-center gap-1.5 text-xs border px-3 py-2 rounded-lg transition-all disabled:cursor-default ${notionStatus === "sent" ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10" : notionStatus === "error" ? "text-red-400 border-red-500/30 bg-red-500/10" : "text-zinc-400 hover:text-white border-zinc-700/60 hover:border-zinc-600 bg-zinc-800/40 hover:bg-zinc-800"}`}>
-                      {notionStatus === "sending" ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving…</>
-                        : notionStatus === "sent" ? <><Check className="w-3.5 h-3.5" /> Saved!</>
-                        : notionStatus === "error" ? <><X className="w-3.5 h-3.5" /> Failed</>
-                        : notionConnected ? <><BookOpen className="w-3.5 h-3.5" /> Notion</>
-                        : <><BookOpen className="w-3.5 h-3.5" /> Connect</>}
+                      style={{ ...btnBase, ...(notionStatus === "sent" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : notionStatus === "error" ? { color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" } : {}) }}>
+                      {notionStatus === "sending" ? <><Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> Saving…</>
+                        : notionStatus === "sent" ? <><Check style={{ width: 13, height: 13 }} /> Saved!</>
+                        : notionStatus === "error" ? <><X style={{ width: 13, height: 13 }} /> Failed</>
+                        : notionConnected ? <><BookOpen style={{ width: 13, height: 13 }} /> Notion</>
+                        : <><BookOpen style={{ width: 13, height: 13 }} /> Connect</>}
                     </button>
                     <button onClick={handleDeleteClick} disabled={deleteState === "deleting"}
-                      className="flex items-center justify-center gap-1.5 text-xs text-zinc-500 hover:text-red-400 border border-zinc-700/60 hover:border-red-500/30 bg-zinc-800/40 px-3 py-2 rounded-lg transition-all disabled:cursor-default">
-                      {deleteState === "deleting" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <><Trash2 className="w-3.5 h-3.5" /> Delete</>}
+                      style={{ ...btnBase, color: "#a8a29e" }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#fecaca"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#a8a29e"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#e7e2d9"; }}>
+                      {deleteState === "deleting" ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : <><Trash2 style={{ width: 13, height: 13 }} /> Delete</>}
                     </button>
                   </motion.div>
                 )}
