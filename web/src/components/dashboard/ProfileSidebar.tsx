@@ -6,11 +6,11 @@ import { BookOpen, ExternalLink, Settings } from "lucide-react";
 interface Props { profile: UserProfile; }
 
 export default function ProfileSidebar({ profile }: Props) {
-  const { user, stats } = profile;
-  const initials = (user.name || user.username || "U").slice(0, 2).toUpperCase();
-  const creditsUsed = user.credits_used ?? 0;
-  const creditsTotal = user.credits_total ?? 100;
-  const creditsPct = Math.min(100, Math.round((creditsUsed / creditsTotal) * 100));
+  const { user, context, credits } = profile;
+  const initials = (user.first_name || user.telegram_username || "U").slice(0, 2).toUpperCase();
+  const creditsUsed = credits?.lifetime_used ?? 0;
+  const creditsTotal = (credits?.balance ?? 0) + creditsUsed;
+  const creditsPct = creditsTotal > 0 ? Math.min(100, Math.round((creditsUsed / creditsTotal) * 100)) : 0;
   const notionConnected = !!user.notion_access_token;
 
   return (
@@ -21,33 +21,18 @@ export default function ProfileSidebar({ profile }: Props) {
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{user.name || user.username}</p>
-          {user.username && <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>@{user.username}</p>}
+          <p style={{ fontSize: 14, fontWeight: 700, color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>{user.first_name || user.telegram_username}</p>
+          {user.telegram_username && <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>@{user.telegram_username}</p>}
         </div>
       </div>
 
       {/* Context tags */}
-      {(user.role || user.focus) && (
+      {(context?.role || context?.goal) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-          {user.role && <span style={{ fontSize: 11, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "3px 10px", borderRadius: 100, fontWeight: 600 }}>{user.role}</span>}
-          {user.focus && <span style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "3px 10px", borderRadius: 100 }}>{user.focus}</span>}
+          {context.role && <span style={{ fontSize: 11, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "3px 10px", borderRadius: 100, fontWeight: 600 }}>{context.role}</span>}
+          {context.goal && <span style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "3px 10px", borderRadius: 100 }}>{context.goal}</span>}
         </div>
       )}
-
-      <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
-
-      {/* Stats */}
-      <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#c4bdb5", marginBottom: 8, marginTop: 0 }}>Your feed</p>
-      {[
-        { label: "Total saved", value: stats?.total ?? 0, color: "#1c1917" },
-        { label: "📚 To learn", value: stats?.learn ?? 0, color: "#3b82f6" },
-        { label: "🚀 To apply", value: stats?.apply ?? 0, color: "#f97316" },
-        { label: "📥 In Notion", value: stats?.in_notion ?? 0, color: "#10b981" },
-      ].map(({ label, value, color }) => (
-        <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, color: "#44403c", marginBottom: 6 }}>
-          <span>{label}</span><span style={{ fontWeight: 700, color }}>{value}</span>
-        </div>
-      ))}
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 

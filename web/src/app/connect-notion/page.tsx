@@ -28,12 +28,12 @@ function ConnectNotionContent() {
 
         <div className="space-y-3">
           <h1 className="text-2xl font-bold">
-            Connect your Notion
+            Save to Notion
           </h1>
           <p className="text-zinc-400">
-            Notion will ask you to pick a page.
-            Just <span className="text-white font-medium">select any page</span> — we'll
-            create a ContextDrop database there automatically.
+            Notion will ask you to select a page.
+            Pick <span className="text-white font-medium">any page</span> — we&apos;ll
+            create a ContextDrop folder inside it.
           </p>
         </div>
 
@@ -41,7 +41,7 @@ function ConnectNotionContent() {
           <div className="flex items-start gap-3">
             <span className="text-blue-400 font-bold text-sm mt-0.5">1</span>
             <p className="text-sm text-zinc-300">
-              Check <span className="text-white">any page</span> from the list
+              Select <span className="text-white">a page</span> where ContextDrop can save
             </p>
           </div>
           <div className="flex items-start gap-3">
@@ -53,10 +53,14 @@ function ConnectNotionContent() {
           <div className="flex items-start gap-3">
             <span className="text-blue-400 font-bold text-sm mt-0.5">3</span>
             <p className="text-sm text-zinc-300">
-              Done — your analysis saves automatically
+              We&apos;ll create a ContextDrop folder there — your analyses save automatically
             </p>
           </div>
         </div>
+
+        <p className="text-xs text-zinc-500">
+          We only access the page you select. Nothing else in your workspace is touched.
+        </p>
 
         <a
           href={notionAuthUrl.toString()}

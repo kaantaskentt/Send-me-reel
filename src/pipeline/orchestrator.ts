@@ -93,7 +93,17 @@ export async function runPipeline(
     if (platform === "article") {
       await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
     } else {
-      await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId);
+      try {
+        await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId);
+      } catch (videoErr) {
+        // Image posts, carousels, slideshows — fall back to article pipeline
+        if (videoErr instanceof ServiceError && videoErr.code === "NOT_A_VIDEO") {
+          console.log(`[pipeline] Not a video, falling back to article pipeline: ${url}`);
+          await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
+        } else {
+          throw videoErr;
+        }
+      }
     }
   } catch (err) {
     console.error("Pipeline error:", err);
@@ -106,7 +116,12 @@ export async function runPipeline(
 
     // Clean error message for user — never show raw errors
     let userMessage: string;
-    if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
+    const errCode = err instanceof ServiceError ? err.code : "";
+    if (errCode === "VIDEO_TOO_LONG") {
+      userMessage = "This video is over 10 minutes — we currently support up to 10 minutes. Try a shorter clip.";
+    } else if (errCode === "NO_CONTENT") {
+      userMessage = "Couldn't extract any text or audio from this video. It might be music-only or visuals without speech.";
+    } else if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
       userMessage = "This link doesn't seem to contain a video. Try sending a Reel, TikTok, or video post.";
     } else if (rawMessage.includes("Both yt-dlp and") || rawMessage.includes("SCRAPE_FAILED")) {
       userMessage = "We tried multiple methods but couldn't access this content. The link might be private, expired, or the platform is blocking access. Try again in a minute.";
@@ -142,44 +157,40 @@ async function runVideoPipeline(
 ): Promise<void> {
   await analyses.updateStatus(analysisId, "scraping");
 
-  let scraped: Awaited<ReturnType<typeof scraper.scrapeVideoWithFallback>>;
-  let videoPath: string;
+  // Step 1: Always use yt-dlp for metadata — it's always correct
+  const scraped = await scraper.scrapeVideoWithFallback(platform, url);
 
-  // Instagram/TikTok: go Apify-first (yt-dlp downloads are blocked by CDN)
-  // X/other: use yt-dlp first, Apify as fallback
-  if (platform === "instagram" || platform === "tiktok") {
-    console.log(`[pipeline] ${platform}: using Apify-first strategy`);
+  // Guard: reject videos longer than 10 minutes (cost + timeout risk)
+  const duration = scraped.metadata?.duration as number | undefined;
+  if (duration && duration > 600) {
+    throw new ServiceError(
+      "VIDEO_TOO_LONG",
+      "This video is over 10 minutes. We currently support videos up to 10 minutes.",
+      false,
+    );
+  }
+
+  // Step 2: Download video — try yt-dlp, then Apify CDN via Vercel proxy
+  let videoPath: string;
+  try {
+    videoPath = await storage.downloadVideo(url, analysisId);
+  } catch (dlErr) {
+    // yt-dlp download blocked — use Apify to get a CDN URL, download via Vercel proxy
+    console.log(`[pipeline] yt-dlp download failed, using Apify + Vercel proxy...`);
     try {
       const apifyResult = await scrapeWithApify(platform, url);
-      scraped = apifyResult;
       if (apifyResult.apifyVideoUrl) {
         videoPath = await downloadFromCdn(apifyResult.apifyVideoUrl, analysisId);
       } else {
-        throw new ServiceError("APIFY_NO_VIDEO_URL", "Apify returned no video URL");
-      }
-    } catch (apifyErr) {
-      // Apify failed — try yt-dlp as last resort
-      console.log(`[pipeline] Apify failed, trying yt-dlp fallback: ${apifyErr instanceof Error ? apifyErr.message : apifyErr}`);
-      scraped = await scraper.scrapeVideo(platform, url);
-      videoPath = await storage.downloadVideo(url, analysisId);
-    }
-  } else {
-    scraped = await scraper.scrapeVideoWithFallback(platform, url);
-    const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
-    try {
-      videoPath = await storage.downloadWithFallback(url, analysisId, apifyVideoUrl);
-    } catch (dlErr) {
-      if (!apifyVideoUrl) {
-        console.log(`[pipeline] Download failed, trying Apify scrape for CDN URL...`);
-        const apifyResult = await scrapeWithApify(platform, url);
-        if (apifyResult.apifyVideoUrl) {
-          videoPath = await downloadFromCdn(apifyResult.apifyVideoUrl, analysisId);
-        } else {
-          throw dlErr;
-        }
-      } else {
         throw dlErr;
       }
+    } catch (apifyErr) {
+      console.error(`[pipeline] Apify fallback also failed:`, apifyErr instanceof Error ? apifyErr.message : apifyErr);
+      throw new ServiceError(
+        "DOWNLOAD_FAILED",
+        "Could not download video. Both yt-dlp and Apify failed.",
+        false,
+      );
     }
   }
 
@@ -192,6 +203,16 @@ async function runVideoPipeline(
   await analyses.updateStatus(analysisId, "analyzing");
   const frameAnalyses = await visualAnalyzer.analyzeFrames(framePaths);
   const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
+
+  // Guard: if there's nothing to analyze, fail gracefully
+  const hasContent = transcript?.trim() || scraped.caption?.trim() || visualSummary?.trim();
+  if (!hasContent) {
+    throw new ServiceError(
+      "NO_CONTENT",
+      "Couldn't extract any text, audio, or visual content from this video.",
+      false,
+    );
+  }
 
   const userContext = await users.getContext(userId);
   if (!userContext) {

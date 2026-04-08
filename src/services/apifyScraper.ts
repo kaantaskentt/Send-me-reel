@@ -21,7 +21,9 @@ const ACTOR_MAP: Partial<Record<Platform, string>> = {
 function buildInput(platform: Platform, url: string): Record<string, unknown> {
   switch (platform) {
     case "instagram":
-      return { username: ["instagram"], directUrls: [url], resultsLimit: 1 };
+      // username is required by the actor but we only care about directUrls
+      // directUrls are processed independently of the username field
+      return { username: ["instagram"], directUrls: [url], resultsLimit: 5 };
     case "tiktok":
       return { postURLs: [url], resultsPerPage: 1 };
     case "x":
@@ -65,8 +67,14 @@ export async function scrapeWithApify(
     );
   }
 
-  const data = items[0] as Record<string, any>;
+  // For Instagram: filter to the result matching our directUrl (not the dummy username's posts)
+  const shortcode = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/)?.[2];
+  const data = (shortcode
+    ? items.find((item: any) => item.shortCode === shortcode || item.inputUrl?.includes(shortcode))
+    : items[0]) as Record<string, any> || items[0] as Record<string, any>;
+
   console.log(`[apify] Raw output keys:`, Object.keys(data).join(", "));
+  console.log(`[apify] Matched shortcode: ${shortcode}, caption: ${(data.caption || "").slice(0, 60)}`);
 
   return mapToScrapedVideo(platform, url, data);
 }
@@ -85,8 +93,8 @@ function mapToScrapedVideo(
       return {
         videoUrl: url,
         caption: data.caption || data.description || data.text || "",
-        authorName: data.ownerFullName || data.ownerUsername || "",
-        authorUsername: data.ownerUsername || data.ownerId || "",
+        authorName: data.ownerFullName || data.owner_username || data.ownerUsername || "",
+        authorUsername: data.owner_username || data.ownerUsername || data.ownerId || "",
         likes: data.likesCount || data.likes || 0,
         views: data.videoPlayCount || data.videoViewCount || data.viewCount || 0,
         hashtags: data.hashtags || [],
@@ -99,7 +107,7 @@ function mapToScrapedVideo(
           webpage_url: url,
           source: "apify",
         },
-        apifyVideoUrl: data.videoUrl || data.video_url || data.videoPlaybackUrl,
+        apifyVideoUrl: data.video_url || data.videoUrl || data.videoPlaybackUrl,
       };
 
     case "tiktok":

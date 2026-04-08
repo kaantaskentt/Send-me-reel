@@ -211,8 +211,7 @@ export async function GET(request: NextRequest) {
   }
 
   // No state — standard dashboard redirect (existing behavior)
-  const username = session.username || session.tid;
   return NextResponse.redirect(
-    new URL(`/${username}?notion=connected`, baseUrl),
+    new URL("/dashboard?notion=connected", baseUrl),
   );
 }

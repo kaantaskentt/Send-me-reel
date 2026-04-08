@@ -107,6 +107,9 @@ export async function pushToNotion(
 
   const page = (await res.json()) as Record<string, unknown>;
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("NOTION_RECONNECT");
+    }
     throw new Error(
       `Notion error: ${(page as { message?: string }).message || "Unknown"}`,
     );

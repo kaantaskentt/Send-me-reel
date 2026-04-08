@@ -80,7 +80,8 @@ export async function setupWorkspace(accessToken: string): Promise<{
         Status: {
           select: {
             options: [
-              { name: "Saved", color: "blue" },
+              { name: "To Learn", color: "blue" },
+              { name: "To Apply", color: "green" },
             ],
           },
         },
@@ -281,7 +282,7 @@ export async function pushAnalysis(
         Name: {
           title: [{ text: { content: parsed.title } }],
         },
-        Status: { select: { name: "Saved" } },
+        Status: { select: { name: analysis.intent === "apply" ? "To Apply" : "To Learn" } },
         Platform: { select: { name: platformName } },
         "Date Saved": {
           date: { start: new Date().toISOString().split("T")[0] },

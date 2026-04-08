@@ -60,6 +60,37 @@ export async function downloadVideo(
   );
 }
 
+/**
+ * Try yt-dlp download first, fall back to Apify CDN URL if available.
+ */
+export async function downloadWithFallback(
+  url: string,
+  analysisId: string,
+  apifyVideoUrl?: string,
+): Promise<string> {
+  try {
+    return await downloadVideo(url, analysisId);
+  } catch (ytdlpErr) {
+    if (!apifyVideoUrl) {
+      throw ytdlpErr;
+    }
+
+    console.log(`[download] yt-dlp download failed, trying Apify CDN: ${ytdlpErr instanceof Error ? ytdlpErr.message : ytdlpErr}`);
+
+    const { downloadFromCdn } = await import("./apifyScraper.js");
+    try {
+      return await downloadFromCdn(apifyVideoUrl, analysisId);
+    } catch (cdnErr) {
+      console.error(`[download] Apify CDN download also failed:`, cdnErr instanceof Error ? cdnErr.message : cdnErr);
+      throw new ServiceError(
+        "DOWNLOAD_FAILED",
+        `Both yt-dlp and CDN download failed. yt-dlp: ${ytdlpErr instanceof Error ? ytdlpErr.message : ytdlpErr}`,
+        false,
+      );
+    }
+  }
+}
+
 export async function cleanup(analysisId: string): Promise<void> {
   try {
     const dir = path.join(TMP_BASE, analysisId);

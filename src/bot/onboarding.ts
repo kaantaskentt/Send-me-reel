@@ -56,7 +56,7 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
       "Try it right now — paste this link:\n\n" +
       "https://www.instagram.com/reel/DFnVBmxx2Lj/\n\n" +
       "Or send any Instagram, TikTok, X, or article link.\n" +
-      "You have <b>10 free credits</b> to start.",
+      "You have <b>50 free credits</b> to start.",
     { parse_mode: "HTML" },
   );
 }

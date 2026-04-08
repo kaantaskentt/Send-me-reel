@@ -2,6 +2,7 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, ScrapedVideo, ScrapedArticle } from "../pipeline/types.js";
+import { scrapeWithApify } from "./apifyScraper.js";
 
 const execAsync = promisify(exec);
 
@@ -127,6 +128,38 @@ export async function scrapeVideo(
     `Failed to scrape ${platform} after ${MAX_RETRIES + 1} attempts: ${lastError?.message || "unknown error"}`,
     false,
   );
+}
+
+/**
+ * Try yt-dlp first, fall back to Apify if it fails.
+ */
+export async function scrapeVideoWithFallback(
+  platform: Platform,
+  url: string,
+): Promise<ScrapedVideo> {
+  try {
+    return await scrapeVideo(platform, url);
+  } catch (ytdlpErr) {
+    // Don't fallback for non-video content — Apify won't help
+    if (ytdlpErr instanceof ServiceError && ytdlpErr.code === "NOT_A_VIDEO") {
+      throw ytdlpErr;
+    }
+
+    console.log(`[scraper] yt-dlp failed, trying Apify fallback: ${ytdlpErr instanceof Error ? ytdlpErr.message : ytdlpErr}`);
+
+    try {
+      const result = await scrapeWithApify(platform, url);
+      console.log(`[scraper] Apify fallback succeeded`);
+      return result;
+    } catch (apifyErr) {
+      console.error(`[scraper] Apify fallback also failed:`, apifyErr instanceof Error ? apifyErr.message : apifyErr);
+      throw new ServiceError(
+        "SCRAPE_FAILED",
+        `Both yt-dlp and Apify failed for ${platform}. yt-dlp: ${ytdlpErr instanceof Error ? ytdlpErr.message : ytdlpErr}`,
+        false,
+      );
+    }
+  }
 }
 
 export async function scrapeArticle(url: string): Promise<ScrapedArticle> {

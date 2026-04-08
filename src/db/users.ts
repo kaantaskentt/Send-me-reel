@@ -58,7 +58,7 @@ export async function getOrCreate(
 
   if (error) throw new Error(`Failed to create user: ${error.message}`);
 
-  // Create initial credits (10 free)
+  // Create initial credits (50 free)
   await supabase.from("credits").insert({ user_id: newUser.id });
 
   return { user: newUser as DbUser, isNew: true };
