@@ -17,6 +17,5 @@ export async function GET(request: NextRequest) {
   await setSessionCookie(token);
 
   // Redirect to dashboard
-  const username = payload.username || payload.tid;
-  return NextResponse.redirect(new URL(`/${username}`, request.url));
+  return NextResponse.redirect(new URL("/dashboard", request.url));
 }
