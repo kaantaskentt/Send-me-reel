@@ -7,6 +7,7 @@
 import NavBar from "@/components/NavBar";
 import HeroSection from "@/components/HeroSection";
 import StatsBar from "@/components/StatsBar";
+import ProblemSection from "@/components/ProblemSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import VerdictSection from "@/components/VerdictSection";
 import FinalCTASection from "@/components/FinalCTASection";
@@ -17,6 +18,7 @@ export default function Home() {
       <NavBar />
       <HeroSection />
       <StatsBar />
+      <ProblemSection />
       <HowItWorksSection />
       <VerdictSection />
       <FinalCTASection />

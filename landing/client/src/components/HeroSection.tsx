@@ -157,6 +157,37 @@ export default function HeroSection() {
         >
           <CTAButton />
           <a
+            href="/dashboard"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(255,255,255,0.85)",
+              backdropFilter: "blur(8px)",
+              color: "#44403c",
+              fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
+              fontWeight: 600,
+              fontSize: 14,
+              padding: "13px 22px",
+              borderRadius: 100,
+              textDecoration: "none",
+              border: "1.5px solid #e7e2d9",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.background = "#fff";
+              el.style.borderColor = "#a8a29e";
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.background = "rgba(255,255,255,0.85)";
+              el.style.borderColor = "#e7e2d9";
+            }}
+          >
+            Dashboard →
+          </a>
+          <a
             href="#how-it-works"
             style={{
               display: "inline-flex",
