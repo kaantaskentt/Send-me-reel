@@ -31,9 +31,6 @@ export async function GET(request: NextRequest) {
 
   if (intent && intent !== "all") {
     query = query.eq("verdict_intent", intent);
-  } else {
-    // By default exclude ignored
-    query = query.neq("verdict_intent", "ignore");
   }
 
   if (platform && platform !== "all") {
