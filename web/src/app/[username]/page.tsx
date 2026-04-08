@@ -9,5 +9,5 @@ export default async function DashboardPage() {
     return <ConnectPrompt />;
   }
 
-  return <Dashboard userId={session.sub} username={session.username} />;
+  return <Dashboard />;
 }
