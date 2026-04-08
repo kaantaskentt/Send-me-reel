@@ -1,5 +1,10 @@
 "use client";
 
+/*
+ * StatsBar — ContextDrop "Warm Signal"
+ * White strip with warm dividers, orange accent numbers
+ */
+
 import { useEffect, useRef, useState } from "react";
 
 const STATS = [
@@ -29,15 +34,7 @@ function useCountUp(target: number, duration = 1200, active: boolean) {
   return count;
 }
 
-function StatItem({
-  value,
-  suffix,
-  label,
-}: {
-  value: number;
-  suffix: string;
-  label: string;
-}) {
+function StatItem({ value, suffix, label }: { value: number; suffix: string; label: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
   const count = useCountUp(value, 1200, active);
@@ -52,7 +49,7 @@ function StatItem({
           observer.disconnect();
         }
       },
-      { threshold: 0.5 },
+      { threshold: 0.5 }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -60,11 +57,17 @@ function StatItem({
 
   return (
     <div ref={ref} className="text-center px-6 py-5">
-      <div className="text-2xl sm:text-3xl text-[#1a1a1a] mb-0.5 tabular-nums font-[800] tracking-[-0.02em]">
+      <div
+        className="text-2xl sm:text-3xl text-[#1a1a1a] mb-0.5 tabular-nums"
+        style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.02em" }}
+      >
         {count.toLocaleString()}
-        <span className="text-[#F97316]">{suffix}</span>
+        <span style={{ color: "#F97316" }}>{suffix}</span>
       </div>
-      <div className="text-xs text-slate-400 uppercase tracking-widest font-medium">
+      <div
+        className="text-xs text-slate-400 uppercase tracking-widest"
+        style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}
+      >
         {label}
       </div>
     </div>
@@ -73,9 +76,14 @@ function StatItem({
 
 export default function StatsBar() {
   return (
-    <div className="border-y border-[#f0ede8] bg-white">
-      <div className="landing-container">
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-[#f0ede8]">
+    <div
+      className="border-y"
+      style={{ borderColor: "#f0ede8", background: "white" }}
+    >
+      <div className="container">
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x"
+          style={{ borderColor: "#f0ede8" }}
+        >
           {STATS.map((s) => (
             <StatItem key={s.label} {...s} />
           ))}
