@@ -31,23 +31,21 @@ export default function NavBar() {
     >
       <div className="container flex items-center justify-between h-16">
         {/* Logo */}
-        <Link href="/">
-          <a className="flex items-center gap-2 group">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "#F97316" }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span
-              className="text-[#1a1a1a] text-[1rem] tracking-tight"
-              style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700 }}
-            >
-              ContextDrop
-            </span>
-          </a>
+        <Link href="/" className="flex items-center gap-2 group" style={{ textDecoration: "none" }}>
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: "#F97316" }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span
+            className="text-[#1a1a1a] text-[1rem] tracking-tight"
+            style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700 }}
+          >
+            ContextDrop
+          </span>
         </Link>
 
         {/* Center nav */}
@@ -71,13 +69,12 @@ export default function NavBar() {
             </>
           )}
           {isInApp && (
-            <Link href="/">
-              <a
-                className="animated-link text-slate-500 hover:text-slate-800 transition-colors text-sm"
-                style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}
-              >
-                Back to site
-              </a>
+            <Link
+              href="/"
+              className="animated-link text-slate-500 hover:text-slate-800 transition-colors text-sm"
+              style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, textDecoration: "none" }}
+            >
+              Back to site
             </Link>
           )}
         </div>
@@ -85,23 +82,22 @@ export default function NavBar() {
         {/* Right side CTAs */}
         <div className="flex items-center gap-3">
           {!isInApp && (
-            <Link href="/login">
-              <a
-                className="hidden sm:inline-flex text-sm text-slate-500 hover:text-slate-800 transition-colors"
-                style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}
-              >
-                Sign in
-              </a>
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex text-sm text-slate-500 hover:text-slate-800 transition-colors"
+              style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500, textDecoration: "none" }}
+            >
+              Sign in
             </Link>
           )}
 
           {isInApp ? (
-            <Link href="/dashboard">
-              <a
-                className="btn-primary !py-2 !px-4 !text-sm"
-              >
-                My Feed
-              </a>
+            <Link
+              href="/dashboard"
+              className="btn-primary !py-2 !px-4 !text-sm"
+              style={{ textDecoration: "none" }}
+            >
+              My Feed
             </Link>
           ) : (
             <a

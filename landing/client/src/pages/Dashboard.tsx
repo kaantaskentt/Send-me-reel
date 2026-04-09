@@ -336,7 +336,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       <NotionBlock connected={true} />
 
       {/* Send to bot CTA */}
-      <a
+        <a
         href="https://t.me/contextdropbot"
         target="_blank"
         rel="noopener noreferrer"
@@ -345,6 +345,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
         <TelegramIcon size={14} />
         Send a video to analyse
       </a>
+      <p className="text-center text-[10px] text-stone-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>Telegram · WhatsApp</p>
 
       {/* Bottom */}
       <div className="mt-auto flex flex-col gap-1">
@@ -469,9 +470,10 @@ function AnalysisCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8, scale: 0.98 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      className={`bg-white border rounded-2xl overflow-hidden transition-shadow ${
+      className={`bg-white border rounded-2xl overflow-hidden transition-shadow relative ${
         isOpen ? "shadow-md border-stone-200" : "shadow-sm border-stone-150 hover:shadow-md hover:border-stone-200"
       } ${card.intent === "skip" ? "opacity-60" : ""}`}
+      style={{ borderLeft: card.intent === "apply" ? "3px solid #f97316" : card.intent === "learn" ? "3px solid #38bdf8" : "3px solid #d6d3d1" }}
     >
       {/* Card header — always visible */}
       <button
@@ -509,18 +511,18 @@ function AnalysisCard({
           >
             <div className="px-5 pb-5 border-t border-stone-100 pt-4">
               {/* Three verdict sections */}
-              <div className="space-y-3 mb-4">
+              <div className="space-y-4 mb-4">
                 <div>
-                  <div className="text-[11px] font-700 uppercase tracking-wide text-stone-400 mb-1">What it is</div>
+                  <div className="text-[10px] font-700 uppercase tracking-widest text-stone-300 mb-1.5">What it is</div>
                   <div className="text-sm text-stone-600 leading-relaxed">{card.whatIsIt}</div>
                 </div>
                 <div>
-                  <div className="text-[11px] font-700 uppercase tracking-wide text-stone-400 mb-1">What's inside</div>
+                  <div className="text-[10px] font-700 uppercase tracking-widest text-stone-300 mb-1.5">What's inside</div>
                   <div className="text-sm text-stone-600 leading-relaxed">{card.whatsInside}</div>
                 </div>
-                <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
-                  <div className="text-[11px] font-700 uppercase tracking-wide text-orange-400 mb-1">Why it matters to you</div>
-                  <div className="text-sm text-stone-700 leading-relaxed font-500">{card.realWorldContext}</div>
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-3.5">
+                  <div className="text-[10px] font-700 uppercase tracking-widest text-orange-400 mb-1.5">Why it matters to you</div>
+                  <div className="text-sm text-stone-700 leading-relaxed" style={{ fontWeight: 500 }}>{card.realWorldContext}</div>
                 </div>
               </div>
 
@@ -757,9 +759,9 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[
               { label: "Total saved", value: total, color: "text-stone-700" },
-              { label: "To learn", value: learnCount, color: "text-sky-600" },
-              { label: "To apply", value: applyCount, color: "text-orange-500" },
-              { label: "In Notion", value: notionCount, color: "text-green-600" },
+              { label: "To learn", value: learnCount, color: learnCount === 0 ? "text-stone-300" : "text-sky-600" },
+              { label: "To apply", value: applyCount, color: applyCount === 0 ? "text-stone-300" : "text-orange-500" },
+              { label: "In Notion", value: notionCount, color: notionCount === 0 ? "text-stone-300" : "text-green-600" },
             ].map(stat => (
               <div key={stat.label} className="bg-white border border-stone-200 rounded-2xl px-4 py-3 shadow-sm">
                 <div className={`text-2xl font-800 leading-none ${stat.color} mb-1`}>{stat.value}</div>

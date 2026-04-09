@@ -71,7 +71,7 @@ export default function VerdictSection() {
                 >
                   C
                 </div>
-                <div>
+                <div className="flex-1">
                   <div
                     className="text-sm text-[#1a1a1a]"
                     style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
@@ -79,8 +79,13 @@ export default function VerdictSection() {
                     ContextDrop
                   </div>
                   <div className="text-xs text-slate-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    bot
+                    bot · online
                   </div>
+                </div>
+                {/* Platform badges */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "#e8f4fd", color: "#0088cc" }}>Telegram</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "#e8fdf0", color: "#25D366" }}>WhatsApp</span>
                 </div>
               </div>
 
@@ -149,13 +154,13 @@ export default function VerdictSection() {
                     </p>
                     <div className="space-y-1.5 mb-3">
                       <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🎯 <strong>What it is:</strong> Open-source framework for building autonomous multi-agent AI systems
+                        🎯 <strong>What it is:</strong> Open-source framework for autonomous multi-agent AI — build, connect, and run AI agents without writing infrastructure
                       </p>
                       <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                         🛠️ <strong>Stack:</strong> n8n · Claude · LangChain
                       </p>
                       <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        ⚡ <strong>Why it matters to you:</strong> If you're building AI workflows, this is the missing orchestration layer
+                        ⚡ <strong>Why it matters to you:</strong> If you automate anything with AI, this is the orchestration layer you’ve been missing
                       </p>
                     </div>
                     <div
@@ -196,15 +201,14 @@ export default function VerdictSection() {
               className="text-slate-500 text-lg mb-8 leading-relaxed"
               style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}
             >
-              Every analysis answers three questions: what is this, how do I use it, and why does it matter to me?
-              Then you decide in one tap.
+              Send any link on <strong style={{ color: "#0088cc" }}>Telegram</strong> or <strong style={{ color: "#25D366" }}>WhatsApp</strong>. In 60 seconds you get a structured verdict — what it is, what’s inside, and exactly what to do with it. Then one tap decides its fate.
             </p>
 
             <div className="space-y-5">
               {[
-                { emoji: "📚", label: "Learn", desc: "Get a deeper breakdown — use cases, alternatives, and how to get started." },
-                { emoji: "✅", label: "Apply", desc: "Get a step-by-step action plan tailored to your workflow." },
-                { emoji: "⏭️", label: "Skip", desc: "Not relevant? Dismiss it. ContextDrop learns your preferences over time." },
+                { emoji: "📚", label: "Learn", desc: "Deep dive — use cases, alternatives, how to get started. Saved to your feed for later." },
+                { emoji: "🚀", label: "Apply", desc: "Get a step-by-step action plan built around your workflow. No fluff." },
+                { emoji: "⏭️", label: "Skip", desc: "Not for you right now. ContextDrop notes it and gets sharper over time." },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-4">
                   <div

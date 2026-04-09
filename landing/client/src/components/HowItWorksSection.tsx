@@ -1,177 +1,37 @@
 /*
- * HowItWorksSection — ContextDrop "Design B Simplified"
- * 3 steps with orange sweep on hover
- * Step 1: Send the link (Telegram + WhatsApp emoji, 60 seconds)
- * Step 2: AI analyzes it (platform icons: Instagram, TikTok, LinkedIn, X)
- * Step 3: You decide (Learn / Apply / Skip)
+ * HowItWorksSection — ContextDrop "Warm Signal" Design
+ * Refined 3-step layout: horizontal numbered steps with connector line
+ * Clean cards, no emoji-in-circles, better visual hierarchy
  */
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { useState } from "react";
-
-function PlatformPills() {
-  const platforms = [
-    {
-      label: "Instagram",
-      bg: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
-      color: "#fff",
-    },
-    { label: "TikTok", bg: "#000", color: "#fff" },
-    { label: "LinkedIn", bg: "#0A66C2", color: "#fff" },
-    { label: "X", bg: "#000", color: "#fff" },
-  ];
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-      {platforms.map((p) => (
-        <span
-          key={p.label}
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            padding: "3px 10px",
-            borderRadius: 100,
-            background: p.bg,
-            color: p.color,
-            fontFamily: "'DM Sans', sans-serif",
-            letterSpacing: "0.02em",
-          }}
-        >
-          {p.label}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 const STEPS = [
   {
-    number: "1",
-    emoji: "⚡",
+    number: "01",
     title: "Send a link",
-    body: "Drop any video URL into ContextDrop on Telegram or WhatsApp. That's literally it.",
-    extra: <PlatformPills />,
-    chip: "📱 Telegram · 💬 WhatsApp",
+    body: "Drop any video URL into ContextDrop — on Telegram or WhatsApp. No app to download. No account needed to start.",
+    detail: "Works with TikTok · Instagram · YouTube · LinkedIn · X",
+    platforms: [
+      { label: "Telegram", bg: "#0088cc", color: "#fff" },
+      { label: "WhatsApp", bg: "#25D366", color: "#fff" },
+    ],
   },
   {
-    number: "2",
-    emoji: "🧠",
+    number: "02",
     title: "AI analyzes it",
-    body: "ContextDrop watches the video, transcribes the audio, and identifies every tool, framework, and idea mentioned.",
-    extra: null,
-    chip: "⏱ ~60 seconds avg",
+    body: "ContextDrop watches the video, transcribes the audio, and surfaces every tool, framework, and idea mentioned — in under 60 seconds.",
+    detail: "⏱ ~60 seconds avg",
+    platforms: [],
   },
   {
-    number: "3",
-    emoji: "✅",
-    title: "You decide",
-    body: "Get a structured verdict. Tap Learn to study it, Apply to act on it, or Skip to move on. Your feed stays clean.",
-    extra: null,
-    chip: "📚 Learn · 🚀 Apply · ⏭ Skip",
+    number: "03",
+    title: "You get a verdict",
+    body: "Not a summary — a decision. Tap Learn to go deeper, Apply to get an action plan, or Skip to move on. Your feed stays clean.",
+    detail: "Learn · Apply · Skip",
+    platforms: [],
   },
 ];
-
-function StepCard({ step }: { step: (typeof STEPS)[0] }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid #e7e2d9",
-        borderRadius: 18,
-        padding: "1.5rem",
-        boxShadow: hovered
-          ? "0 4px 20px rgba(0,0,0,0.08)"
-          : "0 1px 3px rgba(0,0,0,0.05)",
-        transition: "all 0.22s ease",
-        transform: hovered ? "translateY(-3px)" : "translateY(0)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {/* Orange sweep top border */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: "linear-gradient(90deg, #f97316, #fb923c)",
-          transform: hovered ? "scaleX(1)" : "scaleX(0)",
-          transformOrigin: "left",
-          transition: "transform 0.3s ease",
-          borderRadius: "18px 18px 0 0",
-        }}
-      />
-
-      {/* Step number badge */}
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 30,
-          height: 30,
-          background: "#f97316",
-          color: "#fff",
-          fontWeight: 800,
-          fontSize: 13,
-          borderRadius: 8,
-          marginBottom: "1rem",
-          fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-        }}
-      >
-        {step.number}
-      </div>
-
-      <div style={{ fontSize: 26, marginBottom: "0.6rem" }}>{step.emoji}</div>
-
-      <h3
-        style={{
-          fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-          fontWeight: 700,
-          fontSize: 15,
-          color: "#1c1917",
-          marginBottom: 6,
-        }}
-      >
-        {step.title}
-      </h3>
-
-      <p
-        style={{
-          fontSize: 13,
-          color: "#78716c",
-          lineHeight: 1.65,
-          marginBottom: step.extra ? 0 : 12,
-        }}
-      >
-        {step.body}
-      </p>
-
-      {step.extra}
-
-      {/* Chip */}
-      <div
-        style={{
-          background: "#faf8f5",
-          border: "1px solid #e7e2d9",
-          borderRadius: 8,
-          padding: "8px 12px",
-          fontFamily: "'JetBrains Mono', 'DM Mono', monospace",
-          fontSize: 11,
-          color: "#f97316",
-          marginTop: 12,
-        }}
-      >
-        {step.chip}
-      </div>
-    </div>
-  );
-}
 
 export default function HowItWorksSection() {
   const headlineRef = useScrollAnimation(0.2) as React.RefObject<HTMLDivElement>;
@@ -188,7 +48,7 @@ export default function HowItWorksSection() {
     >
       <div
         style={{
-          maxWidth: 900,
+          maxWidth: 960,
           margin: "0 auto",
           padding: "clamp(4rem, 8vh, 6rem) clamp(1.5rem, 5vw, 5rem)",
         }}
@@ -197,14 +57,14 @@ export default function HowItWorksSection() {
         <div
           ref={headlineRef}
           className="fade-up"
-          style={{ textAlign: "center", marginBottom: "3rem" }}
+          style={{ textAlign: "center", marginBottom: "3.5rem" }}
         >
           <span
             style={{
               display: "inline-block",
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 700,
-              letterSpacing: "0.1em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               color: "#f97316",
               marginBottom: "1rem",
@@ -231,14 +91,13 @@ export default function HowItWorksSection() {
             style={{
               fontSize: 15,
               color: "#78716c",
-              maxWidth: 460,
+              maxWidth: 420,
               margin: "0 auto",
               lineHeight: 1.7,
               fontFamily: "'DM Sans', sans-serif",
             }}
           >
-            From link to actionable insight, faster than you can scroll past the
-            next video.
+            From link to actionable insight, faster than you can scroll past the next video.
           </p>
         </div>
 
@@ -248,12 +107,125 @@ export default function HowItWorksSection() {
           className="stagger-children"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: "1.25rem",
+            position: "relative",
           }}
         >
-          {STEPS.map((step) => (
-            <StepCard key={step.number} step={step} />
+          {STEPS.map((step, i) => (
+            <div
+              key={step.number}
+              style={{
+                background: "#fff",
+                border: "1px solid #e7e2d9",
+                borderRadius: 18,
+                padding: "1.75rem",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                position: "relative",
+              }}
+            >
+              {/* Step number — large, light, background */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: "1.25rem",
+                  right: "1.25rem",
+                  fontSize: 48,
+                  fontWeight: 900,
+                  color: "#f5f1eb",
+                  fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
+                  lineHeight: 1,
+                  userSelect: "none",
+                  letterSpacing: "-0.04em",
+                }}
+              >
+                {step.number}
+              </div>
+
+              {/* Connector arrow between steps (desktop only) */}
+              {i < STEPS.length - 1 && (
+                <div
+                  style={{
+                    display: "none", // hidden on mobile, shown via CSS below
+                  }}
+                  className="step-connector"
+                />
+              )}
+
+              {/* Orange accent line */}
+              <div
+                style={{
+                  width: 28,
+                  height: 3,
+                  background: "linear-gradient(90deg, #f97316, #fb923c)",
+                  borderRadius: 100,
+                  marginBottom: "1.25rem",
+                }}
+              />
+
+              <h3
+                style={{
+                  fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
+                  fontWeight: 700,
+                  fontSize: 17,
+                  color: "#1c1917",
+                  marginBottom: 8,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {step.title}
+              </h3>
+
+              <p
+                style={{
+                  fontSize: 13.5,
+                  color: "#78716c",
+                  lineHeight: 1.7,
+                  fontFamily: "'DM Sans', sans-serif",
+                  marginBottom: 14,
+                }}
+              >
+                {step.body}
+              </p>
+
+              {/* Platform badges */}
+              {step.platforms.length > 0 && (
+                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+                  {step.platforms.map((p) => (
+                    <span
+                      key={p.label}
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "3px 10px",
+                        borderRadius: 100,
+                        background: p.bg,
+                        color: p.color,
+                        fontFamily: "'DM Sans', sans-serif",
+                        letterSpacing: "0.02em",
+                      }}
+                    >
+                      {p.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Detail chip */}
+              <div
+                style={{
+                  background: "#faf8f5",
+                  border: "1px solid #e7e2d9",
+                  borderRadius: 8,
+                  padding: "7px 12px",
+                  fontFamily: "'JetBrains Mono', 'DM Mono', monospace",
+                  fontSize: 10.5,
+                  color: "#a8a29e",
+                }}
+              >
+                {step.detail}
+              </div>
+            </div>
           ))}
         </div>
 
