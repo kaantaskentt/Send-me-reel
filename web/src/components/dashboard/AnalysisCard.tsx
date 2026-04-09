@@ -315,36 +315,38 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 </div>
               )}
 
-              {/* ── Deep Dive / Action Items ── */}
+              {/* ── Deep Dive ── */}
               {actionItems ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 0 }}>
+
                   {/* Key Insights */}
                   {(actionItems.insights as { text: string }[])?.length > 0 && (
-                    <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: 14, padding: 14 }}>
-                      <p style={{ fontSize: 10, color: "#a16207", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>💡 Key Insights</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {(actionItems.insights as { text: string }[]).map((item, i) => (
-                          <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.6, margin: 0, paddingLeft: 8, borderLeft: "2px solid #fde047" }}>{item.text}</p>
-                        ))}
-                      </div>
+                    <div style={{ paddingBottom: 12 }}>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>💡 Insights</p>
+                      {(actionItems.insights as { text: string }[]).map((item, i) => (
+                        <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: i > 0 ? "6px 0 0 0" : 0 }}>{item.text}</p>
+                      ))}
                     </div>
                   )}
 
                   {/* Tools & Resources */}
                   {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[])?.length > 0 && (
-                    <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 14, padding: 14 }}>
-                      <p style={{ fontSize: 10, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🔧 Tools & Resources</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12, paddingBottom: 12 }}>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🔧 Mentioned</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[]).map((item, i) => (
-                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", margin: 0 }}>
-                                {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "#2563eb", textDecoration: "none" }}>{item.name}</a> : item.name}
-                              </p>
-                              <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0", lineHeight: 1.5 }}>{item.description}</p>
-                            </div>
-                            {item.price && <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 100, background: "#dbeafe", color: "#1d4ed8", flexShrink: 0 }}>{item.price}</span>}
-                          </div>
+                          item.link ? (
+                            <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                              title={item.description}
+                              style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              {item.name} {item.price && <span style={{ fontSize: 10, color: "#64748b" }}>· {item.price}</span>}
+                            </a>
+                          ) : (
+                            <span key={i} title={item.description}
+                              style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "#f5f1eb", color: "#44403c", border: "1px solid #e7e2d9", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                              {item.name} {item.price && <span style={{ fontSize: 10, color: "#a8a29e" }}>· {item.price}</span>}
+                            </span>
+                          )
                         ))}
                       </div>
                     </div>
@@ -352,24 +354,24 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
 
                   {/* For You */}
                   {(actionItems.for_you as { text: string }[])?.length > 0 && (
-                    <div style={{ background: "#fdf2f8", border: "1px solid #fbcfe8", borderRadius: 14, padding: 14 }}>
-                      <p style={{ fontSize: 10, color: "#be185d", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🎯 For You</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {(actionItems.for_you as { text: string }[]).map((item, i) => (
-                          <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.6, margin: 0 }}>{item.text}</p>
-                        ))}
-                      </div>
+                    <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12, paddingBottom: 12 }}>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>🎯 For you</p>
+                      {(actionItems.for_you as { text: string }[]).map((item, i) => (
+                        <p key={i} style={{ fontSize: 13, color: "#78716c", lineHeight: 1.65, margin: i > 0 ? "4px 0 0 0" : 0, fontStyle: "italic" }}>{item.text}</p>
+                      ))}
                     </div>
                   )}
 
                   {/* Try This Week */}
                   {(actionItems.try_this as { title: string; description: string }[])?.length > 0 && (
-                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14 }}>
-                      <p style={{ fontSize: 10, color: "#15803d", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🚀 Try This Week</p>
+                    <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12 }}>
                       {(actionItems.try_this as { title: string; description: string }[]).map((item, i) => (
-                        <div key={i}>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", margin: 0 }}>{item.title}</p>
-                          <p style={{ fontSize: 12, color: "#44403c", margin: "2px 0 0 0", lineHeight: 1.6 }}>{item.description}</p>
+                        <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 14, marginTop: 1 }}>→</span>
+                          <div>
+                            <p style={{ fontSize: 13, fontWeight: 700, color: "#f97316", margin: 0 }}>{item.title}</p>
+                            <p style={{ fontSize: 12, color: "#44403c", margin: "2px 0 0 0", lineHeight: 1.6 }}>{item.description}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
