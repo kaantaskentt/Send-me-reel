@@ -4,6 +4,7 @@ export interface User {
   telegram_username: string | null;
   first_name: string | null;
   onboarded: boolean;
+  premium: boolean;
   notion_access_token: string | null;
   notion_workspace_name: string | null;
   notion_database_id: string | null;
