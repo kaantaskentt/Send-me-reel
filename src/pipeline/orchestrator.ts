@@ -13,6 +13,8 @@ import * as frameExtractor from "../services/frameExtractor.js";
 import * as visualAnalyzer from "../services/visualAnalyzer.js";
 import * as verdictGenerator from "../services/verdictGenerator.js";
 import { InlineKeyboard } from "grammy";
+import { SignJWT } from "jose";
+import { config } from "../config.js";
 
 /**
  * Helper to reply in the right context — in groups, replies to the original message.
@@ -240,7 +242,7 @@ async function runVideoPipeline(
     status: "done",
   });
 
-  await sendVerdict(ctx, analysisId, verdict, url, replyToMessageId);
+  await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 
 async function runArticlePipeline(
@@ -277,7 +279,7 @@ async function runArticlePipeline(
     status: "done",
   });
 
-  await sendVerdict(ctx, analysisId, verdict, url, replyToMessageId);
+  await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 
 async function sendVerdict(
@@ -285,19 +287,35 @@ async function sendVerdict(
   analysisId: string,
   verdict: string,
   sourceUrl: string,
+  userId: string,
   replyToMessageId?: number,
 ): Promise<void> {
   const from = ctx.from!;
   const telegramId = from.id;
 
-  // Two action buttons — view original + save to Notion
+  // Build inline keyboard: View Original + Dashboard + Save to Notion
   const keyboard = new InlineKeyboard()
-    .url("👁 View Original", sourceUrl)
-    .text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
+    .url("👁 View Original", sourceUrl);
 
-  const formatted = verdict;
+  // Add "Dashboard" URL button with a signed JWT link
+  if (config.jwtSecret) {
+    const secret = new TextEncoder().encode(config.jwtSecret);
+    const token = await new SignJWT({
+      sub: userId,
+      username: from.username || String(telegramId),
+      tid: telegramId,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setExpirationTime("30d")
+      .setIssuedAt()
+      .sign(secret);
 
-  await ctx.reply(formatted, {
+    keyboard.url("📊 Dashboard", `${config.appUrl}/auth?token=${token}`);
+  }
+
+  keyboard.text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
+
+  await ctx.reply(verdict, {
     reply_markup: keyboard,
     ...replyOpts(ctx, replyToMessageId),
   });

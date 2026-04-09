@@ -1,11 +1,11 @@
 import { getSession } from "@/lib/auth";
-import ConnectPrompt from "@/components/dashboard/ConnectPrompt";
+import { redirect } from "next/navigation";
 import Dashboard from "@/components/dashboard/Dashboard";
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) {
-    return <ConnectPrompt />;
+    redirect("/login");
   }
   return <Dashboard />;
 }
