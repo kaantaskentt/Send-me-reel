@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { BOT_LINK } from "@/lib/constants";
@@ -16,5 +17,9 @@ export default async function LoginPage() {
 
   const botDashboardLink = `${BOT_LINK}?start=dashboard`;
 
-  return <LoginContent botDashboardLink={botDashboardLink} />;
+  return (
+    <Suspense>
+      <LoginContent botDashboardLink={botDashboardLink} />
+    </Suspense>
+  );
 }

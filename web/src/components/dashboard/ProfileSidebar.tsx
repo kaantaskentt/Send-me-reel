@@ -1,7 +1,7 @@
 "use client";
 
 import type { UserProfile } from "@/lib/types";
-import { BookOpen, ExternalLink, Settings } from "lucide-react";
+import { BookOpen, ExternalLink, Settings, LogOut } from "lucide-react";
 
 interface Props { profile: UserProfile; }
 
@@ -69,6 +69,16 @@ export default function ProfileSidebar({ profile }: Props) {
           style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10 }}>
           <ExternalLink style={{ width: 14, height: 14 }} /> Open bot
         </a>
+        <button
+          onClick={() => {
+            fetch("/api/auth/logout", { method: "POST" }).then(() => {
+              window.location.href = "/login";
+            });
+          }}
+          style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#a8a29e", background: "none", border: "none", cursor: "pointer", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", width: "100%", textAlign: "left" }}
+        >
+          <LogOut style={{ width: 14, height: 14 }} /> Sign out
+        </button>
       </div>
     </div>
   );

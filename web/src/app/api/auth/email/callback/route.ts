@@ -54,7 +54,10 @@ export async function GET(request: NextRequest) {
     user = newUser;
 
     // Create initial credits (50 free)
-    await db.from("credits").insert({ user_id: user.id });
+    const { error: creditsErr } = await db.from("credits").insert({ user_id: user.id });
+    if (creditsErr) {
+      console.error("Credits creation error:", creditsErr);
+    }
   }
 
   // Generate our standard JWT

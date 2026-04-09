@@ -1,8 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  expired_token: "Your sign-in link has expired. Request a new one below.",
+  auth_failed: "Sign-in failed. Please try again.",
+  google_failed: "Google sign-in failed. Please try again.",
+  google_no_token: "Google sign-in didn't complete. Please try again.",
+  google_callback_failed: "Something went wrong with Google sign-in. Please try again.",
+  missing_token: "Invalid sign-in link. Use the form below instead.",
+  account_not_found: "Account not found. Sign in to create one.",
+};
 
 export default function LoginContent({ botDashboardLink }: { botDashboardLink: string }) {
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] || "Something went wrong. Please try again." : null;
+
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
@@ -65,6 +80,13 @@ export default function LoginContent({ botDashboardLink }: { botDashboardLink: s
         <p style={{ fontSize: 15, color: "#78716c", textAlign: "center", marginBottom: 32, marginTop: 0, lineHeight: 1.6, maxWidth: 340 }}>
           No passwords. Sign in with Google or a magic link.
         </p>
+
+        {/* Error message */}
+        {errorMessage && (
+          <div style={{ width: "100%", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 18, padding: "14px 20px", marginBottom: 24, textAlign: "center" }}>
+            <p style={{ fontSize: 14, color: "#dc2626", margin: 0, lineHeight: 1.5 }}>{errorMessage}</p>
+          </div>
+        )}
 
         {/* Google Sign-In */}
         <a
