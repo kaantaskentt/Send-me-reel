@@ -36,6 +36,7 @@ export interface Analysis {
   verdict_intent: string | null;
   credits_charged: number;
   error_message: string | null;
+  action_items: { title: string; description: string }[] | null;
   created_at: string;
   completed_at: string | null;
 }

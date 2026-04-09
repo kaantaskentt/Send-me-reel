@@ -119,6 +119,8 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
+  const [actionItems, setActionItems] = useState<{ title: string; description: string }[] | null>(analysis.action_items || null);
+  const [actionItemsLoading, setActionItemsLoading] = useState(false);
 
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
@@ -158,6 +160,20 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
     onDeleted(analysis.id);
   };
   const cancelDelete = (e: React.MouseEvent) => { e.stopPropagation(); setDeleteState("idle"); };
+
+  const handleActionItems = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (actionItems) return; // Already loaded
+    setActionItemsLoading(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/action-items`, { method: "POST" });
+      const data = await res.json();
+      if (data.action_items) setActionItems(data.action_items);
+    } catch {
+      // Silently fail — button stays available to retry
+    }
+    setActionItemsLoading(false);
+  };
 
   // ── Shared button style ───────────────────────────────────────────────────
   const btnBase: React.CSSProperties = {
@@ -271,6 +287,45 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* ── Action Items ── */}
+              {actionItems ? (
+                <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: 14, padding: 16 }}>
+                  <p style={{ fontSize: 10, color: "#a16207", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10, margin: 0 }}>⚡ Your Action Items</p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {actionItems.map((item, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#ca8a04", background: "#fef9c3", width: 22, height: 22, borderRadius: 100, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
+                        <div>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", margin: 0 }}>{item.title}</p>
+                          <p style={{ fontSize: 12, color: "#78716c", margin: "2px 0 0 0", lineHeight: 1.5 }}>{item.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleActionItems}
+                  disabled={actionItemsLoading}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    width: "100%", padding: "12px 16px", borderRadius: 12,
+                    background: actionItemsLoading ? "#fefce8" : "linear-gradient(135deg, #fef9c3, #fef08a)",
+                    border: "1px solid #fde047",
+                    color: "#a16207", fontSize: 13, fontWeight: 700,
+                    cursor: actionItemsLoading ? "wait" : "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {actionItemsLoading ? (
+                    <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating action items...</>
+                  ) : (
+                    <>⚡ Get Action Items</>
+                  )}
+                </button>
               )}
 
               {hasVideoMeta && (
