@@ -2,8 +2,9 @@
 
 /*
  * VerdictSection — ContextDrop "Warm Signal"
- * Warm cream background, real Telegram chat feel
- * Animated: user sends link → typing indicator → verdict slides in → buttons appear
+ * Instagram Reel example: Claude agent managers
+ * Animated: user sends link → typing → verdict slides in → action buttons appear
+ * Ported from Manus's landing/ prototype
  */
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -14,13 +15,8 @@ type Stage = "idle" | "link-sent" | "typing" | "verdict" | "buttons";
 export default function VerdictSection() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const headlineRef = useScrollAnimation(0.2) as React.RefObject<HTMLDivElement>;
-  const [stage, setStage] = useState<Stage>("idle");
+  const [stage, setStage] = useState<Stage>("buttons");
   const [started, setStarted] = useState(false);
-
-  useEffect(() => {
-    // Show full verdict immediately so it's visible on page load
-    setStage("buttons");
-  }, []);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -30,10 +26,10 @@ export default function VerdictSection() {
         if (e.isIntersecting && !started) {
           setStarted(true);
           setStage("idle");
-          setTimeout(() => setStage("link-sent"), 300);
-          setTimeout(() => setStage("typing"), 1200);
-          setTimeout(() => setStage("verdict"), 2700);
-          setTimeout(() => setStage("buttons"), 3500);
+          setTimeout(() => setStage("link-sent"), 400);
+          setTimeout(() => setStage("typing"), 1300);
+          setTimeout(() => setStage("verdict"), 2900);
+          setTimeout(() => setStage("buttons"), 3700);
         }
       },
       { threshold: 0.3 }
@@ -50,45 +46,49 @@ export default function VerdictSection() {
   return (
     <section className="py-24 lg:py-32" style={{ background: "white" }}>
       <div className="container">
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
-          {/* Left: Telegram chat mockup */}
-          <div className="flex-shrink-0 w-full max-w-sm mx-auto lg:mx-0">
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+
+          {/* Left: Chat mockup */}
+          <div className="flex-shrink-0 w-full max-w-[360px] mx-auto lg:mx-0">
             <div
               ref={sectionRef}
               className="rounded-2xl overflow-hidden"
               style={{
                 background: "#FAFAF8",
-                border: "1px solid #f0ede8",
-                boxShadow: "0 8px 40px rgba(0,0,0,0.08)",
+                border: "1px solid #ede9e3",
+                boxShadow: "0 12px 48px rgba(0,0,0,0.09), 0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
               {/* Chat header */}
               <div
                 className="flex items-center gap-3 px-4 py-3 border-b"
-                style={{ borderColor: "#f0ede8", background: "white" }}
+                style={{ borderColor: "#ede9e3", background: "white" }}
               >
                 <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
                   style={{ background: "#F97316" }}
                 >
                   C
                 </div>
-                <div>
-                  <div
-                    className="text-sm text-[#1a1a1a]"
-                    style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
-                  >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-[#1a1a1a] font-semibold" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                     ContextDrop
                   </div>
-                  <div className="text-xs text-slate-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                    bot
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                    <span className="text-[10px] text-slate-400" style={{ fontFamily: "'DM Sans', sans-serif" }}>online</span>
                   </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-bold tracking-wide" style={{ background: "#e8f4fd", color: "#0088cc" }}>TG</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-full font-bold tracking-wide" style={{ background: "#e8fdf0", color: "#25D366" }}>WA</span>
                 </div>
               </div>
 
-              {/* Chat messages */}
-              <div className="p-4 space-y-3 min-h-[300px]">
-                {/* User message */}
+              {/* Messages */}
+              <div className="p-4 space-y-3" style={{ minHeight: 320 }}>
+
+                {/* User sends Instagram link */}
                 <div
                   className="flex justify-end transition-all duration-500"
                   style={{
@@ -97,11 +97,11 @@ export default function VerdictSection() {
                   }}
                 >
                   <div
-                    className="rounded-2xl rounded-br-sm px-3.5 py-2.5 max-w-[80%]"
+                    className="rounded-2xl rounded-br-sm px-3.5 py-2.5 max-w-[85%]"
                     style={{ background: "#F97316" }}
                   >
-                    <p className="text-white text-xs break-all" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                      https://tiktok.com/@mirofish/video/7391...
+                    <p className="text-white text-xs break-all leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      https://instagram.com/reel/C8x4mK...
                     </p>
                     <p className="text-orange-200 text-[10px] text-right mt-0.5">10:42 ✓✓</p>
                   </div>
@@ -114,52 +114,59 @@ export default function VerdictSection() {
                       className="rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1.5"
                       style={{ background: "#f3f4f6" }}
                     >
-                      <span className="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
-                      <span className="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
-                      <span className="typing-dot w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />
+                      {[0, 150, 300].map((delay) => (
+                        <span
+                          key={delay}
+                          className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block"
+                          style={{ animation: `typingBounce 1s ${delay}ms infinite` }}
+                        />
+                      ))}
                     </div>
                   </div>
                 )}
 
                 {/* Verdict card */}
                 <div
-                  className="flex justify-start transition-all duration-600"
+                  className="flex justify-start transition-all duration-700"
                   style={{
                     opacity: show("verdict") ? 1 : 0,
-                    transform: show("verdict") ? "translateY(0)" : "translateY(12px)",
+                    transform: show("verdict") ? "translateY(0)" : "translateY(14px)",
                   }}
                 >
                   <div
-                    className="rounded-2xl rounded-bl-sm p-4 max-w-[92%]"
+                    className="rounded-2xl rounded-bl-sm p-4 w-full"
                     style={{
                       background: "white",
-                      border: "1px solid #f0ede8",
+                      border: "1px solid #ede9e3",
                       boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
                     }}
                   >
-                    <span
-                      className="text-[10px] text-slate-400 block mb-2"
-                      style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                    >
-                      // tiktok reel
-                    </span>
-                    <p
-                      className="text-[#1a1a1a] text-sm font-bold mb-2.5"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
-                    >
-                      MiroFish — Multi-agent AI
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <span
+                        className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "#fce7f3", color: "#ec4899" }}
+                      >
+                        instagram reel
+                      </span>
+                    </div>
+
+                    <p className="text-[#1a1a1a] text-sm font-bold mb-3 leading-snug" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      How to set up Claude agent managers
                     </p>
-                    <div className="space-y-1.5 mb-3">
-                      <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🎯 <strong>What it is:</strong> Open-source framework for autonomous multi-agent systems
+
+                    <div className="space-y-2 mb-3.5">
+                      <p className="text-slate-600 text-xs leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                        🎯 <strong>What it is:</strong> Step-by-step walkthrough of Claude&apos;s new subagent delegation feature — one agent orchestrates others
                       </p>
-                      <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🛠️ <strong>Tools:</strong> n8n, Claude, LangChain
+                      <p className="text-slate-600 text-xs leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                        🛠️ <strong>Tools shown:</strong> Claude 3.5, MCP servers, custom system prompts
                       </p>
-                      <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🔥 <strong>Why it matters:</strong> Enables complex workflows & automation
+                      <p className="text-slate-600 text-xs leading-relaxed" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                        ⚡ <strong>Why it matters:</strong> If you&apos;re building AI workflows, this is the delegation pattern that cuts your prompt complexity in half
                       </p>
                     </div>
+
+                    {/* Action buttons */}
                     <div
                       className="flex gap-2 transition-all duration-500"
                       style={{
@@ -167,17 +174,18 @@ export default function VerdictSection() {
                         transform: show("buttons") ? "translateY(0)" : "translateY(6px)",
                       }}
                     >
-                      <button className="verdict-btn-learn">Learn</button>
-                      <button className="verdict-btn-apply">Apply</button>
-                      <button className="verdict-btn-skip">Skip</button>
+                      <button className="verdict-btn-learn">📚 Learn</button>
+                      <button className="verdict-btn-apply">🚀 Apply</button>
+                      <button className="verdict-btn-skip">⏭ Skip</button>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+
             <p
               className="text-center text-slate-400 text-xs mt-3"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
+              style={{ fontFamily: "'JetBrains Mono', 'DM Mono', monospace" }}
             >
               // real analysis · real verdict
             </p>
@@ -188,7 +196,7 @@ export default function VerdictSection() {
             <span className="section-label block mb-3">Example Verdict</span>
             <h2
               className="text-3xl sm:text-4xl lg:text-5xl text-[#1a1a1a] mb-5"
-              style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.025em" }}
+              style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 }}
             >
               Not a summary.
               <br />
@@ -196,29 +204,49 @@ export default function VerdictSection() {
             </h2>
             <p
               className="text-slate-500 text-lg mb-8 leading-relaxed"
-              style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}
+              style={{ fontFamily: "'DM Sans', sans-serif" }}
             >
-              Every analysis answers three questions: what is this, how do I use it, and why does it matter to me?
-              Then you decide in one tap.
+              Send any link on <strong style={{ color: "#0088cc" }}>Telegram</strong> or <strong style={{ color: "#25D366" }}>WhatsApp</strong>. In 30 seconds you get a structured breakdown — what it is, what&apos;s inside, and exactly what to do with it. Then one tap decides its fate.
             </p>
 
             <div className="space-y-5">
               {[
-                { emoji: "📚", label: "Learn", desc: "Get a deeper breakdown — use cases, alternatives, and how to get started." },
-                { emoji: "✅", label: "Apply", desc: "Get a step-by-step action plan tailored to your workflow." },
-                { emoji: "⏭️", label: "Skip", desc: "Not relevant? Dismiss it. ContextDrop learns your preferences over time." },
+                {
+                  emoji: "📚",
+                  label: "Learn",
+                  color: "#f97316",
+                  bg: "#fff5ee",
+                  border: "#fde8d4",
+                  desc: "Get a deeper breakdown — use cases, alternatives, and a reading list. Saved to your feed so you can come back when you're ready.",
+                },
+                {
+                  emoji: "🚀",
+                  label: "Apply",
+                  color: "#16a34a",
+                  bg: "#f0fdf4",
+                  border: "#bbf7d0",
+                  desc: "Get a step-by-step action plan built around your workflow. Concrete next steps, not generic advice.",
+                },
+                {
+                  emoji: "⏭️",
+                  label: "Skip",
+                  color: "#78716c",
+                  bg: "#faf8f5",
+                  border: "#e7e2d9",
+                  desc: "Not relevant right now? Dismiss it cleanly. ContextDrop notes the pattern and gets sharper over time.",
+                },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-4">
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 mt-0.5"
-                    style={{ background: "#fff5ee", border: "1px solid #fde8d4" }}
+                    style={{ background: item.bg, border: `1px solid ${item.border}` }}
                   >
                     {item.emoji}
                   </div>
                   <div>
                     <span
-                      className="text-[#1a1a1a] text-sm font-semibold block"
-                      style={{ fontFamily: "'DM Sans', sans-serif" }}
+                      className="text-sm font-semibold block mb-0.5"
+                      style={{ fontFamily: "'DM Sans', sans-serif", color: item.color }}
                     >
                       {item.label}
                     </span>
@@ -233,8 +261,16 @@ export default function VerdictSection() {
               ))}
             </div>
           </div>
+
         </div>
       </div>
+
+      <style>{`
+        @keyframes typingBounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-4px); }
+        }
+      `}</style>
     </section>
   );
 }
