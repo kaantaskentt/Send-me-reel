@@ -120,7 +120,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
-  const [actionItems, setActionItems] = useState<{ title: string; description: string }[] | null>(analysis.action_items || null);
+  const [actionItems, setActionItems] = useState<Record<string, unknown> | null>(analysis.action_items || null);
   const [actionItemsLoading, setActionItemsLoading] = useState(false);
   const [askQuestion, setAskQuestion] = useState("");
   const [askAnswer, setAskAnswer] = useState<string | null>(null);
@@ -315,21 +315,65 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 </div>
               )}
 
-              {/* ── Action Items ── */}
+              {/* ── Deep Dive / Action Items ── */}
               {actionItems ? (
-                <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: 14, padding: 16 }}>
-                  <p style={{ fontSize: 10, color: "#a16207", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 10, margin: 0 }}>⚡ Your Action Items</p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {actionItems.map((item, i) => (
-                      <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: "#ca8a04", background: "#fef9c3", width: 22, height: 22, borderRadius: 100, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
-                        <div>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", margin: 0 }}>{item.title}</p>
-                          <p style={{ fontSize: 12, color: "#78716c", margin: "2px 0 0 0", lineHeight: 1.5 }}>{item.description}</p>
-                        </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {/* Key Insights */}
+                  {(actionItems.insights as { text: string }[])?.length > 0 && (
+                    <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: 14, padding: 14 }}>
+                      <p style={{ fontSize: 10, color: "#a16207", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>💡 Key Insights</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {(actionItems.insights as { text: string }[]).map((item, i) => (
+                          <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.6, margin: 0, paddingLeft: 8, borderLeft: "2px solid #fde047" }}>{item.text}</p>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+
+                  {/* Tools & Resources */}
+                  {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[])?.length > 0 && (
+                    <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 14, padding: 14 }}>
+                      <p style={{ fontSize: 10, color: "#1d4ed8", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🔧 Tools & Resources</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[]).map((item, i) => (
+                          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", margin: 0 }}>
+                                {item.link ? <a href={item.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: "#2563eb", textDecoration: "none" }}>{item.name}</a> : item.name}
+                              </p>
+                              <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0 0", lineHeight: 1.5 }}>{item.description}</p>
+                            </div>
+                            {item.price && <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 100, background: "#dbeafe", color: "#1d4ed8", flexShrink: 0 }}>{item.price}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* For You */}
+                  {(actionItems.for_you as { text: string }[])?.length > 0 && (
+                    <div style={{ background: "#fdf2f8", border: "1px solid #fbcfe8", borderRadius: 14, padding: 14 }}>
+                      <p style={{ fontSize: 10, color: "#be185d", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🎯 For You</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {(actionItems.for_you as { text: string }[]).map((item, i) => (
+                          <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.6, margin: 0 }}>{item.text}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Try This Week */}
+                  {(actionItems.try_this as { title: string; description: string }[])?.length > 0 && (
+                    <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 14, padding: 14 }}>
+                      <p style={{ fontSize: 10, color: "#15803d", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🚀 Try This Week</p>
+                      {(actionItems.try_this as { title: string; description: string }[]).map((item, i) => (
+                        <div key={i}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: "#1c1917", margin: 0 }}>{item.title}</p>
+                          <p style={{ fontSize: 12, color: "#44403c", margin: "2px 0 0 0", lineHeight: 1.6 }}>{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <button
@@ -347,9 +391,9 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                   }}
                 >
                   {actionItemsLoading ? (
-                    <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating action items...</>
+                    <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating deep dive...</>
                   ) : (
-                    <>⚡ Get Action Items</>
+                    <>⚡ Deep Dive</>
                   )}
                 </button>
               )}

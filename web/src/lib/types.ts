@@ -37,7 +37,14 @@ export interface Analysis {
   verdict_intent: string | null;
   credits_charged: number;
   error_message: string | null;
-  action_items: { title: string; description: string }[] | null;
+  action_items: {
+    insights?: { text: string }[];
+    resources?: { name: string; description: string; link?: string; price?: string }[];
+    for_you?: { text: string }[];
+    try_this?: { title: string; description: string }[];
+    // Legacy format fallback
+    [key: string]: unknown;
+  } | null;
   created_at: string;
   completed_at: string | null;
 }
