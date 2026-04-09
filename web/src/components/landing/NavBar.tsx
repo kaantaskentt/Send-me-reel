@@ -40,8 +40,8 @@ export default function NavBar() {
           : "bg-transparent"
       }`}
     >
-      <div className="container flex items-center justify-between h-16">
-        <Link href="/" className="flex items-center gap-2 group">
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "0 clamp(1.5rem, 5vw, 4rem)", display: "flex", alignItems: "center", height: 64 }}>
+        <Link href="/" className="flex items-center gap-2 group" style={{ flexShrink: 0 }}>
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center"
             style={{ background: "#F97316" }}
@@ -58,7 +58,7 @@ export default function NavBar() {
           </span>
         </Link>
 
-        <div className="hidden sm:flex items-center gap-7">
+        <div className="hidden sm:flex items-center justify-center gap-7" style={{ flex: 1 }}>
           {!isInApp && (
             <>
               <a href="#how-it-works" className="animated-link text-slate-500 hover:text-slate-800 transition-colors text-sm" style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
@@ -76,7 +76,7 @@ export default function NavBar() {
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" style={{ flexShrink: 0 }}>
           {!isInApp && (
             <Link href={hasSession ? "/dashboard" : "/login"} className="hidden sm:inline-flex text-sm text-slate-500 hover:text-slate-800 transition-colors" style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}>
               {hasSession ? "Dashboard" : "Sign in"}
