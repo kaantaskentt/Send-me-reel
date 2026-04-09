@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${baseUrl}/api/auth/email/callback`,
+      // Redirect to a CLIENT page (not API route) because Supabase implicit flow
+      // returns tokens in a #hash fragment which only JavaScript can read
+      redirectTo: `${baseUrl}/auth/google/callback`,
     },
   });
 
