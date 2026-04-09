@@ -1,9 +1,17 @@
 "use client";
 
 import type { UserProfile } from "@/lib/types";
-import { BookOpen, ExternalLink, Settings, LogOut } from "lucide-react";
+import { BookOpen, ExternalLink, Settings, LogOut, CreditCard } from "lucide-react";
 
 interface Props { profile: UserProfile; }
+
+// Extract a clean short label from potentially long text
+function shortLabel(text: string, max: number): string {
+  // Take first sentence or first N chars
+  const firstLine = text.split(/[.\n]/)[0].trim();
+  if (firstLine.length <= max) return firstLine;
+  return firstLine.slice(0, max).trim() + "...";
+}
 
 export default function ProfileSidebar({ profile }: Props) {
   const { user, context, credits } = profile;
@@ -12,6 +20,12 @@ export default function ProfileSidebar({ profile }: Props) {
   const creditsTotal = (credits?.balance ?? 0) + creditsUsed;
   const creditsPct = creditsTotal > 0 ? Math.min(100, Math.round((creditsUsed / creditsTotal) * 100)) : 0;
   const notionConnected = !!user.notion_access_token;
+
+  const handleManageSubscription = () => {
+    fetch("/api/stripe/portal", { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => { if (data.url) window.location.href = data.url; });
+  };
 
   return (
     <div style={{ fontFamily: "'DM Sans', sans-serif" }}>
@@ -26,11 +40,20 @@ export default function ProfileSidebar({ profile }: Props) {
         </div>
       </div>
 
-      {/* Context tags — truncate long text to keep sidebar clean */}
-      {(context?.role || context?.goal) && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-          {context.role && <span style={{ fontSize: 11, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "3px 10px", borderRadius: 100, fontWeight: 600, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{context.role.length > 50 ? context.role.slice(0, 50) + "..." : context.role}</span>}
-          {context.goal && <span style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "3px 10px", borderRadius: 100, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{context.goal.length > 60 ? context.goal.slice(0, 60) + "..." : context.goal}</span>}
+      {/* Context — clean short labels */}
+      {context?.role && (
+        <div style={{ marginBottom: 14 }}>
+          <p style={{ fontSize: 12, color: "#78716c", margin: "0 0 4px 0", lineHeight: 1.5 }}>
+            {shortLabel(context.role, 60)}
+          </p>
+          {context.goal && (
+            <p style={{ fontSize: 11, color: "#a8a29e", margin: 0, lineHeight: 1.5 }}>
+              {shortLabel(context.goal, 70)}
+            </p>
+          )}
+          <a href="/context" style={{ display: "inline-block", fontSize: 11, color: "#f97316", textDecoration: "none", fontWeight: 600, marginTop: 6 }}>
+            Edit profile →
+          </a>
         </div>
       )}
 
@@ -40,7 +63,7 @@ export default function ProfileSidebar({ profile }: Props) {
       <div style={{ marginBottom: 4 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
           <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#c4bdb5", margin: 0 }}>Credits</p>
-          <span style={{ fontSize: 11, color: "#a8a29e" }}>{creditsUsed} / {creditsTotal}</span>
+          <span style={{ fontSize: 11, color: "#a8a29e" }}>{credits?.balance ?? 0} remaining</span>
         </div>
         <div style={{ height: 6, background: "#f0ebe4", borderRadius: 100, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${creditsPct}%`, background: creditsPct > 80 ? "#ef4444" : "linear-gradient(90deg,#f97316,#fb923c)", borderRadius: 100, transition: "width 0.4s" }} />
@@ -52,11 +75,27 @@ export default function ProfileSidebar({ profile }: Props) {
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
-      {/* Premium status */}
-      {user.premium && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg, #fbbf24, #f97316)", color: "#fff", padding: "3px 12px", borderRadius: 100 }}>Premium</span>
+      {/* Premium section */}
+      {user.premium ? (
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg, #fbbf24, #f97316)", color: "#fff", padding: "3px 12px", borderRadius: 100 }}>Premium</span>
+          </div>
+          <p style={{ fontSize: 11, color: "#a8a29e", margin: "0 0 4px 0" }}>Unlimited analyses, AI Q&A, action items</p>
+          <button
+            onClick={handleManageSubscription}
+            style={{ fontSize: 11, color: "#78716c", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textDecoration: "underline", textUnderlineOffset: 2 }}
+          >
+            Manage subscription →
+          </button>
         </div>
+      ) : (
+        <a href="/pricing" style={{ display: "block", textDecoration: "none", marginBottom: 14 }}>
+          <div style={{ background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 12, padding: "12px 14px" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#1c1917", margin: "0 0 4px 0" }}>Upgrade to Premium</p>
+            <p style={{ fontSize: 11, color: "#a8a29e", margin: 0 }}>AI Q&A, 200 credits/mo, priority support</p>
+          </div>
+        </a>
       )}
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
@@ -74,9 +113,6 @@ export default function ProfileSidebar({ profile }: Props) {
 
       {/* Links */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <a href="/settings" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10 }}>
-          <Settings style={{ width: 14, height: 14 }} /> Edit profile
-        </a>
         <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer"
           style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10 }}>
           <ExternalLink style={{ width: 14, height: 14 }} /> Open bot

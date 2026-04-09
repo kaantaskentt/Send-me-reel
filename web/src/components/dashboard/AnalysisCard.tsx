@@ -111,16 +111,20 @@ interface Props {
   isOpen: boolean;
   onToggle: () => void;
   notionConnected: boolean;
+  isPremium: boolean;
   onDeleted: (id: string) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, onDeleted }: Props) {
+export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, isPremium, onDeleted }: Props) {
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
   const [actionItems, setActionItems] = useState<{ title: string; description: string }[] | null>(analysis.action_items || null);
   const [actionItemsLoading, setActionItemsLoading] = useState(false);
+  const [askQuestion, setAskQuestion] = useState("");
+  const [askAnswer, setAskAnswer] = useState<string | null>(null);
+  const [askLoading, setAskLoading] = useState(false);
 
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
@@ -163,7 +167,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
 
   const handleActionItems = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (actionItems) return; // Already loaded
+    if (actionItems) return;
     setActionItemsLoading(true);
     try {
       const res = await fetch(`/api/analyses/${analysis.id}/action-items`, { method: "POST" });
@@ -173,6 +177,28 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
       // Silently fail — button stays available to retry
     }
     setActionItemsLoading(false);
+  };
+
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!askQuestion.trim() || askLoading) return;
+    setAskLoading(true);
+    setAskAnswer(null);
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: askQuestion.trim() }),
+      });
+      const data = await res.json();
+      if (data.answer) {
+        setAskAnswer(data.answer);
+        setAskQuestion("");
+      }
+    } catch {
+      // Silently fail
+    }
+    setAskLoading(false);
   };
 
   // ── Shared button style ───────────────────────────────────────────────────
@@ -326,6 +352,44 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     <>⚡ Get Action Items</>
                   )}
                 </button>
+              )}
+
+              {/* ── Ask about this (Premium) ── */}
+              {isPremium ? (
+                <div style={{ background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 14, padding: 14 }}>
+                  {askAnswer && (
+                    <div style={{ marginBottom: 12, background: "#fff", border: "1px solid #e7e2d9", borderRadius: 10, padding: 12 }}>
+                      <p style={{ fontSize: 10, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>Answer</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{askAnswer}</p>
+                    </div>
+                  )}
+                  <form onSubmit={handleAsk} onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="text"
+                      value={askQuestion}
+                      onChange={(e) => setAskQuestion(e.target.value)}
+                      placeholder="Ask about this content..."
+                      style={{ flex: 1, padding: "9px 12px", fontSize: 13, border: "1px solid #e7e2d9", borderRadius: 10, outline: "none", color: "#1c1917", fontFamily: "'DM Sans', sans-serif", background: "#fff" }}
+                      onFocus={(e) => { e.target.style.borderColor = "#f97316"; }}
+                      onBlur={(e) => { e.target.style.borderColor = "#e7e2d9"; }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={askLoading || !askQuestion.trim()}
+                      style={{ padding: "9px 16px", background: askLoading ? "#fb923c" : "#f97316", color: "#fff", fontWeight: 600, fontSize: 12, borderRadius: 10, border: "none", cursor: askLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}
+                    >
+                      {askLoading ? "..." : "Ask"}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <a href="/pricing" onClick={(e) => e.stopPropagation()} style={{ display: "block", textDecoration: "none" }}>
+                  <div style={{ background: "#faf8f5", border: "1px dashed #e7e2d9", borderRadius: 14, padding: "12px 14px", textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>
+                      💬 <span style={{ color: "#f97316", fontWeight: 600 }}>Upgrade to Premium</span> to ask follow-up questions about this content
+                    </p>
+                  </div>
+                </a>
               )}
 
               {hasVideoMeta && (

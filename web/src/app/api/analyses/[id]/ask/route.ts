@@ -1,0 +1,108 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { getSupabase } from "@/lib/supabase";
+import OpenAI from "openai";
+
+const ASK_PROMPT = `You are ContextDrop, a personal content analyst. The user has analyzed a piece of content and now has a follow-up question about it.
+
+You have access to the full transcript, visual analysis, and the user's profile. Answer their question specifically and concisely based on the content. If they ask how to implement something, give concrete steps. If they ask about tools mentioned, name them with links if available. If they ask how to use Claude or Claude Code for something, give specific instructions.
+
+Rules:
+- Be specific — reference actual content from the transcript
+- Keep answers under 200 words
+- If the answer isn't in the content, say so honestly
+- If the user asks something implementable, give the first concrete step`;
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check if user is premium
+  const db = getSupabase();
+  const { data: user } = await db
+    .from("users")
+    .select("premium")
+    .eq("id", session.sub)
+    .single();
+
+  if (!user?.premium) {
+    return NextResponse.json({ error: "Premium required" }, { status: 403 });
+  }
+
+  const { question } = await request.json();
+  if (!question?.trim()) {
+    return NextResponse.json({ error: "Question is required" }, { status: 400 });
+  }
+
+  const { id } = await params;
+
+  // Fetch the analysis
+  const { data: analysis } = await db
+    .from("analyses")
+    .select("verdict, transcript, visual_summary, caption, platform")
+    .eq("id", id)
+    .eq("user_id", session.sub)
+    .single();
+
+  if (!analysis) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Get user context
+  const { data: context } = await db
+    .from("user_contexts")
+    .select("role, goal, content_preferences")
+    .eq("user_id", session.sub)
+    .single();
+
+  // Build context for the AI
+  const parts: string[] = [];
+
+  if (context) {
+    parts.push("--- USER PROFILE ---");
+    parts.push(`Role: ${context.role}`);
+    parts.push(`Focus: ${context.goal}`);
+  }
+
+  parts.push("\n--- CONTENT ---");
+  parts.push(`Platform: ${analysis.platform}`);
+  if (analysis.verdict) parts.push(`Verdict: ${analysis.verdict}`);
+  if (analysis.transcript) parts.push(`Transcript: ${analysis.transcript.slice(0, 3000)}`);
+  if (analysis.visual_summary) parts.push(`Visual: ${analysis.visual_summary.slice(0, 1000)}`);
+  if (analysis.caption) parts.push(`Caption: ${analysis.caption}`);
+
+  parts.push(`\n--- USER QUESTION ---\n${question}`);
+
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) {
+    return NextResponse.json({ error: "AI not configured" }, { status: 500 });
+  }
+
+  const openai = new OpenAI({ apiKey: openaiKey });
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 400,
+      messages: [
+        { role: "system", content: ASK_PROMPT },
+        { role: "user", content: parts.join("\n") },
+      ],
+    });
+
+    const answer = response.choices[0]?.message?.content?.trim();
+    if (!answer) {
+      return NextResponse.json({ error: "No answer generated" }, { status: 500 });
+    }
+
+    return NextResponse.json({ answer });
+  } catch (err) {
+    console.error("Ask error:", err);
+    return NextResponse.json({ error: "Failed to generate answer" }, { status: 500 });
+  }
+}
