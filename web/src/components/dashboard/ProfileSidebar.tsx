@@ -45,33 +45,18 @@ export default function ProfileSidebar({ profile }: Props) {
         <div style={{ height: 6, background: "#f0ebe4", borderRadius: 100, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${creditsPct}%`, background: creditsPct > 80 ? "#ef4444" : "linear-gradient(90deg,#f97316,#fb923c)", borderRadius: 100, transition: "width 0.4s" }} />
         </div>
+        {!user.premium && (
+          <a href="/pricing" style={{ display: "block", fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600, marginTop: 8 }}>Get more credits →</a>
+        )}
       </div>
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
-      {/* Premium badge or upgrade CTA */}
-      {user.premium ? (
+      {/* Premium status */}
+      {user.premium && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <span style={{ fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg, #fbbf24, #f97316)", color: "#fff", padding: "3px 12px", borderRadius: 100 }}>Premium</span>
         </div>
-      ) : (
-        <button
-          onClick={() => {
-            fetch("/api/stripe/checkout", { method: "POST" })
-              .then((r) => r.json())
-              .then((data) => { if (data.url) window.location.href = data.url; });
-          }}
-          style={{
-            width: "100%", padding: "10px 16px", marginBottom: 14,
-            background: "linear-gradient(135deg, #fbbf24, #f97316)",
-            color: "#fff", fontWeight: 700, fontSize: 13,
-            borderRadius: 12, border: "none", cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif",
-            transition: "all 0.15s",
-          }}
-        >
-          ⚡ Upgrade to Premium — $14.99/mo
-        </button>
       )}
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
