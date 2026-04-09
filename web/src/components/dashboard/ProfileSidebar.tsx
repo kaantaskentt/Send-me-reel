@@ -26,11 +26,11 @@ export default function ProfileSidebar({ profile }: Props) {
         </div>
       </div>
 
-      {/* Context tags */}
+      {/* Context tags — truncate long text to keep sidebar clean */}
       {(context?.role || context?.goal) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-          {context.role && <span style={{ fontSize: 11, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "3px 10px", borderRadius: 100, fontWeight: 600 }}>{context.role}</span>}
-          {context.goal && <span style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "3px 10px", borderRadius: 100 }}>{context.goal}</span>}
+          {context.role && <span style={{ fontSize: 11, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "3px 10px", borderRadius: 100, fontWeight: 600, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{context.role.length > 50 ? context.role.slice(0, 50) + "..." : context.role}</span>}
+          {context.goal && <span style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "3px 10px", borderRadius: 100, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-block" }}>{context.goal.length > 60 ? context.goal.slice(0, 60) + "..." : context.goal}</span>}
         </div>
       )}
 
