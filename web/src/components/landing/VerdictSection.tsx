@@ -45,8 +45,8 @@ export default function VerdictSection() {
 
   return (
     <section className="py-24 lg:py-32" style={{ background: "white" }}>
-      <div className="container">
-        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 clamp(1.5rem, 5vw, 4rem)" }}>
+        <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
 
           {/* Left: Chat mockup */}
           <div className="flex-shrink-0 w-full max-w-[360px] mx-auto lg:mx-0">
