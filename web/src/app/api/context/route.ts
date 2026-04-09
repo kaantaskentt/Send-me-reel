@@ -69,5 +69,11 @@ export async function PUT(request: NextRequest) {
     await supabase.from("user_contexts").insert(row);
   }
 
+  // Mark user as onboarded (idempotent — safe to call every save)
+  await supabase
+    .from("users")
+    .update({ onboarded: true })
+    .eq("id", session.sub);
+
   return NextResponse.json({ success: true });
 }
