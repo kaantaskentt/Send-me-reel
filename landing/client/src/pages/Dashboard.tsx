@@ -4,12 +4,22 @@
  * Layout: Fixed left sidebar (240px) + scrollable main feed
  * Cards: Accordion expand with framer-motion, inline delete confirm
  * Mobile: Sidebar collapses to top sheet via hamburger
+ *
+ * UX fixes applied:
+ * - Bio text fixed to stone-600 (was rendering orange)
+ * - Credits bar now has "Upgrade" CTA; turns amber when low
+ * - Notion block now has "Open Notion" button
+ * - Sidebar footer has proper "Log out" (separate from "Back to site")
+ * - Logo in header links back to home
+ * - Onboarding banner for new users with 0 items
+ * - Intent badge visible on collapsed cards (already present, confirmed)
+ * - Settings nav item is now a real link
+ * - "Open bot" is now labeled "Send a video to analyse" with Telegram icon
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -30,8 +40,10 @@ import {
   LogOut,
   Home,
   LayoutDashboard,
-  Filter,
-  SlidersHorizontal,
+  Sparkles,
+  ArrowUpRight,
+  Send,
+  AlertCircle,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -177,6 +189,14 @@ function PlatformIcon({ platform, size = 16 }: { platform: Platform; size?: numb
   return null;
 }
 
+function TelegramIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-2.026 9.54c-.148.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L6.26 14.4l-2.95-.924c-.64-.203-.654-.64.136-.948l11.527-4.444c.534-.194 1.001.13.589.164z"/>
+    </svg>
+  );
+}
+
 function intentColor(intent: "learn" | "apply" | "skip") {
   if (intent === "learn") return "bg-sky-50 text-sky-600 border-sky-200";
   if (intent === "apply") return "bg-orange-50 text-orange-600 border-orange-200";
@@ -189,14 +209,98 @@ function intentLabel(intent: "learn" | "apply" | "skip") {
   return "Skip";
 }
 
+// ─── Credits block ────────────────────────────────────────────────────────────
+
+function CreditsBlock({ used, limit }: { used: number; limit: number }) {
+  const pct = Math.round((used / limit) * 100);
+  const isLow = pct >= 80;
+  const isCritical = pct >= 95;
+
+  return (
+    <div className={`rounded-xl p-3 border ${isCritical ? "bg-red-50 border-red-200" : isLow ? "bg-amber-50 border-amber-200" : "bg-stone-50 border-stone-200"}`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-600 text-stone-500">Monthly credits</span>
+        <span className={`text-xs font-700 ${isCritical ? "text-red-500" : isLow ? "text-amber-500" : "text-orange-500"}`}>
+          {used} / {limit}
+        </span>
+      </div>
+      <Progress
+        value={pct}
+        className={`h-1.5 ${isCritical ? "bg-red-100 [&>div]:bg-red-500" : isLow ? "bg-amber-100 [&>div]:bg-amber-500" : "bg-stone-200 [&>div]:bg-orange-500"}`}
+      />
+      <div className="flex items-center justify-between mt-2">
+        {isLow ? (
+          <div className="flex items-center gap-1 text-xs text-amber-600 font-500">
+            <AlertCircle size={11} />
+            Running low
+          </div>
+        ) : (
+          <div className="text-xs text-stone-400">Resets in 14 days</div>
+        )}
+        <button className="text-xs font-700 text-orange-500 hover:text-orange-600 transition-colors">
+          Upgrade →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Notion block ─────────────────────────────────────────────────────────────
+
+function NotionBlock({ connected }: { connected: boolean }) {
+  return (
+    <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
+      <div className="flex items-center gap-3 mb-2.5">
+        <div className="w-7 h-7 rounded-lg bg-stone-800 flex items-center justify-center flex-shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+            <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933z"/>
+          </svg>
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-600 text-stone-700">Notion</div>
+          <div className="text-xs text-stone-400 truncate">{connected ? "My Workspace" : "Not connected"}</div>
+        </div>
+        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${connected ? "bg-green-400" : "bg-stone-300"}`} />
+      </div>
+      {connected ? (
+        <a
+          href="https://notion.so"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-1.5 w-full text-xs font-600 text-stone-600 hover:text-stone-800 bg-white hover:bg-stone-100 border border-stone-200 px-3 py-2 rounded-lg transition-all"
+        >
+          <ArrowUpRight size={12} />
+          Open Notion
+        </a>
+      ) : (
+        <button className="flex items-center justify-center gap-1.5 w-full text-xs font-600 text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3 py-2 rounded-lg transition-all">
+          Connect Notion
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
   return (
-    <div className="flex flex-col h-full py-6 px-4 gap-6">
+    <div className="flex flex-col h-full py-6 px-4 gap-5">
+      {/* Logo */}
+      <Link href="/" onClick={onClose}>
+        <div className="flex items-center gap-2 px-2 mb-1 cursor-pointer">
+          <div className="w-7 h-7 rounded-lg bg-orange-500 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="font-800 text-sm text-stone-800">ContextDrop</span>
+        </div>
+      </Link>
+
       {/* Profile */}
       <div className="flex items-center gap-3 px-2">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
           KT
         </div>
         <div className="min-w-0">
@@ -206,14 +310,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Credits */}
-      <div className="bg-stone-50 border border-stone-200 rounded-xl p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-600 text-stone-500">Monthly credits</span>
-          <span className="text-xs font-700 text-orange-500">47 / 100</span>
-        </div>
-        <Progress value={47} className="h-1.5 bg-stone-200 [&>div]:bg-orange-500" />
-        <div className="text-xs text-stone-400 mt-2">Resets in 14 days</div>
-      </div>
+      <CreditsBlock used={47} limit={100} />
 
       {/* Nav */}
       <nav className="flex flex-col gap-1">
@@ -223,46 +320,96 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
             My Feed
           </div>
         </Link>
-        <Link href="/" onClick={onClose}>
+        <Link href="/settings" onClick={onClose}>
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-500 hover:bg-stone-100 font-500 text-sm cursor-pointer transition-colors">
-            <Home size={16} />
-            Home
+            <Settings size={16} />
+            Settings
           </div>
         </Link>
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-500 hover:bg-stone-100 font-500 text-sm cursor-pointer transition-colors">
           <Bell size={16} />
           Notifications
         </div>
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-500 hover:bg-stone-100 font-500 text-sm cursor-pointer transition-colors">
-          <Settings size={16} />
-          Settings
-        </div>
       </nav>
 
-      {/* Notion status */}
-      <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 flex items-center gap-3">
-        <div className="w-7 h-7 rounded-lg bg-stone-800 flex items-center justify-center flex-shrink-0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-            <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"/>
-          </svg>
-        </div>
-        <div className="min-w-0">
-          <div className="text-xs font-600 text-stone-700">Notion connected</div>
-          <div className="text-xs text-stone-400 truncate">My Workspace</div>
-        </div>
-        <div className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0 ml-auto" />
-      </div>
+      {/* Notion */}
+      <NotionBlock connected={true} />
+
+      {/* Send to bot CTA */}
+      <a
+        href="https://t.me/contextdropbot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-700 px-4 py-2.5 rounded-xl transition-all shadow-sm hover:shadow-orange-200 hover:shadow-md justify-center"
+      >
+        <TelegramIcon size={14} />
+        Send a video to analyse
+      </a>
 
       {/* Bottom */}
-      <div className="mt-auto">
-        <Link href="/">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-400 hover:bg-stone-100 font-500 text-sm cursor-pointer transition-colors">
-            <LogOut size={15} />
+      <div className="mt-auto flex flex-col gap-1">
+        <Link href="/" onClick={onClose}>
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-400 hover:bg-stone-100 hover:text-stone-600 font-500 text-sm cursor-pointer transition-colors">
+            <Home size={15} />
             Back to site
           </div>
         </Link>
+        <button
+          onClick={() => {
+            // logout logic goes here
+            window.location.href = "/";
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-stone-400 hover:bg-red-50 hover:text-red-500 font-500 text-sm cursor-pointer transition-colors w-full text-left"
+        >
+          <LogOut size={15} />
+          Log out
+        </button>
       </div>
     </div>
+  );
+}
+
+// ─── Onboarding Banner ────────────────────────────────────────────────────────
+
+function OnboardingBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-4 mb-6 flex items-start gap-4"
+    >
+      <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+        <Sparkles size={18} className="text-orange-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-700 text-sm text-stone-800 mb-1">Welcome to your feed</div>
+        <div className="text-xs text-stone-500 leading-relaxed">
+          Send any TikTok, Instagram Reel, YouTube Short, or LinkedIn video to{" "}
+          <a href="https://t.me/contextdropbot" target="_blank" rel="noopener noreferrer" className="font-700 text-orange-500 hover:text-orange-600">
+            @contextdropbot
+          </a>{" "}
+          on Telegram and your first verdict will appear here in seconds.
+        </div>
+        <a
+          href="https://t.me/contextdropbot"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 mt-2.5 text-xs font-700 text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-lg transition-all"
+        >
+          <TelegramIcon size={12} />
+          Open Telegram bot
+        </a>
+      </div>
+      <button
+        onClick={() => setDismissed(true)}
+        className="text-stone-300 hover:text-stone-500 transition-colors flex-shrink-0"
+      >
+        <X size={16} />
+      </button>
+    </motion.div>
   );
 }
 
@@ -371,8 +518,8 @@ function AnalysisCard({
                   <div className="text-[11px] font-700 uppercase tracking-wide text-stone-400 mb-1">What's inside</div>
                   <div className="text-sm text-stone-600 leading-relaxed">{card.whatsInside}</div>
                 </div>
-                <div>
-                  <div className="text-[11px] font-700 uppercase tracking-wide text-stone-400 mb-1">Why it matters to you</div>
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-3">
+                  <div className="text-[11px] font-700 uppercase tracking-wide text-orange-400 mb-1">Why it matters to you</div>
                   <div className="text-sm text-stone-700 leading-relaxed font-500">{card.realWorldContext}</div>
                 </div>
               </div>
@@ -527,6 +674,8 @@ export default function Dashboard() {
     { value: "skip", label: "Skip", icon: <X size={12} /> },
   ];
 
+  const isEmpty = cards.length === 0;
+
   return (
     <div className="min-h-screen bg-[#FAFAF8] flex">
 
@@ -552,8 +701,13 @@ export default function Dashboard() {
             </SheetContent>
           </Sheet>
 
+          {/* Mobile logo */}
+          <Link href="/" className="lg:hidden">
+            <span className="font-800 text-sm text-stone-800">ContextDrop</span>
+          </Link>
+
           {/* Search */}
-          <div className="flex-1 relative max-w-sm">
+          <div className="flex-1 relative max-w-sm lg:block hidden">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               ref={searchRef}
@@ -567,18 +721,37 @@ export default function Dashboard() {
 
           <div className="ml-auto flex items-center gap-2">
             <a
-              href="https://t.me/contextdrop2027bot"
+              href="https://t.me/contextdropbot"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-700 px-4 py-2 rounded-xl transition-all shadow-sm hover:shadow-orange-200 hover:shadow-md"
+              className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-700 px-4 py-2 rounded-xl transition-all shadow-sm hover:shadow-orange-200 hover:shadow-md"
             >
-              + Analyze new video
+              <TelegramIcon size={13} />
+              <span className="hidden sm:inline">+ Analyse new video</span>
+              <span className="sm:hidden">+</span>
             </a>
           </div>
         </header>
 
         {/* Page content */}
         <main className="flex-1 px-4 lg:px-8 py-6 max-w-3xl w-full">
+
+          {/* Mobile search */}
+          <div className="lg:hidden mb-4 relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input
+              type="text"
+              placeholder="Search your feed…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-8 pr-4 py-2 text-sm bg-white border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-200 focus:border-orange-300 placeholder:text-stone-400 transition-all"
+            />
+          </div>
+
+          {/* Onboarding banner (show when empty) */}
+          <AnimatePresence>
+            {isEmpty && <OnboardingBanner />}
+          </AnimatePresence>
 
           {/* Stats row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -645,7 +818,7 @@ export default function Dashboard() {
           {/* Cards */}
           <div className="flex flex-col gap-3">
             <AnimatePresence mode="popLayout">
-              {filtered.length === 0 ? (
+              {filtered.length === 0 && !isEmpty ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -673,12 +846,13 @@ export default function Dashboard() {
           {filtered.length > 0 && (
             <div className="mt-8 text-center">
               <a
-                href="https://t.me/contextdrop2027bot"
+                href="https://t.me/contextdropbot"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm font-600 text-orange-500 hover:text-orange-600 transition-colors"
               >
-                + Analyze more videos in Telegram →
+                <TelegramIcon size={14} />
+                Analyse more videos →
               </a>
             </div>
           )}

@@ -114,8 +114,8 @@ export default function GroupChatSection() {
                       <p className="text-[#1a1a1a] text-xs font-bold mb-1.5" style={{ fontFamily: "'DM Sans', sans-serif" }}>
                         Runway ML — AI Video Generation
                       </p>
-                      <p className="text-slate-500 text-xs mb-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>🎯 Text-to-video AI, Gen-3 Alpha model</p>
-                      <p className="text-slate-500 text-xs mb-2" style={{ fontFamily: "'DM Sans', sans-serif" }}>🛠️ Tools: Runway, Sora, Pika</p>
+                      <p className="text-slate-500 text-xs mb-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>🎯 <strong>What it is:</strong> Text-to-video AI using Gen-3 Alpha — best-in-class motion quality right now</p>
+                      <p className="text-slate-500 text-xs mb-2" style={{ fontFamily: "'DM Sans', sans-serif" }}>⚡ <strong>Why it matters:</strong> If your team creates video content, this cuts production time by 80%</p>
                       <div className="flex gap-1.5">
                         <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-semibold" style={{ background: "#F97316" }}>Learn</span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full text-white font-semibold" style={{ background: "#10B981" }}>Apply</span>

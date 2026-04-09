@@ -352,6 +352,16 @@ function UserBubble({ text }: { text: string }) {
 
 // ─── Bot text bubble ──────────────────────────────────────────────────────────
 
+function parseBold(text: string) {
+  // Render **bold** markdown as <strong>
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={i} className="font-700 text-stone-800">{part.slice(2, -2)}</strong>
+      : <span key={i}>{part}</span>
+  );
+}
+
 function BotBubble({ text }: { text: string }) {
   return (
     <motion.div
@@ -363,7 +373,7 @@ function BotBubble({ text }: { text: string }) {
         <div className="w-2 h-2 rounded-full bg-orange-500" />
       </div>
       <div className="bg-white border border-stone-200 rounded-2xl rounded-bl-sm px-4 py-2.5 shadow-sm">
-        <p className="text-sm text-stone-700">{text}</p>
+        <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-line">{parseBold(text)}</p>
       </div>
     </motion.div>
   );
@@ -375,7 +385,7 @@ const INITIAL_MESSAGES: Message[] = [
   {
     id: "welcome",
     role: "bot",
-    text: "Hey 👋 Paste any Instagram, TikTok, X, or LinkedIn video link and I'll break it down for you.",
+    text: "Hey 👋 **I don't do chat — I do verdicts.**\n\nDrop any TikTok, Instagram Reel, YouTube Short, or LinkedIn video here.\n\nI'll tell you **what it is**, **what's inside**, and **whether it's worth your time** — in 60 seconds.",
     timestamp: new Date(),
   },
 ];
@@ -413,7 +423,7 @@ export default function Chat() {
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: "bot",
-        text: "That doesn't look like a valid Instagram, TikTok, X, or LinkedIn link. Try pasting the full URL.",
+        text: "🤔 That doesn't look like a link I can analyse.\n\nTry sending a **TikTok**, **Instagram Reel**, **YouTube Short**, **LinkedIn post**, or **X thread**.",
         timestamp: new Date(),
       }]);
       setInput("");

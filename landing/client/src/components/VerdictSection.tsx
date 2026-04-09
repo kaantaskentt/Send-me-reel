@@ -149,13 +149,13 @@ export default function VerdictSection() {
                     </p>
                     <div className="space-y-1.5 mb-3">
                       <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🎯 <strong>What it is:</strong> Open-source framework for autonomous multi-agent systems
+                        🎯 <strong>What it is:</strong> Open-source framework for building autonomous multi-agent AI systems
                       </p>
                       <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🛠️ <strong>Tools:</strong> n8n, Claude, LangChain
+                        🛠️ <strong>Stack:</strong> n8n · Claude · LangChain
                       </p>
                       <p className="text-slate-600 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                        🔥 <strong>Why it matters:</strong> Enables complex workflows & automation
+                        ⚡ <strong>Why it matters to you:</strong> If you're building AI workflows, this is the missing orchestration layer
                       </p>
                     </div>
                     <div
