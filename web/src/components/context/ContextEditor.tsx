@@ -210,7 +210,7 @@ export default function ContextEditor() {
           </div>
         </div>
 
-        {/* Save button */}
+        {/* Save + Skip buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <button
             onClick={handleSave}
@@ -230,6 +230,24 @@ export default function ContextEditor() {
           >
             {saving ? "Saving..." : context ? "Save Profile" : "Save & Continue"}
           </button>
+          {!context && (
+            <button
+              onClick={() => router.push("/dashboard")}
+              style={{
+                padding: "13px 24px",
+                background: "none",
+                color: "#a8a29e",
+                fontWeight: 600,
+                fontSize: 14,
+                borderRadius: 100,
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              Skip for now
+            </button>
+          )}
           {saved && (
             <span style={{ fontSize: 14, color: "#16a34a", fontWeight: 600 }}>
               {context ? "Profile saved!" : "Profile saved! Taking you to your dashboard..."}
