@@ -140,84 +140,71 @@ export default function HeroSection() {
           Every video you save and forget is a tool, a framework, or an idea
           you never used. ContextDrop turns your saved content into a feed of
           verdicts — what it contains, what to do with it, and why it matters{" "}
-          <em>to you</em>. In 60 seconds.
+          <em>to you</em>. In 30 seconds.
         </p>
 
         {/* CTAs */}
         <div
           style={{
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "0.875rem",
-            flexWrap: "wrap",
+            gap: "0.75rem",
             marginBottom: "1.5rem",
             ...fade(0.3),
           }}
         >
+          {/* Primary CTA */}
           <CTAButton />
-          <a
-            href="/dashboard"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "rgba(255,255,255,0.85)",
-              backdropFilter: "blur(8px)",
-              color: "#44403c",
-              fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-              fontWeight: 600,
-              fontSize: 14,
-              padding: "13px 22px",
-              borderRadius: 100,
-              textDecoration: "none",
-              border: "1.5px solid #e7e2d9",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
-              el.style.background = "#fff";
-              el.style.borderColor = "#a8a29e";
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
-              el.style.background = "rgba(255,255,255,0.85)";
-              el.style.borderColor = "#e7e2d9";
-            }}
-          >
-            Dashboard →
-          </a>
-          <a
-            href="#how-it-works"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              background: "rgba(255,255,255,0.85)",
-              backdropFilter: "blur(8px)",
-              color: "#44403c",
-              fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-              fontWeight: 600,
-              fontSize: 14,
-              padding: "13px 22px",
-              borderRadius: 100,
-              textDecoration: "none",
-              border: "1.5px solid #e7e2d9",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
-              el.style.background = "#fff";
-              el.style.borderColor = "#a8a29e";
-            }}
-            onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
-              el.style.background = "rgba(255,255,255,0.85)";
-              el.style.borderColor = "#e7e2d9";
-            }}
-          >
-            See how it works ↓
-          </a>
+
+          {/* Secondary row: Dashboard link + scroll anchor */}
+          <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
+            <a
+              href="/dashboard"
+              style={{
+                color: "#78716c",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 600,
+                fontSize: 13,
+                textDecoration: "none",
+                borderBottom: "1px solid #d6d3d1",
+                paddingBottom: 1,
+                transition: "color 0.15s, border-color 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLAnchorElement;
+                el.style.color = "#44403c";
+                el.style.borderBottomColor = "#78716c";
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLAnchorElement;
+                el.style.color = "#78716c";
+                el.style.borderBottomColor = "#d6d3d1";
+              }}
+            >
+              Go to dashboard →
+            </a>
+            <span style={{ color: "#d6d3d1", fontSize: 12 }}>·</span>
+            <a
+              href="#how-it-works"
+              style={{
+                color: "#a8a29e",
+                fontFamily: "'DM Sans', sans-serif",
+                fontWeight: 500,
+                fontSize: 13,
+                textDecoration: "none",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.color = "#78716c";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLAnchorElement).style.color = "#a8a29e";
+              }}
+            >
+              See how it works ↓
+            </a>
+          </div>
         </div>
 
         {/* Social proof */}

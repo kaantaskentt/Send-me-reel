@@ -219,7 +219,15 @@ function CreditsBlock({ used, limit }: { used: number; limit: number }) {
   return (
     <div className={`rounded-xl p-3 border ${isCritical ? "bg-red-50 border-red-200" : isLow ? "bg-amber-50 border-amber-200" : "bg-stone-50 border-stone-200"}`}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-600 text-stone-500">Monthly credits</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-600 text-stone-500">Monthly credits</span>
+          <span
+            title="1 credit = 1 analysis"
+            className="w-3.5 h-3.5 rounded-full bg-stone-200 text-stone-400 text-[9px] font-700 flex items-center justify-center cursor-help leading-none select-none"
+          >
+            ?
+          </span>
+        </div>
         <span className={`text-xs font-700 ${isCritical ? "text-red-500" : isLow ? "text-amber-500" : "text-orange-500"}`}>
           {used} / {limit}
         </span>
@@ -235,7 +243,7 @@ function CreditsBlock({ used, limit }: { used: number; limit: number }) {
             Running low
           </div>
         ) : (
-          <div className="text-xs text-stone-400">Resets in 14 days</div>
+          <div className="text-xs text-stone-400">1 credit = 1 analysis · Resets in 14 days</div>
         )}
         <button className="text-xs font-700 text-orange-500 hover:text-orange-600 transition-colors">
           Upgrade →
@@ -370,46 +378,70 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   );
 }
 
-// ─── Onboarding Banner ────────────────────────────────────────────────────────
+// ─── Empty State ─────────────────────────────────────────────────────────────
 
-function OnboardingBanner() {
-  const [dismissed, setDismissed] = useState(false);
-  if (dismissed) return null;
+/** Greyed-out ghost card shown in the empty state to hint at what verdicts look like */
+function GhostCard() {
+  return (
+    <div
+      className="bg-white border border-stone-150 rounded-2xl overflow-hidden opacity-40 pointer-events-none select-none"
+      style={{ borderLeft: "3px solid #f97316" }}
+    >
+      <div className="px-5 py-4 flex items-start gap-3">
+        {/* Platform icon placeholder */}
+        <div className="w-5 h-5 rounded bg-stone-200 flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-4 w-12 rounded-full bg-orange-200" />
+            <div className="h-3 w-10 rounded bg-stone-200" />
+          </div>
+          <div className="h-4 w-3/4 rounded bg-stone-200 mb-1.5" />
+          <div className="h-3 w-full rounded bg-stone-100 mb-1" />
+          <div className="h-3 w-2/3 rounded bg-stone-100" />
+        </div>
+        <div className="w-4 h-4 rounded bg-stone-200 flex-shrink-0 mt-0.5" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyFeedState() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-2xl p-4 mb-6 flex items-start gap-4"
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center text-center py-10"
     >
-      <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-        <Sparkles size={18} className="text-orange-500" />
+      {/* Icon */}
+      <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center mb-5">
+        <Sparkles size={24} className="text-orange-400" />
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="font-700 text-sm text-stone-800 mb-1">Welcome to your feed</div>
-        <div className="text-xs text-stone-500 leading-relaxed">
-          Send any TikTok, Instagram Reel, YouTube Short, or LinkedIn video to{" "}
-          <a href="https://t.me/contextdropbot" target="_blank" rel="noopener noreferrer" className="font-700 text-orange-500 hover:text-orange-600">
-            @contextdropbot
-          </a>{" "}
-          on Telegram and your first verdict will appear here in seconds.
-        </div>
-        <a
-          href="https://t.me/contextdropbot"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 mt-2.5 text-xs font-700 text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-lg transition-all"
-        >
-          <TelegramIcon size={12} />
-          Open Telegram bot
-        </a>
-      </div>
-      <button
-        onClick={() => setDismissed(true)}
-        className="text-stone-300 hover:text-stone-500 transition-colors flex-shrink-0"
+
+      {/* Headline */}
+      <h3 className="font-700 text-lg text-stone-800 mb-2">Your feed is empty.</h3>
+      <p className="text-sm text-stone-500 max-w-xs leading-relaxed mb-6">
+        Send your first link and your verdict will appear here in{" "}
+        <strong className="text-stone-700">30 seconds</strong>.
+      </p>
+
+      {/* CTA */}
+      <a
+        href="https://t.me/contextdrop2027bot"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-700 px-5 py-3 rounded-xl transition-all shadow-sm hover:shadow-orange-200 hover:shadow-md mb-2"
       >
-        <X size={16} />
-      </button>
+        <TelegramIcon size={15} />
+        Send a link on Telegram
+      </a>
+      <p className="text-xs text-stone-400">Telegram · WhatsApp</p>
+
+      {/* Ghost card */}
+      <div className="w-full mt-8">
+        <p className="text-[10px] text-stone-300 uppercase tracking-widest font-600 mb-3">Your first verdict will look like this</p>
+        <GhostCard />
+      </div>
     </motion.div>
   );
 }
@@ -492,6 +524,18 @@ function AnalysisCard({
           </div>
           <div className="font-600 text-sm text-stone-800 leading-snug pr-4">{card.title}</div>
           <div className="text-xs text-stone-400 mt-1 line-clamp-1">{card.summary}</div>
+          {/* Collapsed hints — only visible when card is closed */}
+          {!isOpen && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] text-stone-300 font-500 flex items-center gap-1">
+                <span>⚡</span> Deep Dive
+              </span>
+              <span className="text-stone-200 text-[10px]">·</span>
+              <span className="text-[10px] text-stone-300 font-500 flex items-center gap-1">
+                <span>💬</span> Ask
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex-shrink-0 text-stone-300 group-hover:text-stone-500 transition-colors mt-0.5">
           {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -750,9 +794,9 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Onboarding banner (show when empty) */}
+          {/* Empty feed activation state */}
           <AnimatePresence>
-            {isEmpty && <OnboardingBanner />}
+            {isEmpty && <EmptyFeedState />}
           </AnimatePresence>
 
           {/* Stats row */}
