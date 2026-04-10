@@ -254,6 +254,13 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
             </p>
           )}
           {authorUsername && <p style={{ fontSize: 11, color: "#c4bdb5", marginTop: 4 }}>@{authorUsername}</p>}
+          {!isOpen && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+              <span style={{ fontSize: 10, color: "#d6d3d1", display: "flex", alignItems: "center", gap: 3 }}>⚡ Deep Dive</span>
+              <span style={{ fontSize: 10, color: "#e7e2d9" }}>·</span>
+              <span style={{ fontSize: 10, color: "#d6d3d1", display: "flex", alignItems: "center", gap: 3 }}>💬 Ask</span>
+            </div>
+          )}
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}

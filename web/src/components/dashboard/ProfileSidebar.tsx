@@ -62,14 +62,15 @@ export default function ProfileSidebar({ profile }: Props) {
       {/* Credits */}
       <div style={{ marginBottom: 4 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#c4bdb5", margin: 0 }}>Credits</p>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#c4bdb5", margin: 0 }} title="1 credit = 1 analysis">Credits</p>
           <span style={{ fontSize: 11, color: "#a8a29e" }}>{credits?.balance ?? 0} remaining</span>
         </div>
         <div style={{ height: 6, background: "#f0ebe4", borderRadius: 100, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${creditsPct}%`, background: creditsPct > 80 ? "#ef4444" : "linear-gradient(90deg,#f97316,#fb923c)", borderRadius: 100, transition: "width 0.4s" }} />
         </div>
+        <p style={{ fontSize: 11, color: "#c4bdb5", margin: "6px 0 0 0" }}>1 credit = 1 analysis</p>
         {!user.premium && (
-          <a href="/pricing" style={{ display: "block", fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600, marginTop: 8 }}>Get more credits →</a>
+          <a href="/pricing" style={{ display: "block", fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600, marginTop: 6 }}>Get more credits →</a>
         )}
       </div>
 
