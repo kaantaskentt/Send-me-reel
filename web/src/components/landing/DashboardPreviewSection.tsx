@@ -1,177 +1,379 @@
 "use client";
 
-/*
- * DashboardPreviewSection — ContextDrop (ported from Manus landing-v2)
- * Browser mockup of the dashboard with feature callouts below.
+/**
+ * DashboardPreviewSection — Animated product demo (from Manus)
+ * Telegram LEFT | Dashboard RIGHT with blur-focus animation
  */
 
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import { IconSignal, IconBrain, IconLightning, IconCheck, IconDashboard, IconEye } from "./Icons";
 
-const FEATURES = [
-  { emoji: "📥", title: "Your Feed", desc: "Every link you've sent, summarised and organised. Filter by platform, search by keyword, expand any card for the full breakdown." },
-  { emoji: "✅", title: "Tasks", desc: "Add any insight to your task list with one tap. Each task stays linked to the content it came from so you never lose context." },
-  { emoji: "💬", title: "Ask AI", desc: "Ask follow-up questions about any piece of content. Get a step-by-step plan, alternatives, or a deeper breakdown — all in context." },
-  { emoji: "🔗", title: "Connectors", desc: "Sync to Notion, Todoist, and Google Calendar (coming soon). Your summaries and tasks flow into the tools you already use." },
-];
+const MR_CONTEXT_LOGO =
+  "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/mr-context-logo-PGbrznR2gppkFjPKsZGnX6.webp";
 
-const MOCK_CARDS = [
-  { platform: "youtube", title: "Claude Code: sub-agents that actually ship", summary: "Orchestrator runs the others. CLAUDE.md at 14:30 is the only part worth rewinding.", expanded: true, color: "#dc2626", time: "4m ago" },
-  { platform: "x", title: "The Cursor AI workflow that 10x'd my output", summary: "Tab completion + inline chat = 3x faster reviews. Try it on the next PR.", expanded: false, color: "#000", time: "1h ago" },
-  { platform: "linkedin", title: "Why most SaaS pricing pages fail", summary: "Mid. The one stat about anchoring is worth 30 seconds. Skip the rest.", expanded: false, color: "#0077b5", time: "3h ago" },
-];
+function BotButtons() {
+  return (
+    <>
+      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: "#2b3a4a", color: "#8ba4b8", fontSize: 9 }}>
+        <IconEye size={8} color="#8ba4b8" /> View
+      </div>
+      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: "#2b3a4a", color: "#8ba4b8", fontSize: 9 }}>
+        <IconDashboard size={8} color="#8ba4b8" /> Dashboard
+      </div>
+    </>
+  );
+}
 
+function InstagramIcon() {
+  return (
+    <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0"
+      style={{ background: "linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" }}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+    </div>
+  );
+}
+
+function XIcon() {
+  return (
+    <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#000" }}>
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="white">
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+    </div>
+  );
+}
+
+// — Telegram Panel —
+function TelegramPanel({ step }: { step: number }) {
+  return (
+    <div className="flex flex-col h-full" style={{ background: "#17212b" }}>
+      <div className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ background: "#232e3c", borderBottom: "1px solid #1a2533" }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0" style={{ border: "2px solid #F97316" }}>
+            <img src={MR_CONTEXT_LOGO} alt="Mr Context" className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <div className="font-semibold" style={{ fontSize: 13, color: "white" }}>Mr Context</div>
+            <div style={{ fontSize: 10, color: "#6c8ea4" }}>bot</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col justify-end gap-2 px-3 py-3 overflow-hidden">
+        {/* Older card */}
+        <div className="flex items-end gap-2">
+          <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0">
+            <img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" />
+          </div>
+          <div className="rounded-2xl rounded-bl-sm px-3 py-2.5" style={{ background: "#232e3c", maxWidth: "88%" }}>
+            <div style={{ fontSize: 10.5, color: "#F97316", fontWeight: 700, marginBottom: 3 }}>
+              <span className="inline-flex items-center gap-1"><IconSignal size={11} color="#F97316" /> Claude &quot;7 Days of Work in 1 Hour&quot;</span>
+            </div>
+            <div style={{ fontSize: 10, color: "#8ba4b8", lineHeight: 1.5 }}>
+              <span className="inline-flex items-center gap-1"><IconBrain size={10} color="#8ba4b8" /> Generic productivity hype. Zero specifics.</span>
+            </div>
+            <div style={{ fontSize: 10, color: "#8ba4b8", lineHeight: 1.5 }}>
+              <span className="inline-flex items-center gap-1"><IconLightning size={10} color="#8ba4b8" /> Skip it.</span>
+            </div>
+            <div style={{ fontSize: 9, color: "#4a6070", marginTop: 4 }}>9:28 PM</div>
+            <div className="flex gap-1.5 mt-2"><BotButtons /></div>
+          </div>
+        </div>
+
+        {/* User sends link */}
+        <AnimatePresence>
+          {step >= 1 && (
+            <motion.div key="user-link" initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.25 }} className="flex justify-end">
+              <div className="px-3 py-2 rounded-2xl rounded-br-sm" style={{ background: "#2b5278", maxWidth: "82%" }}>
+                <div style={{ fontSize: 10, color: "#a8c8e8", wordBreak: "break-all", lineHeight: 1.4 }}>instagram.com/reel/C8x4mKjL...</div>
+                <div style={{ fontSize: 9, color: "#4a6070", textAlign: "right", marginTop: 2 }}>10:51 PM ✓✓</div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* On it */}
+        <AnimatePresence>
+          {step >= 2 && (
+            <motion.div key="on-it" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex justify-center">
+              <div style={{ fontSize: 9.5, color: "#4a6070" }}>On it — about 30 seconds. <span style={{ color: "#6c8ea4" }}>10:51 PM</span></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Typing */}
+        <AnimatePresence>
+          {step === 2 && (
+            <motion.div key="typing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex items-end gap-2">
+              <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div>
+              <div className="px-3 py-2.5 rounded-2xl rounded-bl-sm" style={{ background: "#232e3c" }}>
+                <div className="flex gap-1 items-center" style={{ height: 14 }}>
+                  {[0, 0.18, 0.36].map(d => (
+                    <motion.div key={d} className="w-1.5 h-1.5 rounded-full" style={{ background: "#6c8ea4" }}
+                      animate={{ y: [0, -4, 0] }} transition={{ duration: 0.55, repeat: Infinity, delay: d }} />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Bot card */}
+        <AnimatePresence>
+          {step >= 3 && (
+            <motion.div key="bot-card" initial={{ opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="flex items-end gap-2">
+              <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div>
+              <div className="rounded-2xl rounded-bl-sm px-3 py-2.5" style={{ background: "#232e3c", maxWidth: "88%" }}>
+                <div style={{ fontSize: 10.5, color: "#F97316", fontWeight: 700, marginBottom: 4 }}>
+                  <span className="inline-flex items-center gap-1"><IconSignal size={11} color="#F97316" /> Claude Code: sub-agents that ship</span>
+                </div>
+                {step >= 4 ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+                    <div style={{ fontSize: 10, color: "#8ba4b8", lineHeight: 1.55, marginBottom: 2 }}>
+                      <span className="inline-flex items-center gap-1"><IconBrain size={10} color="#8ba4b8" /> Solid. CLAUDE.md at 14:30 is the only part worth rewinding.</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "#e8f0f7", lineHeight: 1.55 }}>
+                      <span className="inline-flex items-center gap-1"><IconLightning size={10} color="#e8f0f7" /> This is your stack — try it on the next build.</span>
+                    </div>
+                    <div style={{ fontSize: 9, color: "#4a6070", marginTop: 4 }}>10:51 PM</div>
+                    <div className="flex gap-1.5 mt-2"><BotButtons /></div>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {[78, 92, 55].map((w, i) => (
+                      <motion.div key={i} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.12 }}
+                        className="h-2 rounded" style={{ background: "#2b3a4a", width: `${w}%` }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Task confirmed */}
+        <AnimatePresence>
+          {step >= 6 && (
+            <motion.div key="confirm" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="flex items-end gap-2">
+              <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div>
+              <div className="px-3 py-2 rounded-2xl rounded-bl-sm" style={{ background: "#232e3c", fontSize: 10.5, color: "#e8f0f7" }}>
+                <span className="inline-flex items-center gap-1.5"><IconCheck size={11} color="#4ade80" /> Added to your tasks.</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Input bar */}
+      <div className="px-3 pb-3 pt-1 flex-shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: "#232e3c" }}>
+          <span className="flex-1 text-xs truncate" style={{ color: "#3d5263" }}>Write a message...</span>
+          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: step === 1 ? "#F97316" : "#2b3a4a" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill={step === 1 ? "white" : "#4a6070"}><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// — Dashboard Feed —
+function DashboardFeed({ step, taskCount, newCardVisible, newCardTaskAdded }: { step: number; taskCount: number; newCardVisible: boolean; newCardTaskAdded: boolean }) {
+  return (
+    <div className="flex h-full" style={{ background: "white" }}>
+      {/* Sidebar — desktop only */}
+      <div className="hidden lg:flex flex-col flex-shrink-0" style={{ width: 160, background: "#faf8f5", borderRight: "1px solid #f0ece6", padding: "12px 0" }}>
+        <div className="flex items-center gap-2 px-3 pb-3 mb-2" style={{ borderBottom: "1px solid #f0ece6" }}>
+          <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#F97316" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </div>
+          <span className="font-bold text-xs" style={{ color: "#1a1a1a" }}>ContextDrop</span>
+        </div>
+        <div className="flex flex-col gap-0.5 px-2">
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: "#fff7ed" }}>
+            <IconDashboard size={13} color="#F97316" />
+            <span className="text-xs font-semibold" style={{ color: "#F97316" }}>My Feed</span>
+          </div>
+          <div className="flex items-center justify-between px-2 py-1.5 rounded-lg">
+            <div className="flex items-center gap-2">
+              <IconCheck size={13} color="#6b7280" />
+              <span className="text-xs" style={{ color: "#374151" }}>Tasks</span>
+            </div>
+            <motion.span key={taskCount} initial={{ scale: 1.6, color: "#F97316" }} animate={{ scale: 1, color: "#F97316" }} transition={{ duration: 0.3, type: "spring", stiffness: 300 }}
+              className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#fff7ed", minWidth: 18, textAlign: "center" }}>{taskCount}</motion.span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
+            <IconBrain size={13} color="#6b7280" />
+            <span className="text-xs" style={{ color: "#374151" }}>Ask AI</span>
+            <span className="ml-auto text-xs px-1.5 py-0.5 rounded-full text-white" style={{ background: "#F97316", fontSize: 8 }}>New</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Feed */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <div className="flex items-center gap-1.5 px-3 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #f0ece6" }}>
+          {["All", "Instagram", "TikTok", "X"].map(tab => (
+            <button key={tab} className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+              style={tab === "All" ? { background: "#F97316", color: "white" } : { background: "#f5f5f5", color: "#6b7280" }}>{tab}</button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
+          {/* New animated card */}
+          <AnimatePresence>
+            {newCardVisible && (
+              <motion.div key="new-card" initial={{ opacity: 0, y: -14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="rounded-xl p-3" style={{ background: "white", border: "1.5px solid #fed7aa", boxShadow: "0 2px 14px rgba(249,115,22,0.1)" }}>
+                <div className="flex items-center gap-2 mb-2"><InstagramIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>INSTAGRAM</span></div>
+                {step >= 4 ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}>
+                    <div className="font-bold text-sm mb-1 leading-snug" style={{ color: "#1a1a1a" }}>Claude Code: sub-agents that ship</div>
+                    <div className="text-xs mb-2 leading-relaxed" style={{ color: "#6b7280", fontStyle: "italic" }}>CLAUDE.md at 14:30 is the only part worth rewinding. Skip the intro.</div>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {["claude code", "ai dev"].map(t => <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#f5f5f5", color: "#6b7280" }}>{t}</span>)}
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-1.5 mb-2">
+                    {[70, 88, 52].map((w, i) => (
+                      <motion.div key={i} animate={{ opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15 }}
+                        className="h-2.5 rounded" style={{ background: "#f0ece6", width: `${w}%` }} />
+                    ))}
+                  </div>
+                )}
+                {step >= 4 && (
+                  <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.3 }} className="flex items-center gap-2">
+                    <motion.button animate={step === 5 ? { scale: [1, 1.06, 1], boxShadow: ["0 0 0 0 rgba(249,115,22,0)", "0 0 0 5px rgba(249,115,22,0.22)", "0 0 0 0 rgba(249,115,22,0)"] } : {}} transition={{ duration: 0.5 }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                      style={newCardTaskAdded ? { background: "#dcfce7", color: "#16a34a", border: "1px solid #bbf7d0" } : { background: "#fff7ed", color: "#F97316", border: "1px solid #fed7aa" }}>
+                      <span className="inline-flex items-center gap-1"><IconCheck size={12} color={newCardTaskAdded ? "#16a34a" : "#F97316"} />{newCardTaskAdded ? "Added to tasks" : "Add to tasks"}</span>
+                    </motion.button>
+                    <button className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a" }}>
+                      <span className="inline-flex items-center gap-1"><IconLightning size={12} color="#d97706" /> Deep Dive</span>
+                    </button>
+                  </motion.div>
+                )}
+                <AnimatePresence>
+                  {newCardTaskAdded && (
+                    <motion.div initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: "auto", marginTop: 8 }} transition={{ duration: 0.3 }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg overflow-hidden" style={{ background: "#fff7ed", borderLeft: "3px solid #F97316" }}>
+                      <input type="checkbox" className="w-3 h-3 flex-shrink-0" style={{ accentColor: "#F97316" }} readOnly />
+                      <span className="text-xs" style={{ color: "#374151" }}>Set up CLAUDE.md in every new project</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Static cards */}
+          <div className="rounded-xl p-3" style={{ background: "white", border: "1px solid #f0ece6" }}>
+            <div className="flex items-center gap-2 mb-1.5"><XIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>X / TWITTER</span></div>
+            <div className="font-bold text-xs mb-1 leading-snug" style={{ color: "#1a1a1a" }}>The Cursor AI workflow that 10x&apos;d my output</div>
+            <div className="text-xs leading-relaxed" style={{ color: "#6b7280", fontStyle: "italic" }}>Tab completion + inline chat = 3x faster reviews.</div>
+          </div>
+          <div className="rounded-xl p-3" style={{ background: "white", border: "1px solid #f0ece6" }}>
+            <div className="flex items-center gap-2 mb-1.5"><InstagramIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>INSTAGRAM</span></div>
+            <div className="font-bold text-xs mb-1 leading-snug" style={{ color: "#1a1a1a" }}>Why most SaaS pricing pages fail</div>
+            <div className="text-xs leading-relaxed" style={{ color: "#6b7280", fontStyle: "italic" }}>The anchoring stat is worth 30 seconds. Skip the rest.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// — Main Section —
 export default function DashboardPreviewSection() {
-  const headlineRef = useScrollAnimation(0.2) as React.RefObject<HTMLDivElement>;
-  const mockupRef = useScrollAnimation(0.1) as React.RefObject<HTMLDivElement>;
-  const featuresRef = useScrollAnimation(0.15) as React.RefObject<HTMLDivElement>;
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: false, margin: "-80px" });
+
+  const [step, setStep] = useState(0);
+  const [taskCount, setTaskCount] = useState(4);
+  const [newCardVisible, setNewCardVisible] = useState(false);
+  const [newCardTaskAdded, setNewCardTaskAdded] = useState(false);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const clear = () => { timers.current.forEach(clearTimeout); timers.current = []; };
+  const after = (fn: () => void, ms: number) => { const id = setTimeout(fn, ms); timers.current.push(id); };
+
+  const runSequence = () => {
+    clear();
+    setStep(0); setTaskCount(4); setNewCardVisible(false); setNewCardTaskAdded(false);
+    after(() => setStep(1), 800);
+    after(() => setStep(2), 1700);
+    after(() => { setStep(3); setNewCardVisible(true); }, 3000);
+    after(() => setStep(4), 4000);
+    after(() => setStep(5), 5200);
+    after(() => { setStep(6); setNewCardTaskAdded(true); setTaskCount(5); }, 6000);
+    after(runSequence, 10000);
+  };
+
+  useEffect(() => {
+    if (isInView) {
+      const id = setTimeout(runSequence, 400);
+      timers.current.push(id);
+    } else {
+      clear();
+      setStep(0); setTaskCount(4); setNewCardVisible(false); setNewCardTaskAdded(false);
+    }
+    return clear;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInView]);
+
+  const dashboardBlurred = step < 3;
 
   return (
-    <section id="preview" style={{ background: "#faf8f5", borderTop: "1px solid #e7e2d9", borderBottom: "1px solid #e7e2d9" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "clamp(4rem, 8vh, 6rem) clamp(1.5rem, 5vw, 4rem)" }}>
-
-        {/* Headline */}
-        <div ref={headlineRef} className="fade-up" style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#f97316", marginBottom: "1rem", fontFamily: "'DM Sans', sans-serif" }}>
-            The Dashboard
-          </span>
-          <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, fontSize: "clamp(2rem, 3.5vw, 3rem)", letterSpacing: "-0.04em", color: "#1c1917", lineHeight: 1.1, marginBottom: "1rem" }}>
-            Your content library.<br /><span style={{ color: "#f97316" }}>Finally actionable.</span>
+    <section ref={sectionRef} id="preview" className="py-20 px-4" style={{ background: "#faf8f5", borderTop: "1px solid #e7e2d9", borderBottom: "1px solid #e7e2d9" }}>
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="inline-block text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full" style={{ color: "#F97316", background: "#fff7ed", border: "1px solid #fed7aa" }}>The Dashboard</div>
+          <h2 className="font-black mb-4" style={{ fontSize: "clamp(2rem, 3.5vw, 3rem)", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1.1 }}>
+            Your content library.<br /><span style={{ color: "#F97316" }}>Finally actionable.</span>
           </h2>
-          <p style={{ fontSize: 15, color: "#78716c", maxWidth: 460, margin: "0 auto", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>
+          <p className="text-base max-w-md mx-auto" style={{ color: "#78716c", lineHeight: 1.7 }}>
             Everything you&apos;ve analysed lives in one clean dashboard — searchable, filterable, and connected to your tasks and tools.
           </p>
         </div>
 
         {/* Browser mockup */}
-        <div ref={mockupRef} className="fade-up" style={{ marginBottom: "3rem" }}>
-          <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 32px 80px rgba(0,0,0,0.14), 0 8px 24px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.06)", border: "1px solid #e7e2d9" }}>
-
-            {/* Browser chrome */}
-            <div style={{ background: "#f5f3f0", borderBottom: "1px solid #e7e2d9", padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ display: "flex", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fc5c57" }} />
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#fdbc2c" }} />
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#33c748" }} />
-              </div>
-              <div style={{ flex: 1, background: "white", borderRadius: 6, padding: "4px 12px", fontSize: 11, color: "#a8a29e", fontFamily: "'JetBrains Mono', monospace", border: "1px solid #e7e2d9", maxWidth: 280, margin: "0 auto" }}>
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #e5e0d8", boxShadow: "0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)" }}>
+          <div className="flex items-center gap-2 px-4 py-3" style={{ background: "#f5f0eb", borderBottom: "1px solid #e5e0d8" }}>
+            <div className="flex gap-1.5">
+              <div className="w-3 h-3 rounded-full" style={{ background: "#ff5f57" }} />
+              <div className="w-3 h-3 rounded-full" style={{ background: "#febc2e" }} />
+              <div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
+            </div>
+            <div className="flex-1 mx-4">
+              <div className="mx-auto max-w-xs px-3 py-1 rounded-full text-xs text-center" style={{ background: "white", color: "#9ca3af", border: "1px solid #e5e0d8" }}>
                 contextdrop.com/dashboard
               </div>
             </div>
+          </div>
 
-            {/* Dashboard content */}
-            <div style={{ background: "#faf8f5", display: "flex", minHeight: 420 }}>
+          <div className="flex" style={{ height: "clamp(380px, 56vh, 500px)" }}>
+            {/* Telegram — hidden on mobile */}
+            <motion.div className="hidden md:block flex-shrink-0" style={{ width: 240, borderRight: "1px solid #1a2533", position: "relative", zIndex: dashboardBlurred ? 2 : 1 }}
+              animate={{ boxShadow: dashboardBlurred ? "4px 0 24px rgba(0,0,0,0.18)" : "none" }} transition={{ duration: 0.5 }}>
+              <TelegramPanel step={step} />
+            </motion.div>
 
-              {/* Sidebar */}
-              <div className="hidden md:flex" style={{ width: 200, background: "white", borderRight: "1px solid #f0ede8", padding: "16px 0", flexShrink: 0, flexDirection: "column" }}>
-                <div style={{ padding: "0 16px 16px", borderBottom: "1px solid #f0ede8", marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </div>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: "#1c1917", fontFamily: "'DM Sans', sans-serif" }}>ContextDrop</span>
-                  </div>
-                </div>
-                <div style={{ padding: "0 16px 12px", borderBottom: "1px solid #f0ede8", marginBottom: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ color: "white", fontSize: 11, fontWeight: 700 }}>AM</span>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: "#1c1917", fontFamily: "'DM Sans', sans-serif" }}>Alex M.</div>
-                      <div style={{ fontSize: 9, color: "#a8a29e" }}>@alexm</div>
-                    </div>
-                  </div>
-                </div>
-                {[
-                  { emoji: "📥", label: "My Feed", active: true },
-                  { emoji: "✅", label: "Tasks", badge: "4" },
-                  { emoji: "💬", label: "Ask AI", badge: "New" },
-                  { emoji: "⚙️", label: "Settings" },
-                ].map((item) => (
-                  <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 16px", background: item.active ? "#fff7ed" : "transparent", borderLeft: item.active ? "2px solid #f97316" : "2px solid transparent", marginBottom: 2 }}>
-                    <span style={{ fontSize: 12 }}>{item.emoji}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: item.active ? 700 : 500, color: item.active ? "#f97316" : "#57534e", fontFamily: "'DM Sans', sans-serif", flex: 1 }}>{item.label}</span>
-                    {item.badge && <span style={{ fontSize: 9, fontWeight: 700, background: item.badge === "New" ? "#f97316" : "#fff7ed", color: item.badge === "New" ? "white" : "#f97316", padding: "1px 5px", borderRadius: 20 }}>{item.badge}</span>}
-                  </div>
-                ))}
-                <div style={{ margin: "12px 16px 0", padding: "10px 12px", background: "#faf8f5", borderRadius: 8, border: "1px solid #f0ede8" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 9, color: "#a8a29e" }}>Monthly credits</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "#f97316" }}>47/100</span>
-                  </div>
-                  <div style={{ height: 3, background: "#f0ede8", borderRadius: 2 }}>
-                    <div style={{ width: "47%", height: "100%", background: "#f97316", borderRadius: 2 }} />
-                  </div>
-                </div>
-                <div style={{ padding: "12px 16px 0" }}>
-                  <div style={{ background: "#f97316", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-                    <span style={{ fontSize: 10 }}>✈️</span>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "white", fontFamily: "'DM Sans', sans-serif" }}>Send a video</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Feed */}
-              <div style={{ flex: 1, padding: 16, overflow: "hidden", minWidth: 0 }}>
-                <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-                  {["All", "Instagram", "TikTok", "X"].map((tab, i) => (
-                    <div key={tab} style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 20, background: i === 0 ? "#f97316" : "white", color: i === 0 ? "white" : "#78716c", border: `1px solid ${i === 0 ? "#f97316" : "#e7e2d9"}`, fontFamily: "'DM Sans', sans-serif" }}>{tab}</div>
-                  ))}
-                </div>
-                {MOCK_CARDS.map((card, i) => (
-                  <div key={i} style={{ background: "white", borderRadius: 10, border: `1px solid ${card.expanded ? "#e7e5e4" : "#f0ede8"}`, marginBottom: 8, overflow: "hidden", boxShadow: card.expanded ? "0 4px 16px rgba(0,0,0,0.07)" : "0 1px 3px rgba(0,0,0,0.04)" }}>
-                    <div style={{ padding: "10px 12px", display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ width: 16, height: 16, borderRadius: 4, background: card.color, flexShrink: 0, marginTop: 1 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 11.5, color: "#1c1917", marginBottom: 2, lineHeight: 1.3 }}>{card.title}</div>
-                        <div style={{ fontSize: 10, color: "#a8a29e", fontStyle: "italic" }}>{card.summary}</div>
-                        {!card.expanded && <div style={{ display: "flex", gap: 6, marginTop: 4 }}><span style={{ fontSize: 8, color: "#d4cfc9" }}>⚡ Deep Dive</span><span style={{ fontSize: 8, color: "#d4cfc9" }}>· 💬 Ask</span></div>}
-                      </div>
-                      <span style={{ fontSize: 9, color: "#c4bfbb", whiteSpace: "nowrap" }}>{card.time}</span>
-                    </div>
-                    {card.expanded && (
-                      <div style={{ padding: "0 12px 12px", borderTop: "1px solid #f5f3f0" }}>
-                        <div style={{ background: "#fafaf8", borderRadius: 6, padding: "8px 10px", marginTop: 8, marginBottom: 8 }}>
-                          <div style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#a8a29e", marginBottom: 3 }}>🧠 What it is</div>
-                          <div style={{ fontSize: 10, color: "#57534e", lineHeight: 1.5 }}>Solid. Sub-agents handle parallel tasks while Claude orchestrates — cuts build time by 60%. The CLAUDE.md setup at 14:30 is the only part worth rewinding. Skip the intro.</div>
-                        </div>
-                        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", fontSize: 9, fontWeight: 700, padding: "5px 10px", borderRadius: 6 }}>✅ Add to my tasks</div>
-                          <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#ea580c", fontSize: 9, fontWeight: 700, padding: "5px 10px", borderRadius: 6 }}>⚡ Deep Dive</div>
-                        </div>
-                        <div style={{ background: "#fafaf8", border: "1px solid #e7e2d9", borderLeft: "2px solid #f97316", borderRadius: 6, padding: "6px 10px" }}>
-                          <div style={{ fontSize: 8, color: "#a8a29e", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 2 }}>TASKS</div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                            <div style={{ width: 12, height: 12, borderRadius: 3, border: "1.5px solid #d4cfc9", flexShrink: 0 }} />
-                            <span style={{ fontSize: 10, color: "#1c1917" }}>Set up CLAUDE.md in every new project</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            {/* Dashboard — blurs while Telegram active */}
+            <motion.div className="flex-1 overflow-hidden"
+              animate={{ filter: dashboardBlurred ? "blur(2px) brightness(0.92)" : "blur(0px) brightness(1)", opacity: dashboardBlurred ? 0.7 : 1 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}>
+              <DashboardFeed step={step} taskCount={taskCount} newCardVisible={newCardVisible} newCardTaskAdded={newCardTaskAdded} />
+            </motion.div>
           </div>
         </div>
 
-        {/* Feature callouts */}
-        <div ref={featuresRef} className="stagger-children" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
-          {FEATURES.map((f) => (
-            <div key={f.title} style={{ background: "white", border: "1px solid #e7e2d9", borderRadius: 14, padding: "1.25rem 1.5rem", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div style={{ fontSize: 22, marginBottom: 8 }}>{f.emoji}</div>
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 700, fontSize: 14, color: "#1c1917", marginBottom: 6, letterSpacing: "-0.01em" }}>{f.title}</h3>
-              <p style={{ fontSize: 12.5, color: "#78716c", lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif" }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* CTA */}
-        <div style={{ textAlign: "center", marginTop: "2.5rem" }}>
-          <a href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "transparent", border: "1.5px solid #e7e2d9", color: "#44403c", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 13, padding: "10px 20px", borderRadius: 100, textDecoration: "none", transition: "all 0.2s" }}>
-            Open dashboard →
-          </a>
-        </div>
+        <p className="text-center mt-4 text-sm font-mono" style={{ color: "#9ca3af" }}>
+          // Every link you&apos;ve ever saved — finally turned into action.
+        </p>
       </div>
     </section>
   );

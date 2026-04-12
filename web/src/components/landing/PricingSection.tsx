@@ -1,6 +1,10 @@
 "use client";
 
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+/**
+ * PricingSection — from Manus, with hover effects and circular checks
+ */
+
+import { useState } from "react";
 
 const FREE_FEATURES = [
   "10 analyses per month",
@@ -11,93 +15,96 @@ const FREE_FEATURES = [
 ];
 
 const PRO_FEATURES = [
-  { text: "Unlimited analyses", bold: true },
-  { text: "Full summary + sharp take", bold: false },
-  { text: "Unlimited tasks", bold: false },
-  { text: "Works on Telegram & WhatsApp", bold: false },
-  { text: "Feed dashboard + search", bold: false },
-  { text: "Ask AI follow-ups", bold: false },
-  { text: "Notion sync", bold: false },
-  { text: "Priority processing", bold: false },
+  "Unlimited analyses",
+  "Full summary + sharp take",
+  "Unlimited tasks",
+  "Works on Telegram & WhatsApp",
+  "Feed dashboard + search",
+  "Ask AI follow-ups",
+  "Notion sync",
+  "Priority processing",
 ];
 
+function CheckIcon({ color = "#16a34a" }: { color?: string }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+      <circle cx="12" cy="12" r="11" fill={color} fillOpacity="0.12" />
+      <path d="M7 12.5L10.5 16L17 9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function PricingSection() {
-  const headlineRef = useScrollAnimation(0.2) as React.RefObject<HTMLDivElement>;
-  const cardsRef = useScrollAnimation(0.15) as React.RefObject<HTMLDivElement>;
+  const [hovered, setHovered] = useState<"free" | "pro" | null>(null);
 
   return (
-    <section id="pricing" className="py-24 lg:py-32" style={{ background: "#faf8f5" }}>
-      <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 clamp(1rem, 4vw, 4rem)" }}>
-
-        {/* Headline */}
-        <div ref={headlineRef} className="fade-up" style={{ textAlign: "center", marginBottom: "3rem" }}>
-          <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#f97316", marginBottom: "0.75rem", fontFamily: "'DM Sans', sans-serif" }}>
-            Pricing
-          </span>
-          <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.04em", color: "#1c1917", lineHeight: 1.1, marginBottom: "0.75rem" }}>
-            Simple pricing.<br /><span style={{ color: "#f97316" }}>No surprises.</span>
+    <section id="pricing" className="py-20 px-4" style={{ background: "#faf8f5" }}>
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="inline-block text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full"
+            style={{ color: "#F97316", background: "#fff7ed", border: "1px solid #fed7aa" }}>Pricing</div>
+          <h2 className="font-black mb-3" style={{ fontSize: "clamp(2rem, 3.5vw, 3rem)", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1.1 }}>
+            Simple pricing.<br /><span style={{ color: "#F97316" }}>No surprises.</span>
           </h2>
-          <p style={{ fontSize: 15, color: "#78716c", maxWidth: 400, margin: "0 auto", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>
-            Start free. Upgrade when you&apos;re getting value.<br />Cancel anytime — no dark patterns.
+          <p className="text-base max-w-sm mx-auto" style={{ color: "#78716c", lineHeight: 1.7 }}>
+            Start free. Upgrade when you&apos;re getting value. Cancel anytime — no dark patterns.
           </p>
         </div>
 
-        {/* Cards */}
-        <div ref={cardsRef} className="stagger-children" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: "2rem" }}>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {/* Free */}
-          <div style={{ background: "white", borderRadius: 20, border: "1px solid #e7e2d9", padding: "32px 28px", display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'DM Sans', sans-serif" }}>Free</span>
-            <div style={{ marginTop: 12, marginBottom: 12, display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 48, fontWeight: 800, color: "#1c1917", fontFamily: "'DM Sans', sans-serif", lineHeight: 1 }}>$0</span>
-              <span style={{ fontSize: 14, color: "#a8a29e" }}>/month</span>
+          <div className="rounded-2xl p-8 flex flex-col" onMouseEnter={() => setHovered("free")} onMouseLeave={() => setHovered(null)}
+            style={{ background: "white", border: "1px solid #e5e0d8", boxShadow: hovered === "free" ? "0 8px 32px rgba(0,0,0,0.08)" : "0 2px 8px rgba(0,0,0,0.04)", transition: "box-shadow 0.2s" }}>
+            <div className="mb-6">
+              <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#9ca3af" }}>Free</div>
+              <div className="flex items-end gap-1 mb-2">
+                <span className="font-black" style={{ fontSize: "2.5rem", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1 }}>$0</span>
+                <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
+              </div>
+              <p className="text-sm" style={{ color: "#6b7280" }}>Good enough to see if this is for you. No card required.</p>
             </div>
-            <p style={{ fontSize: 13, color: "#78716c", marginBottom: 24, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>Good enough to see if this is for you. No card required.</p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, marginBottom: 28 }}>
+            <ul className="flex flex-col gap-3 mb-8 flex-1">
               {FREE_FEATURES.map((f) => (
-                <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8L6.5 11L12.5 5" stroke="#a8a29e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span style={{ fontSize: 13, color: "#57534e", fontFamily: "'DM Sans', sans-serif" }}>{f}</span>
-                </div>
+                <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: "#374151" }}>
+                  <CheckIcon color="#9ca3af" />{f}
+                </li>
               ))}
-            </div>
-
+            </ul>
             <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 24px", borderRadius: 12, border: "1px solid #e7e2d9", background: "#faf8f5", color: "#44403c", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
+              className="block text-center py-3 rounded-xl text-sm font-bold transition-colors"
+              style={{ background: "#f5f0eb", color: "#44403c", border: "1px solid #e5e0d8" }}>
               Start free on Telegram
             </a>
           </div>
 
-          {/* Pro — dark card */}
-          <div style={{ background: "#1c1917", borderRadius: 20, padding: "32px 28px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.15)" }}>
-            <span style={{ position: "absolute", top: 20, right: 20, fontSize: 10, fontWeight: 700, color: "#fff", background: "#f97316", padding: "4px 12px", borderRadius: 100 }}>Most popular</span>
-
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'DM Sans', sans-serif" }}>Pro</span>
-            <div style={{ marginTop: 12, marginBottom: 12, display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 48, fontWeight: 800, color: "#fff", fontFamily: "'DM Sans', sans-serif", lineHeight: 1 }}>$9.99</span>
-              <span style={{ fontSize: 14, color: "#a8a29e" }}>/month</span>
+          {/* Pro */}
+          <div className="rounded-2xl p-8 flex flex-col relative overflow-hidden" onMouseEnter={() => setHovered("pro")} onMouseLeave={() => setHovered(null)}
+            style={{ background: "#1a1a1a", border: "1.5px solid #F97316", boxShadow: hovered === "pro" ? "0 12px 48px rgba(249,115,22,0.25)" : "0 4px 24px rgba(249,115,22,0.12)", transition: "box-shadow 0.2s" }}>
+            <div className="absolute top-4 right-4 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F97316", color: "white" }}>Most popular</div>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 80% 0%, rgba(249,115,22,0.08) 0%, transparent 60%)" }} />
+            <div className="mb-6 relative">
+              <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#F97316" }}>Pro</div>
+              <div className="flex items-end gap-1 mb-2">
+                <span className="font-black" style={{ fontSize: "2.5rem", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>$9.99</span>
+                <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
+              </div>
+              <p className="text-sm" style={{ color: "#9ca3af" }}>Unlimited everything. For people who actually use it.</p>
             </div>
-            <p style={{ fontSize: 13, color: "#a8a29e", marginBottom: 24, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>Unlimited everything. For people who actually use it.</p>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, marginBottom: 28 }}>
+            <ul className="flex flex-col gap-3 mb-8 flex-1 relative">
               {PRO_FEATURES.map((f) => (
-                <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8L6.5 11L12.5 5" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span style={{ fontSize: 13, color: f.bold ? "#fff" : "#d6d3d1", fontWeight: f.bold ? 700 : 400, fontFamily: "'DM Sans', sans-serif" }}>{f.text}</span>
-                </div>
+                <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: "#e5e7eb" }}>
+                  <CheckIcon color="#F97316" />{f}
+                </li>
               ))}
-            </div>
-
-            <a href="/pricing"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 24px", borderRadius: 12, background: "#f97316", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 16px rgba(249,115,22,0.3)", transition: "all 0.15s" }}>
+            </ul>
+            <a href="/pricing" className="block text-center py-3 rounded-xl text-sm font-bold transition-all relative"
+              style={{ background: "#F97316", color: "white", textDecoration: "none" }}>
               Get Pro — $9.99/mo
             </a>
           </div>
         </div>
 
-        {/* Bottom tagline */}
-        <p style={{ textAlign: "center", fontSize: 12, color: "#b8b0a8", fontFamily: "'JetBrains Mono', monospace", marginTop: "1.5rem" }}>
+        <p className="text-center mt-8 text-sm font-mono" style={{ color: "#9ca3af" }}>
           // No annual lock-in. Cancel from Telegram with one message.
         </p>
       </div>
