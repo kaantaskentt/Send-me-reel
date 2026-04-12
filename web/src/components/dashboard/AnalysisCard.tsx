@@ -6,6 +6,7 @@ import type { Analysis } from "@/lib/types";
 import { parseVerdict } from "@/lib/verdict-parser";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ExternalLink, Share2, BookOpen, Trash2, Check, Loader2, X } from "lucide-react";
+import TodoList from "./TodoList";
 
 // ── Platform icons ────────────────────────────────────────────────────────────
 function InstagramIcon({ size = 16 }: { size?: number }) {
@@ -406,6 +407,9 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                   )}
                 </button>
               )}
+
+              {/* ── Tasks ── */}
+              <TodoList analysisId={analysis.id} />
 
               {/* ── Ask about this (Premium) ── */}
               {isPremium ? (

@@ -49,6 +49,15 @@ export interface Analysis {
   completed_at: string | null;
 }
 
+export interface Todo {
+  id: string;
+  title: string;
+  completed: boolean;
+  position: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
 export interface ParsedVerdict {
   title: string;
   subtitle: string;
