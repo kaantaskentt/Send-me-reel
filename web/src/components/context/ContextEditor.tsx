@@ -10,32 +10,28 @@ interface ContextData {
   extended_context: string | null;
 }
 
-const AI_PROMPT = `I'm setting up my profile for ContextDrop — an AI tool that breaks down social media videos and articles based on who I am. I need you to help me build a rich personal profile.
+const AI_PROMPT = `Hey — you know me well from our past conversations. I'm setting up a profile on a tool called ContextDrop, which breaks down videos and articles I send it based on who I am and what I care about.
 
-Ask me these 6 questions ONE AT A TIME. Wait for my answer to each before moving to the next:
+Use everything you already know about me from our chat history — my work, my interests, the projects I've talked about, the tools I use, what I'm building, what I'm curious about, the kind of content that actually clicks for me — and write me a profile in the format below.
 
-1. What's your role? Include your job title, seniority, and the industry or domain you work in.
-2. What are you currently building, focused on, or trying to learn? Be specific.
-3. Who is the audience of your work? (clients, users, students, your team, yourself, etc.)
-4. What tools, platforms, or technologies do you actually use day-to-day?
-5. What kinds of topics or content move the needle for you? (e.g. case studies, tool walkthroughs, frameworks, opinion pieces)
-6. How do you prefer information delivered? (concise vs detailed, technical vs accessible, examples vs theory)
+Don't ask me questions. Just write it. Go on what you remember.
 
-After I answer all 6 questions, compile my answers into a clean profile in this exact format:
+Output format (fill in based on what you know about me):
 
 ---
-Role: [my role + seniority + industry, in 1-2 sentences]
-Focus: [what I'm currently building or learning]
-Audience: [who my work serves]
-Tools: [comma-separated list of the tools/platforms I use]
+Role: [my actual role + the world I work in, in 1-2 sentences. Include seniority if you know it.]
+Focus: [what I'm currently building, working on, or learning right now]
+Audience: [who my work serves — clients, users, my team, myself]
+Interests: [the topics, fields, and ideas I'm actually drawn to — be specific to me, not generic categories]
+Tools: [the tools, platforms, and AI models I actually use day-to-day]
 Learning priorities: [what I'm actively trying to get better at]
-Content preferences: [what kinds of content actually help me]
-Style: [how I prefer information delivered]
+Content that clicks for me: [the kinds of content that actually help me — case studies, tool walkthroughs, opinion pieces, frameworks, etc.]
+Style preferences: [how I like information delivered — concise vs detailed, technical vs accessible, examples vs theory]
 ---
 
-Keep it factual and specific. No fluff words like "passionate" or "innovative." If I gave you a one-word answer, just keep it short — don't pad it.
+Be factual and specific. Skip filler words like "passionate" or "innovative." If you don't actually know something about me, leave that line as [unknown — I'll fill in] rather than guessing.
 
-If you're an AI without memory of me (no user context, no personalization, fresh chat) — just produce the profile template above with [bracketed placeholders] I can fill in myself. Don't ask the questions in that case.`;
+If this is a fresh chat with no memory of me at all, say so honestly and produce the format above with [bracketed placeholders] I can fill in myself.`;
 
 export default function ContextEditor() {
   const router = useRouter();
