@@ -58,12 +58,15 @@ export interface Todo {
   completed_at: string | null;
 }
 
+export type WorthSignal = "worth_your_time" | "skim_it" | "skip" | null;
+
 export interface ParsedVerdict {
   title: string;
   subtitle: string;
   explanation: string;
   howTo: string;
   realWorldUse?: string;
+  worthSignal?: WorthSignal;
   link?: string;
   tags?: string[];
   raw: string;

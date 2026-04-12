@@ -72,19 +72,19 @@ function PlatformIcon({ platform }: { platform: string }) {
   }
 }
 
-// ── Intent badge ──────────────────────────────────────────────────────────────
-function IntentBadge({ intent }: { intent: string | null }) {
-  if (!intent || intent === "ignore") return null;
+// ── Worth signal badge ────────────────────────────────────────────────────────
+function WorthBadge({ signal }: { signal?: import("@/lib/types").WorthSignal }) {
+  if (!signal) return null;
   const map: Record<string, { bg: string; color: string; border: string; label: string }> = {
-    learn: { bg: "#eff6ff", color: "#3b82f6", border: "#bfdbfe", label: "📚 Learn" },
-    apply: { bg: "#fff7ed", color: "#f97316", border: "#fed7aa", label: "🚀 Apply" },
-    skip:  { bg: "#f5f5f4", color: "#a8a29e", border: "#e7e5e4", label: "⏭ Skip" },
+    worth_your_time: { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0", label: "Worth your time" },
+    skim_it: { bg: "#fffbeb", color: "#d97706", border: "#fde68a", label: "Skim it" },
+    skip: { bg: "#f5f5f4", color: "#a8a29e", border: "#e7e5e4", label: "Skip" },
   };
-  const s = map[intent] ?? map.skip;
+  const s = map[signal] ?? map.skip;
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",
-      fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+      fontSize: 9, fontWeight: 700,
       padding: "2px 8px", borderRadius: 100,
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
       fontFamily: "'DM Sans', sans-serif",
@@ -243,7 +243,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-            <IntentBadge intent={analysis.verdict_intent} />
+            <WorthBadge signal={parsed?.worthSignal} />
             <span style={{ fontSize: 11, color: "#c4bdb5", marginLeft: "auto", flexShrink: 0 }}>{timeAgo}</span>
           </div>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: "#1c1917", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

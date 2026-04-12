@@ -1,167 +1,105 @@
 "use client";
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
-import { BOT_LINK } from "@/lib/constants";
 
 const FREE_FEATURES = [
   "10 analyses per month",
-  "Full video + audio + visual analysis",
-  "Personalized verdicts",
-  "Works in group chats",
-  "No credit card required",
+  "Full summary + sharp take",
+  "Add to tasks (up to 10)",
+  "Works on Telegram",
+  "Feed dashboard",
 ];
 
 const PRO_FEATURES = [
-  "150 analyses per month",
-  "Everything in Free",
-  "Priority processing",
-  "Extended context profiles",
-  "Early access to new features",
+  { text: "Unlimited analyses", bold: true },
+  { text: "Full summary + sharp take", bold: false },
+  { text: "Unlimited tasks", bold: false },
+  { text: "Works on Telegram & WhatsApp", bold: false },
+  { text: "Feed dashboard + search", bold: false },
+  { text: "Ask AI follow-ups", bold: false },
+  { text: "Notion sync", bold: false },
+  { text: "Priority processing", bold: false },
 ];
 
 export default function PricingSection() {
-  const headlineRef = useScrollAnimation(0.2);
-  const cardsRef = useScrollAnimation(0.15);
+  const headlineRef = useScrollAnimation(0.2) as React.RefObject<HTMLDivElement>;
+  const cardsRef = useScrollAnimation(0.15) as React.RefObject<HTMLDivElement>;
 
   return (
-    <section id="pricing" className="py-24 lg:py-32" style={{ background: "white" }}>
-      <div className="landing-container">
-        <div ref={headlineRef} className="fade-up text-center mb-14">
-          <span className="section-label block mb-3">Pricing</span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl text-[#1a1a1a] mb-4 font-[800] tracking-[-0.025em]">
-            Start free.
-            <br />
-            <span className="text-[#F97316]">Upgrade when you&apos;re hooked.</span>
+    <section id="pricing" className="py-24 lg:py-32" style={{ background: "#faf8f5" }}>
+      <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 clamp(1rem, 4vw, 4rem)" }}>
+
+        {/* Headline */}
+        <div ref={headlineRef} className="fade-up" style={{ textAlign: "center", marginBottom: "3rem" }}>
+          <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#f97316", marginBottom: "0.75rem", fontFamily: "'DM Sans', sans-serif" }}>
+            Pricing
+          </span>
+          <h2 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, fontSize: "clamp(2rem, 4vw, 3rem)", letterSpacing: "-0.04em", color: "#1c1917", lineHeight: 1.1, marginBottom: "0.75rem" }}>
+            Simple pricing.<br /><span style={{ color: "#f97316" }}>No surprises.</span>
           </h2>
-          <p className="text-slate-500 text-lg max-w-md mx-auto font-normal leading-relaxed">
-            No trials. No tricks. Use it, love it, then decide.
+          <p style={{ fontSize: 15, color: "#78716c", maxWidth: 400, margin: "0 auto", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif" }}>
+            Start free. Upgrade when you&apos;re getting value.<br />Cancel anytime — no dark patterns.
           </p>
         </div>
 
-        <div
-          ref={cardsRef}
-          className="stagger-children max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          {/* Free Tier */}
-          <div
-            className="rounded-2xl p-8 flex flex-col"
-            style={{
-              background: "#FAFAF8",
-              border: "1px solid #f0ede8",
-            }}
-          >
-            <div className="mb-6">
-              <span className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
-                Free
-              </span>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-[800] text-[#1a1a1a]">$0</span>
-                <span className="text-slate-400 text-sm">/month</span>
-              </div>
-              <p className="text-slate-500 text-sm mt-2">
-                For the curious. Just send a link.
-              </p>
+        {/* Cards */}
+        <div ref={cardsRef} className="stagger-children" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: "2rem" }}>
+
+          {/* Free */}
+          <div style={{ background: "white", borderRadius: 20, border: "1px solid #e7e2d9", padding: "32px 28px", display: "flex", flexDirection: "column" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'DM Sans', sans-serif" }}>Free</span>
+            <div style={{ marginTop: 12, marginBottom: 12, display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontSize: 48, fontWeight: 800, color: "#1c1917", fontFamily: "'DM Sans', sans-serif", lineHeight: 1 }}>$0</span>
+              <span style={{ fontSize: 14, color: "#a8a29e" }}>/month</span>
+            </div>
+            <p style={{ fontSize: 13, color: "#78716c", marginBottom: 24, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>Good enough to see if this is for you. No card required.</p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, marginBottom: 28 }}>
+              {FREE_FEATURES.map((f) => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8L6.5 11L12.5 5" stroke="#a8a29e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{ fontSize: 13, color: "#57534e", fontFamily: "'DM Sans', sans-serif" }}>{f}</span>
+                </div>
+              ))}
             </div>
 
-            <ul className="space-y-3 mb-8 flex-1">
-              {FREE_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 18 18"
-                    fill="none"
-                    className="flex-shrink-0 mt-0.5"
-                  >
-                    <path
-                      d="M4.5 9L7.5 12L13.5 6"
-                      stroke="#10B981"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-slate-600 text-sm">{f}</span>
-                </li>
-              ))}
-            </ul>
-
-            <a
-              href={BOT_LINK}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-ghost text-center w-full justify-center"
-            >
+            <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 24px", borderRadius: 12, border: "1px solid #e7e2d9", background: "#faf8f5", color: "#44403c", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s" }}>
               Start free on Telegram
             </a>
           </div>
 
-          {/* Pro Tier */}
-          <div
-            className="rounded-2xl p-8 flex flex-col relative overflow-hidden"
-            style={{
-              background: "white",
-              border: "2px solid #F97316",
-              boxShadow: "0 8px 40px rgba(249,115,22,0.12)",
-            }}
-          >
-            <div
-              className="absolute top-4 right-4 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full text-white"
-              style={{ background: "#F97316" }}
-            >
-              Popular
-            </div>
+          {/* Pro — dark card */}
+          <div style={{ background: "#1c1917", borderRadius: 20, padding: "32px 28px", display: "flex", flexDirection: "column", position: "relative", overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.15)" }}>
+            <span style={{ position: "absolute", top: 20, right: 20, fontSize: 10, fontWeight: 700, color: "#fff", background: "#f97316", padding: "4px 12px", borderRadius: 100 }}>Most popular</span>
 
-            <div className="mb-6">
-              <span className="text-sm font-semibold text-[#F97316] uppercase tracking-wider">
-                Pro
-              </span>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-[800] text-[#1a1a1a]">$5</span>
-                <span className="text-slate-400 text-sm">/month</span>
-              </div>
-              <p className="text-slate-500 text-sm mt-2">
-                For power users. ~5 analyses a day.
-              </p>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'DM Sans', sans-serif" }}>Pro</span>
+            <div style={{ marginTop: 12, marginBottom: 12, display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontSize: 48, fontWeight: 800, color: "#fff", fontFamily: "'DM Sans', sans-serif", lineHeight: 1 }}>$9</span>
+              <span style={{ fontSize: 14, color: "#a8a29e" }}>/month</span>
             </div>
+            <p style={{ fontSize: 13, color: "#a8a29e", marginBottom: 24, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>Unlimited everything. For people who actually use it.</p>
 
-            <ul className="space-y-3 mb-8 flex-1">
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1, marginBottom: 28 }}>
               {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5">
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 18 18"
-                    fill="none"
-                    className="flex-shrink-0 mt-0.5"
-                  >
-                    <path
-                      d="M4.5 9L7.5 12L13.5 6"
-                      stroke="#F97316"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span className="text-slate-600 text-sm">{f}</span>
-                </li>
+                <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8L6.5 11L12.5 5" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <span style={{ fontSize: 13, color: f.bold ? "#fff" : "#d6d3d1", fontWeight: f.bold ? 700 : 400, fontFamily: "'DM Sans', sans-serif" }}>{f.text}</span>
+                </div>
               ))}
-            </ul>
+            </div>
 
-            <a
-              href={BOT_LINK}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary text-center w-full justify-center"
-            >
-              Get Pro
+            <a href="/pricing"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 24px", borderRadius: 12, background: "#f97316", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 16px rgba(249,115,22,0.3)", transition: "all 0.15s" }}>
+              Get Pro — $9/mo
             </a>
-
-            <p className="text-center text-slate-400 text-xs mt-3">
-              That&apos;s $0.03 per analysis. Less than a gumball.
-            </p>
           </div>
         </div>
+
+        {/* Bottom tagline */}
+        <p style={{ textAlign: "center", fontSize: 12, color: "#b8b0a8", fontFamily: "'JetBrains Mono', monospace", marginTop: "1.5rem" }}>
+          // No annual lock-in. Cancel from Telegram with one message.
+        </p>
       </div>
     </section>
   );
