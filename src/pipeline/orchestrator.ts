@@ -12,6 +12,7 @@ import * as transcriber from "../services/transcriber.js";
 import * as frameExtractor from "../services/frameExtractor.js";
 import * as visualAnalyzer from "../services/visualAnalyzer.js";
 import * as verdictGenerator from "../services/verdictGenerator.js";
+import * as qualityGate from "../services/qualityGate.js";
 import { InlineKeyboard } from "grammy";
 import { SignJWT } from "jose";
 import { config } from "../config.js";
@@ -213,36 +214,20 @@ async function runVideoPipeline(
   const frameAnalyses = await visualAnalyzer.analyzeFrames(framePaths);
   const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
 
-  // Guard: if there's nothing to analyze, fail gracefully
-  // Belt-and-suspenders: require real content, not just truthy placeholders
-  const realTranscript = transcript?.trim() && transcript.trim().length > 5;
-  const realCaption = scraped.caption?.trim() && scraped.caption.trim().length > 5;
-  const realVisual = visualSummary?.trim() && visualSummary.trim().length > 20;
-  const hasContent = realTranscript || realCaption || realVisual;
-  if (!hasContent) {
-    throw new ServiceError(
-      "NO_CONTENT",
-      "Couldn't extract any text, audio, or visual content from this video.",
-      false,
-    );
-  }
+  // Quality gate — AI decides if content is real and how to route it
+  const decision = await qualityGate.evaluateContent({
+    transcript,
+    caption: scraped.caption,
+    visualSummary,
+    platform,
+    url,
+  });
 
-  // Guard: detect garbage content (login pages, auth walls, rate-limit pages)
-  const allText = [transcript, scraped.caption, visualSummary].filter(Boolean).join(" ").toLowerCase();
-  const GARBAGE_PATTERNS = [
-    "instagram login", "log in to instagram", "sign up for instagram",
-    "login page", "sign in page", "create an account",
-    "tiktok login", "log in to tiktok",
-    "403 forbidden", "access denied", "page not found",
-    "rate limit", "too many requests",
-  ];
-  const isGarbage = GARBAGE_PATTERNS.some((p) => allText.includes(p));
-  if (isGarbage) {
-    throw new ServiceError(
-      "NO_CONTENT",
-      "Got a login/auth page instead of actual content. The platform may be blocking access — try again in a minute.",
-      false,
-    );
+  if (!decision.proceed) {
+    if (decision.strategy === "article") {
+      throw new ServiceError("NOT_A_VIDEO", decision.reason, false);
+    }
+    throw new ServiceError("NO_CONTENT", decision.reason, false);
   }
 
   const userContext = await users.getContext(userId);
@@ -284,21 +269,17 @@ async function runArticlePipeline(
   await analyses.updateStatus(analysisId, "scraping");
   const article = await scraper.scrapeArticle(url);
 
-  // Guard: detect login/auth walls in article content
-  const articleLower = article.text.toLowerCase();
-  const ARTICLE_GARBAGE = [
-    "instagram login", "log in to instagram", "sign up for instagram",
-    "log in to see", "create an account to see",
-    "tiktok login", "log in to tiktok",
-    "twitter login", "log in to x",
-    "403 forbidden", "access denied",
-  ];
-  if (ARTICLE_GARBAGE.some((p) => articleLower.includes(p)) || article.text.trim().length < 50) {
-    throw new ServiceError(
-      "NO_CONTENT",
-      "Got a login/auth page instead of actual content. The platform is blocking access — try again in a minute.",
-      false,
-    );
+  // Quality gate — AI decides if article content is real
+  const decision = await qualityGate.evaluateContent({
+    transcript: null,
+    caption: article.text.slice(0, 500),
+    visualSummary: null,
+    platform: "article",
+    url,
+  });
+
+  if (!decision.proceed) {
+    throw new ServiceError("NO_CONTENT", decision.reason, false);
   }
 
   const userContext = await users.getContext(userId);
