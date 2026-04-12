@@ -207,7 +207,17 @@ async function runVideoPipeline(
   const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
 
   // Guard: if there's nothing to analyze, fail gracefully
-  const hasContent = transcript?.trim() || scraped.caption?.trim() || visualSummary?.trim();
+  // Belt-and-suspenders: require real content, not just truthy placeholders
+  const PLACEHOLDER_STRINGS = [
+    "No visual content analyzed.",
+    "No visual summary available.",
+  ];
+  const realTranscript = transcript?.trim() && transcript.trim().length > 5;
+  const realCaption = scraped.caption?.trim() && scraped.caption.trim().length > 5;
+  const realVisual = visualSummary?.trim()
+    && visualSummary.trim().length > 20
+    && !PLACEHOLDER_STRINGS.includes(visualSummary.trim());
+  const hasContent = realTranscript || realCaption || realVisual;
   if (!hasContent) {
     throw new ServiceError(
       "NO_CONTENT",

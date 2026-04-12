@@ -106,7 +106,7 @@ async function analyzeBatch(
 export async function summarizeVisuals(
   frameAnalyses: FrameAnalysis[],
 ): Promise<string> {
-  if (frameAnalyses.length === 0) return "No visual content analyzed.";
+  if (frameAnalyses.length === 0) return "";
 
   const descriptions = frameAnalyses
     .map((f) => `[${f.timestampSec}s] ${f.description}`)
@@ -125,5 +125,5 @@ export async function summarizeVisuals(
     max_tokens: 200,
   });
 
-  return response.choices[0]?.message?.content || "No visual summary available.";
+  return response.choices[0]?.message?.content || "";
 }

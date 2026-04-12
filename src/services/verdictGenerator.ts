@@ -88,11 +88,11 @@ function buildUserPrompt(input: VerdictInput): string {
     parts.push(`\nCaption/Text:\n${input.caption}`);
   }
 
-  if (input.transcript) {
+  if (input.transcript && input.transcript.trim().length > 5) {
     parts.push(`\nTranscript (what was said):\n${input.transcript}`);
   }
 
-  if (input.visualSummary) {
+  if (input.visualSummary && input.visualSummary.trim().length > 20) {
     parts.push(`\nVisual analysis (what was shown):\n${input.visualSummary}`);
   }
 
