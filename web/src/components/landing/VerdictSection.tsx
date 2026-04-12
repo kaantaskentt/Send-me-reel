@@ -4,7 +4,7 @@ import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useEffect, useState } from "react";
 
 const STEPS = [
-  { icon: "📱", title: "Watch something", sub: "Reel, TikTok, tweet, article — anything." },
+  { icon: "📱", title: "Watch something", sub: "Reel, LinkedIn, X, YouTube, article — anything." },
   { icon: "🔗", title: "Copy the link", sub: "Share button → copy URL. That's it." },
   { icon: "✈️", title: "Send it to ContextDrop", sub: "Paste in Telegram. One message." },
   { icon: "⚡", title: "Get your verdict in 30s", sub: "What it is. What's inside. What to do next." },
