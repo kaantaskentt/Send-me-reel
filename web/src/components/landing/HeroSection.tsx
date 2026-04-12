@@ -124,10 +124,10 @@ export default function HeroSection() {
 
       {/* Before → After visual */}
       <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 860, margin: "0 auto", padding: "0 clamp(1rem, 4vw, 2.5rem) clamp(3rem, 6vh, 5rem)", ...fade(0.5) }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "clamp(12px, 3vw, 28px)", flexWrap: "wrap", justifyContent: "center" }}>
+        <div className="hero-before-after" style={{ display: "flex", alignItems: "center", gap: "clamp(16px, 3vw, 28px)", justifyContent: "center" }}>
 
           {/* LEFT: blurred grid */}
-          <div style={{ flex: "0 0 auto", width: "clamp(180px, 38vw, 300px)" }}>
+          <div style={{ flex: "0 0 auto", width: "min(240px, 65vw)" }}>
             <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "0 12px 40px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07)", border: "1px solid #e7e2d9" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 2, background: "#e7e2d9" }}>
                 {GRID_IMAGES.map((url, i) => (
@@ -152,7 +152,7 @@ export default function HeroSection() {
           </div>
 
           {/* ARROW */}
-          <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <div className="hero-arrow" style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
             <svg width="40" height="20" viewBox="0 0 40 20" fill="none" style={{ flexShrink: 0 }}>
               <path d="M0 10 H32 M26 4 L38 10 L26 16" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -160,7 +160,7 @@ export default function HeroSection() {
           </div>
 
           {/* RIGHT: 3 stacked output cards */}
-          <div style={{ flex: "1 1 0", minWidth: "clamp(240px, 44vw, 380px)", maxWidth: 400, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ flex: "1 1 0", minWidth: 0, maxWidth: 400, display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
 
             {/* Card 1 — Instagram, expanded with task */}
             <div style={{ background: "white", borderRadius: 14, border: "1px solid #e7e2d9", padding: "13px 15px", boxShadow: "0 8px 28px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)" }}>
