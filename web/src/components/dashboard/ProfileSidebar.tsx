@@ -1,7 +1,7 @@
 "use client";
 
 import type { UserProfile } from "@/lib/types";
-import { BookOpen, ExternalLink, Settings, LogOut, CreditCard } from "lucide-react";
+import { BookOpen, ExternalLink, LogOut, Home, CheckSquare, MessageSquare } from "lucide-react";
 
 interface Props { profile: UserProfile; }
 
@@ -56,6 +56,29 @@ export default function ProfileSidebar({ profile }: Props) {
           </a>
         </div>
       )}
+
+      <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
+
+      {/* Nav items */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 14 }}>
+        <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600, color: "#f97316", background: "rgba(249,115,22,0.06)", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif" }}>
+          <Home style={{ width: 15, height: 15 }} /> All verdicts
+          <span style={{ marginLeft: "auto", fontSize: 11, color: "#a8a29e" }}>{creditsUsed || ""}</span>
+        </a>
+        <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f1eb"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+        >
+          <CheckSquare style={{ width: 15, height: 15 }} /> Tasks
+        </a>
+        <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f1eb"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+        >
+          <MessageSquare style={{ width: 15, height: 15 }} /> Ask AI
+          {user.premium && <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "2px 6px", borderRadius: 20 }}>NEW</span>}
+        </a>
+      </div>
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 

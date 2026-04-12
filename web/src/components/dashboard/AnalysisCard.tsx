@@ -287,23 +287,23 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
               <div style={{ height: 1, background: "#f0ebe4" }} />
 
               {parsed && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {parsed.explanation && (
-                    <div>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 5 }}>🧠 What It Is</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65 }}>{parsed.explanation}</p>
+                    <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "12px 14px" }}>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 6 }}>🧠 What It Is</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.explanation}</p>
                     </div>
                   )}
                   {parsed.howTo && (
-                    <div>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 5 }}>🔧 What&apos;s Inside</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65 }}>{parsed.howTo}</p>
+                    <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "12px 14px" }}>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 6 }}>🔧 What&apos;s Inside</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.howTo}</p>
                     </div>
                   )}
                   {parsed.realWorldUse && (
-                    <div>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 5 }}>💡 Real-World Context</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65 }}>{parsed.realWorldUse}</p>
+                    <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "12px 14px" }}>
+                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 6 }}>💡 Real-World Context</p>
+                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.realWorldUse}</p>
                     </div>
                   )}
                   {parsed.link && (
