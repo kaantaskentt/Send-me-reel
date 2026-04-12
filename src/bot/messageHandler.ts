@@ -33,7 +33,7 @@ export async function handleMessage(ctx: MyContext) {
     if (CHAT_PATTERNS.test(text)) {
       await ctx.reply(
         "I analyze content from links — not conversations.\n\n" +
-          "Send me any Instagram, TikTok, X, or article link and I'll break it down for you.\n\n" +
+          "Send me any Instagram, TikTok, X, LinkedIn, YouTube, or article link and I'll break it down for you.\n\n" +
           "Or use /dashboard to revisit your past analyses.",
       );
       return;
@@ -41,7 +41,7 @@ export async function handleMessage(ctx: MyContext) {
 
     await ctx.reply(
       "I'm not a chatbot — I'm a content analyzer!\n\n" +
-        "Send me any Instagram, TikTok, X, or article link and I'll break it down for you.\n\n" +
+        "Send me any Instagram, TikTok, X, LinkedIn, YouTube, or article link and I'll break it down for you.\n\n" +
         "Or tap /dashboard to see your saved analyses.",
     );
     return;

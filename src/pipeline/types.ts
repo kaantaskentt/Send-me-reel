@@ -1,4 +1,4 @@
-export type Platform = "instagram" | "tiktok" | "x" | "article" | "unknown";
+export type Platform = "instagram" | "tiktok" | "x" | "linkedin" | "youtube" | "article" | "unknown";
 
 export interface ScrapedVideo {
   videoUrl: string;

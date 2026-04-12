@@ -44,7 +44,7 @@ export async function handleStart(ctx: MyContext) {
 export async function handleHelp(ctx: MyContext) {
   await ctx.reply(
     "<b>ContextDrop</b> — Send it. Understand it. Actually use it.\n\n" +
-      "Send me any video link from Instagram, TikTok, or X and I'll:\n" +
+      "Send me any video link from Instagram, TikTok, X, LinkedIn, YouTube and I'll:\n" +
       "1. Transcribe what's said\n" +
       "2. Analyze what's shown on screen\n" +
       "3. Extract all tools, links, and resources\n" +

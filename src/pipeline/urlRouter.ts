@@ -6,6 +6,10 @@ const PLATFORM_PATTERNS: [Platform, RegExp][] = [
   ["instagram", /(?:instagram\.com|instagr\.am)\//i],
   ["tiktok", /(?:tiktok\.com|vm\.tiktok\.com)\//i],
   ["x", /(?:x\.com|twitter\.com)\//i],
+  // LinkedIn: posts, videos, and feed updates
+  ["linkedin", /(?:linkedin\.com|lnkd\.in)\//i],
+  // YouTube: full videos, shorts, youtu.be
+  ["youtube", /(?:youtube\.com|youtu\.be)\//i],
 ];
 
 // Domains that are clearly articles/blogs, not social media

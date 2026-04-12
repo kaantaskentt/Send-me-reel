@@ -65,7 +65,7 @@ export async function runPipeline(
   const platform = detectPlatform(url);
   if (platform === "unknown") {
     await ctx.reply(
-      "I don't recognize that URL. Send me a link from Instagram, TikTok, X, or any article URL.",
+      "I don't recognize that URL. Send me a link from Instagram, TikTok, X, LinkedIn, YouTube, or any article URL.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
