@@ -83,23 +83,41 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
-        @media (max-width: 1023px) { .cd-sidebar { display: none !important; } .cd-sidebar.open { display: block !important; } .cd-menu-btn { display: flex !important; } }
+        @media (max-width: 1023px) {
+          .cd-sidebar { display: none !important; }
+          .cd-sidebar.open { display: block !important; position: fixed !important; top: 56px !important; left: 0 !important; bottom: 0 !important; z-index: 40 !important; width: 280px !important; box-shadow: 8px 0 24px rgba(0,0,0,0.1) !important; }
+          .cd-menu-btn { display: flex !important; }
+          .cd-overlay { display: block !important; }
+        }
         @media (min-width: 1024px) { .cd-sidebar { display: block !important; } .cd-menu-btn { display: none !important; } }
       `}</style>
 
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,248,245,0.88)", backdropFilter: "blur(16px)", borderBottom: "1px solid #e7e2d9" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 1.25rem", height: 56, maxWidth: 1280, margin: "0 auto" }}>
-          <a href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'Plus Jakarta Sans', DM Sans, sans-serif", color: "#1c1917" }}>
-            Context<span style={{ color: "#f97316" }}>Drop</span>
-          </a>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 1.25rem", height: 56, maxWidth: 1280, margin: "0 auto" }}>
           <button className="cd-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ display: "none", padding: 8, background: "none", border: "1px solid #e7e2d9", borderRadius: 10, cursor: "pointer", color: "#78716c", alignItems: "center" }}>
+            style={{ display: "none", padding: 8, background: "none", border: "1px solid #e7e2d9", borderRadius: 10, cursor: "pointer", color: "#78716c", alignItems: "center", flexShrink: 0 }}>
             {sidebarOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
           </button>
+          <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'DM Sans', sans-serif", color: "#1c1917" }}>
+              Context<span style={{ color: "#f97316" }}>Drop</span>
+            </span>
+          </a>
         </div>
       </header>
 
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex" }}>
+        {/* Mobile overlay */}
+        {sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            style={{ position: "fixed", inset: 0, top: 56, background: "rgba(0,0,0,0.2)", zIndex: 35, display: "none" }}
+            className="cd-overlay"
+          />
+        )}
         <aside className={`cd-sidebar${sidebarOpen ? " open" : ""}`}
           style={{ width: 260, flexShrink: 0, borderRight: "1px solid #e7e2d9", padding: "1.5rem 1.25rem", position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto", background: "#fff" }}>
           {profile ? <ProfileSidebar profile={profile} /> : (

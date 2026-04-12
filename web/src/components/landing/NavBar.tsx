@@ -40,7 +40,7 @@ export default function NavBar() {
           : "bg-transparent"
       }`}
     >
-      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "0 clamp(1.5rem, 5vw, 4rem)", display: "flex", alignItems: "center", height: 64 }}>
+      <div style={{ maxWidth: 1040, margin: "0 auto", padding: "0 clamp(0.75rem, 3vw, 4rem)", display: "flex", alignItems: "center", height: 56 }}>
         <Link href="/" className="flex items-center gap-2 group" style={{ flexShrink: 0 }}>
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center"
