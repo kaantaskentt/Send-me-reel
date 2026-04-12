@@ -19,11 +19,22 @@ export async function GET(request: NextRequest) {
   const db = getSupabase();
 
   // Verify the token's user still exists (may have been merged/deleted)
-  const { data: tokenUser } = await db
+  let { data: tokenUser } = await db
     .from("users")
-    .select("id, telegram_id, telegram_username")
+    .select("id, telegram_id, telegram_username, email")
     .eq("id", payload.sub)
     .single();
+
+  // If user_id from JWT doesn't exist but we have a tid (telegram_id), look up
+  // the post-merge unified user. Old verdict buttons keep working after merge.
+  if (!tokenUser && payload.tid) {
+    const { data: byTid } = await db
+      .from("users")
+      .select("id, telegram_id, telegram_username, email")
+      .eq("telegram_id", payload.tid)
+      .single();
+    tokenUser = byTid;
+  }
 
   if (!tokenUser) {
     return NextResponse.redirect(new URL("/login?error=account_not_found", baseUrl));
@@ -56,6 +67,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Session user already has a telegram_id (different account) — just log in as the token user
+  }
+
+  // Telegram-only user (no email yet) and no existing session → force them to
+  // claim their account by signing up with Google. Otherwise their data is lost
+  // the moment they clear cookies (Demi feedback, Apr 2026).
+  if (!tokenUser.email && !existingSession) {
+    return NextResponse.redirect(new URL(`/claim?token=${encodeURIComponent(token)}`, baseUrl));
   }
 
   // Normal flow: set session cookie for the token user

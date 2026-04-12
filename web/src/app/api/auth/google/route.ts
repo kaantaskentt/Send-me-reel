@@ -5,12 +5,24 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabaseAuth();
   const baseUrl = request.nextUrl.origin;
 
+  // Optional: claim_token forwarded from /claim page so we can merge a
+  // Telegram-only account into the new Google identity (Demi fix, Apr 2026).
+  const claimToken = request.nextUrl.searchParams.get("claim_token");
+
+  // Build the callback URL with claim_token preserved as a query param.
+  // Supabase preserves the full redirectTo URL through the OAuth round trip,
+  // so the client callback page receives both ?claim_token=X and #access_token=Y.
+  const callbackUrl = new URL(`${baseUrl}/auth/google/callback`);
+  if (claimToken) {
+    callbackUrl.searchParams.set("claim_token", claimToken);
+  }
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      // Redirect to a CLIENT page (not API route) because Supabase implicit flow
-      // returns tokens in a #hash fragment which only JavaScript can read
-      redirectTo: `${baseUrl}/auth/google/callback`,
+      // Client page (not API route) because implicit flow returns tokens in
+      // a #hash fragment which only JavaScript can read.
+      redirectTo: callbackUrl.toString(),
     },
   });
 

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAuth } from "@/lib/supabase-auth";
 import { getSupabase } from "@/lib/supabase";
-import { setSessionCookie } from "@/lib/auth";
+import { setSessionCookie, verifyToken } from "@/lib/auth";
+import { mergeAccounts } from "@/lib/merge-accounts";
 import { SignJWT } from "jose";
 
 export async function POST(request: NextRequest) {
-  const { access_token } = await request.json();
+  const { access_token, claim_token } = await request.json();
 
   if (!access_token) {
     return NextResponse.json({ success: false, error: "Missing token" }, { status: 400 });
@@ -58,6 +59,35 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // ── Claim flow: merge a Telegram-only account into this Google account ──
+  // (Demi fix — Apr 2026)
+  if (claim_token && typeof claim_token === "string") {
+    const claimPayload = await verifyToken(claim_token);
+    if (claimPayload && claimPayload.sub !== user.id) {
+      // Verify the claim token's user exists and is telegram-only
+      const { data: claimUser } = await db
+        .from("users")
+        .select("id, telegram_id, email")
+        .eq("id", claimPayload.sub)
+        .single();
+
+      if (claimUser && claimUser.telegram_id && !claimUser.email) {
+        // Safe to merge: Google user is the keep target, telegram user is the orphan
+        const result = await mergeAccounts(user.id, claimUser.id);
+        if (result.merged) {
+          // Re-fetch the unified user so we get the new telegram_id
+          const { data: refreshed } = await db
+            .from("users")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+          if (refreshed) user = refreshed;
+          console.log(`[google-callback] Claimed telegram account ${claimUser.id} into ${user.id}`);
+        }
+      }
+    }
+  }
+
   // Generate our standard JWT
   const secret = process.env.JWT_SECRET;
   if (!secret) {
@@ -77,8 +107,10 @@ export async function POST(request: NextRequest) {
   // Set session cookie
   await setSessionCookie(token);
 
-  // Redirect to dashboard (or context if not onboarded)
-  const redirect = user.onboarded ? "/dashboard" : "/context";
+  // Redirect to dashboard. After a successful claim, the user goes straight to
+  // dashboard regardless of onboarded status (they already onboarded via the bot).
+  const claimedTelegram = !!user.telegram_id && !!claim_token;
+  const redirect = claimedTelegram || user.onboarded ? "/dashboard" : "/context";
 
   return NextResponse.json({ success: true, redirect });
 }

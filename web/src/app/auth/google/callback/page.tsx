@@ -12,6 +12,12 @@ export default function GoogleCallbackPage() {
     const params = new URLSearchParams(hash);
     const accessToken = params.get("access_token");
 
+    // claim_token is in the URL search params (forwarded from /api/auth/google
+    // when the user came from /claim — used to merge their Telegram-only
+    // account into the new Google identity)
+    const queryParams = new URLSearchParams(window.location.search);
+    const claimToken = queryParams.get("claim_token");
+
     if (!accessToken) {
       setStatus("Sign-in failed. Redirecting...");
       setTimeout(() => {
@@ -20,11 +26,15 @@ export default function GoogleCallbackPage() {
       return;
     }
 
-    // Send the access token to our server to create a session
+    if (claimToken) {
+      setStatus("Linking your account...");
+    }
+
+    // Send the access token (and optional claim_token) to the server
     fetch("/api/auth/google/callback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token: accessToken }),
+      body: JSON.stringify({ access_token: accessToken, claim_token: claimToken }),
     })
       .then((res) => res.json())
       .then((data) => {

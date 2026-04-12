@@ -310,7 +310,7 @@ async function sendVerdict(
       .setIssuedAt()
       .sign(secret);
 
-    keyboard.url("📊 Dashboard", `${config.appUrl}/auth?token=${token}`);
+    keyboard.url("View Dashboard", `${config.appUrl}/auth?token=${token}`);
   }
 
   keyboard.text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
