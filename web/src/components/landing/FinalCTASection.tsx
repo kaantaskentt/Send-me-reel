@@ -161,6 +161,20 @@ export default function FinalCTASection() {
               >
                 Telegram
               </a>
+              <a
+                href="/privacy"
+                className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Privacy
+              </a>
+              <a
+                href="/terms"
+                className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
+                style={{ fontFamily: "'DM Sans', sans-serif" }}
+              >
+                Terms
+              </a>
             </div>
 
             {/* Copyright */}
