@@ -98,9 +98,12 @@ export async function runPipeline(
       try {
         await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId);
       } catch (videoErr) {
-        // Image posts, carousels, slideshows — fall back to article pipeline
-        if (videoErr instanceof ServiceError && videoErr.code === "NOT_A_VIDEO") {
-          console.log(`[pipeline] Not a video, falling back to article pipeline: ${url}`);
+        const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
+        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED"];
+
+        if (fallbackCodes.includes(errCode)) {
+          // Video pipeline can't handle this — try article pipeline as last resort
+          console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
           await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
         } else {
           throw videoErr;
@@ -159,8 +162,11 @@ async function runVideoPipeline(
 ): Promise<void> {
   await analyses.updateStatus(analysisId, "scraping");
 
-  // Step 1: Always use yt-dlp for metadata — it's always correct
+  // Step 1: Get metadata — yt-dlp first, Apify fallback
   const scraped = await scraper.scrapeVideoWithFallback(platform, url);
+
+  // Save the Apify video URL from metadata scrape so we don't call Apify twice
+  const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
 
   // Guard: reject videos longer than 10 minutes (cost + timeout risk)
   const duration = scraped.metadata?.duration as number | undefined;
@@ -172,27 +178,28 @@ async function runVideoPipeline(
     );
   }
 
-  // Step 2: Download video — try yt-dlp, then Apify CDN via Vercel proxy
+  // Step 2: Download video — yt-dlp first, then Apify CDN (reuse URL from step 1)
   let videoPath: string;
   try {
     videoPath = await storage.downloadVideo(url, analysisId);
   } catch (dlErr) {
-    // yt-dlp download blocked — use Apify to get a CDN URL, download via Vercel proxy
-    console.log(`[pipeline] yt-dlp download failed, using Apify + Vercel proxy...`);
-    try {
-      const apifyResult = await scrapeWithApify(platform, url);
-      if (apifyResult.apifyVideoUrl) {
-        videoPath = await downloadFromCdn(apifyResult.apifyVideoUrl, analysisId);
-      } else {
-        throw dlErr;
+    // yt-dlp download blocked — try the Apify CDN URL we already have
+    if (apifyVideoUrl) {
+      console.log(`[pipeline] yt-dlp download failed, using saved Apify CDN URL...`);
+      try {
+        videoPath = await downloadFromCdn(apifyVideoUrl, analysisId);
+      } catch (cdnErr) {
+        console.error(`[pipeline] Apify CDN download also failed:`, cdnErr instanceof Error ? cdnErr.message : cdnErr);
+        throw new ServiceError(
+          "DOWNLOAD_FAILED",
+          "Could not download video. Both yt-dlp and Apify CDN failed.",
+          false,
+        );
       }
-    } catch (apifyErr) {
-      console.error(`[pipeline] Apify fallback also failed:`, apifyErr instanceof Error ? apifyErr.message : apifyErr);
-      throw new ServiceError(
-        "DOWNLOAD_FAILED",
-        "Could not download video. Both yt-dlp and Apify failed.",
-        false,
-      );
+    } else {
+      // No Apify video URL — this is likely an image post. Fall back to article pipeline.
+      console.log(`[pipeline] No video URL available (image post?), falling back to article pipeline`);
+      throw new ServiceError("NOT_A_VIDEO", "No video URL available from any source", false);
     }
   }
 
