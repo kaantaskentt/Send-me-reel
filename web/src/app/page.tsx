@@ -2,7 +2,7 @@ import NavBar from "@/components/landing/NavBar";
 import HeroSection from "@/components/landing/HeroSection";
 import StatsBar from "@/components/landing/StatsBar";
 import ProblemSection from "@/components/landing/ProblemSection";
-import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import DashboardPreviewSection from "@/components/landing/DashboardPreviewSection";
 import VerdictSection from "@/components/landing/VerdictSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
@@ -13,7 +13,7 @@ export default function Home() {
       <HeroSection />
       <StatsBar />
       <ProblemSection />
-      <HowItWorksSection />
+      <DashboardPreviewSection />
       <VerdictSection />
       <FinalCTASection />
     </div>

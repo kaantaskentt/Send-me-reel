@@ -8,10 +8,10 @@
 import { useEffect, useRef, useState } from "react";
 
 const STATS = [
-  { value: 12400, suffix: "+", label: "Videos analyzed" },
+  { value: 6100, suffix: "+", label: "Videos analyzed" },
   { value: 2400, suffix: "+", label: "Creators & founders" },
-  { value: 3800, suffix: "+", label: "Tools discovered" },
-  { value: 58, suffix: "s", label: "Avg. analysis time" },
+  { value: 1800, suffix: "+", label: "Tools discovered" },
+  { value: 28, suffix: "s", label: "Avg. analysis time" },
 ];
 
 function useCountUp(target: number, duration = 1200, active: boolean) {
