@@ -71,26 +71,41 @@ export default function HeroSection() {
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(250,248,245,0.08) 0%, rgba(250,248,245,0.05) 30%, rgba(250,248,245,0.75) 68%, rgba(250,248,245,1) 100%)" }} />
       </div>
 
+      {/* Grain texture overlay */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 0, opacity: 0.03, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", backgroundRepeat: "repeat", backgroundSize: 256, pointerEvents: "none" }} />
+
+      {/* Orange radial glow behind headline */}
+      <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: "clamp(400px, 60vw, 700px)", height: "clamp(300px, 40vh, 450px)", background: "radial-gradient(ellipse at center, rgba(249,115,22,0.09) 0%, rgba(249,115,22,0.03) 40%, transparent 70%)", zIndex: 0, pointerEvents: "none" }} />
+
       {/* Content */}
       <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 860, margin: "0 auto", padding: "clamp(100px, 14vh, 130px) clamp(1.5rem, 5vw, 4rem) 0", textAlign: "center" }}>
-        {/* Badge */}
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(8px)", border: "1px solid #fed7aa", color: "#f97316", fontSize: 13, fontWeight: 600, padding: "6px 16px", borderRadius: 100, marginBottom: "2rem", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", ...fade(0) }}>
+        {/* Badge — glassmorphism */}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.65)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(254,215,170,0.6)", color: "#f97316", fontSize: 13, fontWeight: 600, padding: "7px 18px", borderRadius: 100, marginBottom: "2rem", boxShadow: "0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", ...fade(0) }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f97316", display: "inline-block", animation: "pulse-dot 2s infinite" }} />
           10 free analyses · No signup
         </div>
 
-        {/* Rotating headline */}
+        {/* Rotating headline — gradient text */}
         <h1 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, fontSize: "clamp(2.8rem, 6.5vw, 5.2rem)", lineHeight: 1.05, letterSpacing: "-0.05em", color: "#1c1917", marginBottom: "1.5rem", ...fade(0.1) }}>
           Your feed.
-          <span style={{ color: "#f97316", display: "block", transition: "opacity 0.35s ease, transform 0.35s ease", opacity: wordVisible ? 1 : 0, transform: wordVisible ? "translateY(0)" : "translateY(8px)" }}>
+          <span style={{
+            display: "block",
+            background: "linear-gradient(135deg, #f97316, #fb923c, #f59e0b)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            filter: "drop-shadow(0 0 40px rgba(249,115,22,0.15))",
+            transition: "opacity 0.35s ease, transform 0.35s ease",
+            opacity: wordVisible ? 1 : 0,
+            transform: wordVisible ? "translateY(0)" : "translateY(8px)",
+          }}>
             {ROTATING_WORDS[wordIdx]}
           </span>
         </h1>
 
-        {/* Subline */}
-        <p style={{ fontSize: "clamp(15px, 1.8vw, 17px)", color: "#78716c", maxWidth: 520, margin: "0 auto 2.5rem", lineHeight: 1.75, fontFamily: "'DM Sans', sans-serif", fontWeight: 400, ...fade(0.2) }}>
-          Send a link. Get back what actually matters.
-          No fluff — just a sharp take and your next move, in 30 seconds.
+        {/* Subline — tighter */}
+        <p style={{ fontSize: "clamp(15px, 1.8vw, 17px)", color: "#78716c", maxWidth: 440, margin: "0 auto 2.5rem", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", fontWeight: 400, ...fade(0.2) }}>
+          Send a link. Get back what actually matters — in 30 seconds.
         </p>
 
         {/* CTAs */}
