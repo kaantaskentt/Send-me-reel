@@ -87,7 +87,9 @@ export async function POST(
     parts.push("--- USER PROFILE ---");
     parts.push(`Role: ${context.role}`);
     parts.push(`Focus: ${context.goal}`);
-    parts.push(`Priorities: ${context.content_preferences}`);
+    if (context.content_preferences) {
+      parts.push(`Priorities: ${context.content_preferences}`);
+    }
     if (context.extended_context) {
       parts.push(`Extended profile: ${context.extended_context.slice(0, 500)}`);
     }

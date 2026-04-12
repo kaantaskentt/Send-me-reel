@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 interface ContextData {
   role: string;
   goal: string;
-  content_preferences: string;
+  content_preferences?: string;
   extended_context: string | null;
 }
 
@@ -169,7 +169,9 @@ export default function ContextEditor() {
               />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>Priority Topics</label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>
+                Priority Topics <span style={{ color: "#a8a29e", fontWeight: 400 }}>· optional</span>
+              </label>
               <input
                 type="text"
                 value={preferences}
@@ -228,16 +230,16 @@ export default function ContextEditor() {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <button
             onClick={handleSave}
-            disabled={saving || !role || !goal || !preferences}
+            disabled={saving || !role || !goal}
             style={{
               padding: "13px 32px",
-              background: saving || !role || !goal || !preferences ? "#e7e2d9" : "#f97316",
-              color: saving || !role || !goal || !preferences ? "#a8a29e" : "#fff",
+              background: saving || !role || !goal ? "#e7e2d9" : "#f97316",
+              color: saving || !role || !goal ? "#a8a29e" : "#fff",
               fontWeight: 700,
               fontSize: 15,
               borderRadius: 100,
               border: "none",
-              cursor: saving || !role || !goal || !preferences ? "not-allowed" : "pointer",
+              cursor: saving || !role || !goal ? "not-allowed" : "pointer",
               fontFamily: "'DM Sans', sans-serif",
               transition: "all 0.15s",
             }}
@@ -276,7 +278,9 @@ export default function ContextEditor() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 14 }}>
               <p style={{ margin: 0 }}><span style={{ color: "#a8a29e" }}>Role:</span> <span style={{ color: "#1c1917" }}>{context.role}</span></p>
               <p style={{ margin: 0 }}><span style={{ color: "#a8a29e" }}>Focus:</span> <span style={{ color: "#1c1917" }}>{context.goal}</span></p>
-              <p style={{ margin: 0 }}><span style={{ color: "#a8a29e" }}>Priorities:</span> <span style={{ color: "#1c1917" }}>{context.content_preferences}</span></p>
+              {context.content_preferences && (
+                <p style={{ margin: 0 }}><span style={{ color: "#a8a29e" }}>Priorities:</span> <span style={{ color: "#1c1917" }}>{context.content_preferences}</span></p>
+              )}
               {context.extended_context && (
                 <>
                   <div style={{ height: 1, background: "#f0ebe4", margin: "6px 0" }} />

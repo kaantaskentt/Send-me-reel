@@ -93,7 +93,7 @@ export async function upsertContext(
     user_id: userId,
     role: context.role,
     goal: context.goal,
-    content_preferences: context.contentPreferences,
+    content_preferences: context.contentPreferences ?? null,
     raw_answers: rawAnswers ?? {},
   };
 
@@ -115,7 +115,7 @@ export async function getContext(userId: string): Promise<UserContext | null> {
   return {
     role: data.role,
     goal: data.goal,
-    contentPreferences: data.content_preferences,
+    contentPreferences: data.content_preferences ?? undefined,
     extendedContext: data.extended_context ?? undefined,
   };
 }

@@ -36,7 +36,7 @@ export interface PipelineResult {
 export interface UserContext {
   role: string;
   goal: string;
-  contentPreferences: string;
+  contentPreferences?: string;
   extendedContext?: string;
 }
 

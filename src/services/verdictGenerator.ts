@@ -70,7 +70,9 @@ function buildUserPrompt(input: VerdictInput): string {
   parts.push(`--- USER CONTEXT ---`);
   parts.push(`Role: ${input.userContext.role}`);
   parts.push(`Current focus: ${input.userContext.goal}`);
-  parts.push(`Priority topics: ${input.userContext.contentPreferences}`);
+  if (input.userContext.contentPreferences) {
+    parts.push(`Priority topics: ${input.userContext.contentPreferences}`);
+  }
 
   if (input.userContext.extendedContext) {
     parts.push(`\n--- EXTENDED PROFILE ---`);

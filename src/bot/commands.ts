@@ -101,15 +101,20 @@ export async function handleProfile(ctx: MyContext) {
 
   const hasExtended = context.extendedContext ? "Yes" : "No";
 
-  await ctx.reply(
-    `<b>Your Profile</b>\n\n` +
-      `<b>Role:</b> ${context.role}\n` +
-      `<b>Focus:</b> ${context.goal}\n` +
-      `<b>Priorities:</b> ${context.contentPreferences}\n` +
-      `<b>Deep Profile:</b> ${hasExtended}\n\n` +
-      "Use /reset to update basics, or /dashboard to edit your full profile on the web.",
-    { parse_mode: "HTML" },
-  );
+  const lines = [
+    `<b>Your Profile</b>`,
+    ``,
+    `<b>Role:</b> ${context.role}`,
+    `<b>Focus:</b> ${context.goal}`,
+  ];
+  if (context.contentPreferences) {
+    lines.push(`<b>Priorities:</b> ${context.contentPreferences}`);
+  }
+  lines.push(`<b>Deep Profile:</b> ${hasExtended}`);
+  lines.push(``);
+  lines.push("Use /reset to update basics, or /dashboard to edit your full profile on the web.");
+
+  await ctx.reply(lines.join("\n"), { parse_mode: "HTML" });
 }
 
 export async function handleReset(ctx: MyContext) {

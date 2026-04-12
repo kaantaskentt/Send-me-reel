@@ -59,10 +59,10 @@ export async function PUT(request: NextRequest) {
       .update(row)
       .eq("id", existing.id);
   } else {
-    // Need all required fields for insert
-    if (!role || !goal || !content_preferences) {
+    // Need role + goal for new profiles. content_preferences is optional.
+    if (!role || !goal) {
       return NextResponse.json(
-        { error: "Role, goal, and content preferences are required for new profiles" },
+        { error: "Role and focus are required for new profiles" },
         { status: 400 },
       );
     }

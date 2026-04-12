@@ -13,7 +13,7 @@ export interface User {
 export interface UserContext {
   role: string;
   goal: string;
-  content_preferences: string;
+  content_preferences?: string;
   extended_context?: string;
 }
 

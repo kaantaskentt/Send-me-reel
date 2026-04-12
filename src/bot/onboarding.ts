@@ -1,61 +1,69 @@
+import { InlineKeyboard } from "grammy";
 import type { Conversation } from "@grammyjs/conversations";
 import type { MyContext } from "./context.js";
 import * as users from "../db/users.js";
 
 type MyConversation = Conversation<MyContext, MyContext>;
 
-const YES = /^(y|yes|yeah|yep|yup|correct|right|looks good|good|sure|ok|okay|confirm|perfect)$/i;
-
+/**
+ * Onboarding conversation — captures Role + Focus from the user.
+ *
+ * Demi feedback (April 2026):
+ * - Cut the old "priority topics / never relevant" Q3 — felt invasive and confusing
+ * - Reworded Q2 to feel less like an interrogation
+ * - Replaced text-based Yes/No confirmation with InlineKeyboard buttons because
+ *   text confirmation was swallowing typed commands like "/start" and "Hello?"
+ *   as if they were profile answers.
+ */
 export async function onboarding(conversation: MyConversation, ctx: MyContext) {
   let confirmed = false;
 
   while (!confirmed) {
     await ctx.reply(
-      "Welcome to <b>ContextDrop</b>! I analyze social media videos and give you personalized, actionable insights.\n\n" +
-        "Before I can do that, I need to understand who you are. Three quick questions — just reply naturally.\n\n" +
-        "<b>Question 1/3:</b> What do you do?\n" +
+      "Welcome to <b>ContextDrop</b>! I break down videos and articles so you can actually use what you watch.\n\n" +
+        "Two quick questions so I can tailor your breakdowns. Just reply naturally.\n\n" +
+        "<b>1/2:</b> What do you do?\n" +
         "<i>(e.g. startup founder, product designer, marketing lead, student)</i>",
       { parse_mode: "HTML" },
     );
 
     const roleCtx = await conversation.waitFor("message:text");
-    const role = roleCtx.message.text;
+    const role = roleCtx.message.text.trim();
 
     await ctx.reply(
-      "<b>Question 2/3:</b> What are you actively working on or trying to learn right now?\n" +
-        "<i>(mention as many things as you like)</i>",
+      "<b>2/2:</b> What kind of content are you looking to break down?\n" +
+        "<i>(e.g. AI tools, marketing tactics, productivity tips, design inspo — anything)</i>",
       { parse_mode: "HTML" },
     );
 
     const goalCtx = await conversation.waitFor("message:text");
-    const goal = goalCtx.message.text;
+    const goal = goalCtx.message.text.trim();
+
+    // Show summary with Yes / Redo buttons (NO text confirmation — buttons only)
+    const confirmKeyboard = new InlineKeyboard()
+      .text("✓ Looks good", "onboarding_confirm")
+      .text("↻ Redo", "onboarding_redo");
 
     await ctx.reply(
-      "<b>Question 3/3:</b> What topics should I always flag as high priority? And any topics that are never relevant?\n" +
-        "<i>(e.g. always flag: AI tools, no-code. Never relevant: crypto, gaming)</i>",
-      { parse_mode: "HTML" },
-    );
-
-    const prefCtx = await conversation.waitFor("message:text");
-    const contentPreferences = prefCtx.message.text;
-
-    // Show summary and ask for confirmation
-    await ctx.reply(
-      "Here's your profile:\n\n" +
+      "Here's what I've got:\n\n" +
         `<b>Role:</b> ${role}\n` +
-        `<b>Focus:</b> ${goal}\n` +
-        `<b>Priorities:</b> ${contentPreferences}\n\n` +
-        "Does this look right? Reply <b>yes</b> to confirm, or <b>no</b> to start over.",
-      { parse_mode: "HTML" },
+        `<b>Focus:</b> ${goal}`,
+      { parse_mode: "HTML", reply_markup: confirmKeyboard },
     );
 
-    const confirmCtx = await conversation.waitFor("message:text");
-    const answer = confirmCtx.message.text.trim();
+    // Wait for a button press — text replies are ignored entirely
+    const callbackCtx = await conversation.waitForCallbackQuery(
+      /^onboarding_(confirm|redo)$/,
+    );
+    const action = callbackCtx.match[1];
 
-    if (YES.test(answer)) {
+    // Acknowledge the button press to remove the "loading" spinner
+    await callbackCtx.answerCallbackQuery();
+
+    if (action === "confirm") {
       confirmed = true;
 
-      // Save to database
+      // Save to database. contentPreferences is now optional — omitted entirely.
       const telegramId = ctx.from!.id;
       await conversation.external(async () => {
         const user = await users.getByTelegramId(telegramId);
@@ -63,17 +71,14 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
 
         await users.upsertContext(
           user.id,
-          { role, goal, contentPreferences },
-          { q1_role: role, q2_goal: goal, q3_preferences: contentPreferences },
+          { role, goal },
+          { q1_role: role, q2_goal: goal },
         );
         await users.setOnboarded(user.id, true);
       });
 
       await ctx.reply(
-        "You're all set! Here's your profile:\n\n" +
-          `<b>Role:</b> ${role}\n` +
-          `<b>Focus:</b> ${goal}\n` +
-          `<b>Priorities:</b> ${contentPreferences}\n\n` +
+        "Perfect — you're set up.\n\n" +
           "Try it right now — paste this link:\n\n" +
           "https://www.instagram.com/reel/DFnVBmxx2Lj/\n\n" +
           "Or send any Instagram, TikTok, X, LinkedIn, or article link.\n" +
@@ -81,10 +86,7 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
         { parse_mode: "HTML" },
       );
     } else {
-      await ctx.reply(
-        "No worries — let's redo it.",
-        { parse_mode: "HTML" },
-      );
+      await ctx.reply("No worries — let's redo it.");
       // Loop continues back to Q1
     }
   }
