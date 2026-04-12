@@ -179,21 +179,21 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
                 {todo.title}
               </span>
 
-              {/* Delete */}
+              {/* Delete — always visible on mobile (no hover) */}
               <button
                 onClick={(e) => handleDelete(e, todo.id)}
                 style={{
-                  padding: 2,
+                  padding: 4,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   color: "#d6d3d1",
                   flexShrink: 0,
-                  opacity: 0.5,
+                  opacity: 0.4,
                   transition: "opacity 0.15s, color 0.15s",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = "#ef4444"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.5"; e.currentTarget.style.color = "#d6d3d1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; e.currentTarget.style.color = "#d6d3d1"; }}
               >
                 <Trash2 style={{ width: 12, height: 12 }} />
               </button>
