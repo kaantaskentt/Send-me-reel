@@ -29,12 +29,12 @@ export async function handleStart(ctx: MyContext) {
 
   await ctx.reply(
     `Welcome back, <b>${from.first_name ?? "there"}</b>!\n\n` +
-      `You have <b>${balance} credits</b> remaining.\n` +
+      `You've got <b>${balance} analyses</b> ready to go.\n` +
       demoPrompt +
-      "\nSend me any Instagram, TikTok, X, or article link to analyze it.\n\n" +
-      "Commands:\n" +
+      "\nDrop any Instagram, TikTok, X, LinkedIn, or article link and I'll break it down for you.\n\n" +
+      "<i>Commands:</i>\n" +
       "/credits — Check your balance\n" +
-      "/profile — View your context profile\n" +
+      "/profile — View your profile\n" +
       "/dashboard — Open your web dashboard\n" +
       "/reset — Update your profile",
     { parse_mode: "HTML" },
@@ -75,11 +75,10 @@ export async function handleCredits(ctx: MyContext) {
   const used = await credits.getLifetimeUsed(user.id);
 
   await ctx.reply(
-    `<b>Credits</b>\n\n` +
-      `Balance: <b>${balance}</b>\n` +
-      `Lifetime used: <b>${used}</b>\n\n` +
-      "Each video analysis costs 1 credit.\n" +
-      "Articles cost 1 credit.",
+    `<b>Your analyses</b>\n\n` +
+      `Available: <b>${balance}</b>\n` +
+      `Used so far: <b>${used}</b>\n\n` +
+      "<i>1 analysis = 1 link breakdown.</i> Send any video or article and I'll spend one to break it down for you.",
     { parse_mode: "HTML" },
   );
 }
