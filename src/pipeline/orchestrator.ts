@@ -120,15 +120,16 @@ export async function runPipeline(
         ? err.message
         : "An unexpected error occurred";
 
-    // Clean error message for user — never show raw errors
-    let userMessage: string;
+    // Clean error message for user
+    // If the quality gate provided the reason, use it directly — it's already user-friendly.
+    // Otherwise fall back to static messages for known error codes.
     const errCode = err instanceof ServiceError ? err.code : "";
-    if (errCode === "VIDEO_TOO_LONG") {
+    let userMessage: string;
+    if (errCode === "NO_CONTENT") {
+      // Gate provides a specific, human-readable reason — use it directly
+      userMessage = rawMessage;
+    } else if (errCode === "VIDEO_TOO_LONG") {
       userMessage = "Too long — I max out at 10 minutes. Try a shorter clip.";
-    } else if (errCode === "NO_CONTENT") {
-      userMessage = "Nothing to transcribe — this looks music-only or visual-only.";
-    } else if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
-      userMessage = "This doesn't seem to be a video. Try a Reel, TikTok, or video post.";
     } else if (rawMessage.includes("Both yt-dlp and") || rawMessage.includes("SCRAPE_FAILED")) {
       userMessage = "Couldn't access this one. Might be private, expired, or rate-limited. Try again in a minute.";
     } else if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
