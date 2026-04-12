@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   const { data: user, error } = await supabase
     .from("users")
     .insert({
-      telegram_id: 0, // placeholder — will be linked if they use Telegram later
+      telegram_id: null, // web-only user — linked later if they use Telegram
       email: email.toLowerCase().trim(),
       first_name: name?.trim() || email.split("@")[0],
       password_hash: passwordHash,
