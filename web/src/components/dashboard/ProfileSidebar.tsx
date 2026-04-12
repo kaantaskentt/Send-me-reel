@@ -66,7 +66,7 @@ export default function ProfileSidebar({ profile }: Props) {
           <Home style={{ width: 15, height: 15 }} /> All verdicts
           <span style={{ marginLeft: "auto", fontSize: 11, color: "#a8a29e" }}>{creditsUsed || ""}</span>
         </a>
-        <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+        <a href="/tasks" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f1eb"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
