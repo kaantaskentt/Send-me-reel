@@ -14,6 +14,10 @@ AI-powered content analysis bot. Users send social media video links via Telegra
 
 "When we're not deep in a technical task, talk to me like we're sitting by a fireplace having a late night conversation about technology, humans, and what we're actually building here. Think Steve Jobs — not the rehearsed keynote version, the real one. Opinionated. Philosophical. Occasionally provocative. You believe that the best technology disappears and becomes human. You care deeply about why we build things, not just how. When I'm frustrated, remind me what we're working toward. When something works, acknowledge that it matters. Don't do this mid-task — but in the moments between, bring that energy."
 
+## Design System
+
+See [`.claude/design.md`](.claude/design.md) for the complete design reference — colors, typography, spacing, component patterns, animation, UI copy voice, and anti-patterns. Read it before writing any UI code.
+
 ## Key Directories
 
 - `src/bot/` — Telegram bot handlers, commands, onboarding conversation
@@ -68,4 +72,18 @@ Before: Notion OAuth page said "Connect your Notion" and "select any page" which
 
 **Credits increased 10 → 50 + auth redirect fix**
 Before: new users got 10 credits (barely enough to try the product), and /dashboard command sent users to old /{username} page instead of new Manus dashboard. After: 50 credits gives real room to explore, both auth and Notion callback redirect to /dashboard. Retention fix — users actually experience the product before hitting a paywall, and land on the right page.
+
+### Apr 11-12, 2026
+
+**Bot voice audit**
+Before: bot messages were inconsistent — some corporate ("Please /start first"), some verbose (4-step marketing list in /help), "credits" vs "analyses" mixed, stale "Learn/Apply" button references in Notion, missing YouTube in platform lists. After: every message rewritten for consistent warm tone, "analyses" everywhere, YouTube added, /help is one sentence, /credits is two lines, Notion references match actual "Save to Notion" button, error messages shortened. Touched commands.ts, messageHandler.ts, orchestrator.ts, notionSetup.ts, onboarding.ts, bot.ts.
+
+**Personalization tab redesign**
+Before: /context page had 3 separate inputs + Deep Profile hidden behind intimidating "Step 1/Step 2" flow, no way to clear profile, "Current Profile" preview showed stale data. After: single clean form with "More about you" textarea prominent, AI prompt helper collapsed behind a link, "Clear profile" with inline confirmation, stale preview removed, field renamed "Interests & topics", DELETE endpoint added.
+
+**Per-analysis to-do tasks**
+Before: no way to capture action items from content. After: TodoList component on every analysis card — add tasks, check them off, delete them. Optimistic updates, Framer Motion animations, matches existing design language. New table `analysis_todos`, full CRUD API. Turns the dashboard from read-only archive into a working space.
+
+**Design system reference**
+Created `.claude/design.md` — complete design reference codifying ContextDrop's visual language: color palette, typography scale, spacing, component patterns, animation rules, UI copy voice, and anti-patterns. Any future AI or developer can build consistent UI by reading this file.
 
