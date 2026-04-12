@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
-import { BookOpen, ExternalLink, LogOut, Home, CheckSquare, MessageSquare } from "lucide-react";
+import { ExternalLink, LogOut, Home, CheckSquare, MessageSquare, Link2, ChevronUp, ChevronDown } from "lucide-react";
 
 interface Props { profile: UserProfile; }
 
@@ -124,16 +125,10 @@ export default function ProfileSidebar({ profile }: Props) {
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
-      {/* Notion */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <BookOpen style={{ width: 15, height: 15, color: notionConnected ? "#10b981" : "#c4bdb5" }} />
-        <span style={{ fontSize: 13, color: notionConnected ? "#10b981" : "#a8a29e", fontWeight: 600 }}>
-          {notionConnected ? "Notion connected" : "Notion not connected"}
-        </span>
-        {!notionConnected && (
-          <a href="/connect-notion" style={{ marginLeft: "auto", fontSize: 11, color: "#f97316", textDecoration: "none", fontWeight: 700 }}>Connect →</a>
-        )}
-      </div>
+      {/* Connectors */}
+      <ConnectorsSection notionConnected={notionConnected} />
+
+      <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
       {/* Links */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -152,6 +147,77 @@ export default function ProfileSidebar({ profile }: Props) {
           <LogOut style={{ width: 14, height: 14 }} /> Sign out
         </button>
       </div>
+    </div>
+  );
+}
+
+function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
+  const [open, setOpen] = useState(false);
+  const connectedCount = notionConnected ? 1 : 0;
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", padding: "4px 0", fontFamily: "'DM Sans', sans-serif" }}
+      >
+        <Link2 style={{ width: 14, height: 14, color: "#a8a29e" }} />
+        <span style={{ fontSize: 13, color: "#78716c", fontWeight: 500 }}>Connectors</span>
+        {connectedCount > 0 && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: "#f97316", background: "#fff7ed", border: "1px solid #fed7aa", padding: "1px 8px", borderRadius: 20, marginLeft: 4 }}>
+            {connectedCount} connected
+          </span>
+        )}
+        <span style={{ marginLeft: "auto" }}>
+          {open ? <ChevronUp style={{ width: 12, height: 12, color: "#c4bdb5" }} /> : <ChevronDown style={{ width: 12, height: 12, color: "#c4bdb5" }} />}
+        </span>
+      </button>
+
+      {open && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
+          {/* Notion */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#1c1917", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <span style={{ color: "white", fontSize: 14, fontWeight: 700 }}>N</span>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Notion</p>
+              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>{notionConnected ? "My Workspace" : "Save analyses to Notion"}</p>
+            </div>
+            {notionConnected ? (
+              <span style={{ fontSize: 10, fontWeight: 600, color: "#10b981", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block" }} /> On
+              </span>
+            ) : (
+              <a href="/connect-notion" style={{ fontSize: 10, fontWeight: 700, color: "#f97316", textDecoration: "none" }}>Connect</a>
+            )}
+          </div>
+
+          {/* Todoist */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#e44332", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Todoist</p>
+              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Sync tasks to Todoist</p>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
+          </div>
+
+          {/* Google Calendar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#4285f4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><rect x="3" y="4" width="18" height="18" rx="2" fill="none" stroke="white" strokeWidth="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="white" strokeWidth="2"/><line x1="8" y1="2" x2="8" y2="6" stroke="white" strokeWidth="2"/><line x1="3" y1="10" x2="21" y2="10" stroke="white" strokeWidth="2"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Google Calendar</p>
+              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Schedule tasks from...</p>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
