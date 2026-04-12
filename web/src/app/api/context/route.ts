@@ -77,3 +77,19 @@ export async function PUT(request: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE() {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const supabase = getSupabase();
+
+  await supabase
+    .from("user_contexts")
+    .delete()
+    .eq("user_id", session.sub);
+
+  return NextResponse.json({ success: true });
+}

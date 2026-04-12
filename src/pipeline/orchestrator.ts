@@ -37,7 +37,7 @@ export async function runPipeline(
   const user = await users.getByTelegramId(from.id);
   if (!user) {
     await ctx.reply(
-      "Please /start first to create your account.",
+      "Start with /start to set up your account.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
@@ -45,7 +45,7 @@ export async function runPipeline(
 
   if (!user.onboarded) {
     await ctx.reply(
-      "Please complete onboarding first. Send /start to set up your profile.",
+      "Finish setup first — tap /start.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
@@ -55,7 +55,7 @@ export async function runPipeline(
   const balance = await credits.getBalance(user.id);
   if (balance <= 0) {
     await ctx.reply(
-      "You're out of credits! Each analysis costs 1 credit.\n\nCredit top-ups are coming soon.",
+      "You're out of analyses. Top-ups coming soon — tap /dashboard to revisit what you've saved.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
@@ -65,7 +65,7 @@ export async function runPipeline(
   const platform = detectPlatform(url);
   if (platform === "unknown") {
     await ctx.reply(
-      "I don't recognize that URL. Send me a link from Instagram, TikTok, X, LinkedIn, YouTube, or any article URL.",
+      "I don't recognize that link. I work with Instagram, TikTok, X, LinkedIn, YouTube, or any article URL.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
@@ -74,7 +74,7 @@ export async function runPipeline(
   // Deduct credit upfront
   const deducted = await credits.deduct(user.id);
   if (!deducted) {
-    await ctx.reply("You're out of credits!", replyOpts(ctx, replyToMessageId));
+    await ctx.reply("You're out of analyses.", replyOpts(ctx, replyToMessageId));
     return;
   }
 
@@ -87,7 +87,7 @@ export async function runPipeline(
 
   // Acknowledge receipt
   await ctx.reply(
-    "Received your content. Give me about 30 seconds — I'll break it down for you.",
+    "On it — about 30 seconds.",
     replyOpts(ctx, replyToMessageId),
   );
 
@@ -120,19 +120,19 @@ export async function runPipeline(
     let userMessage: string;
     const errCode = err instanceof ServiceError ? err.code : "";
     if (errCode === "VIDEO_TOO_LONG") {
-      userMessage = "This video is over 10 minutes — we currently support up to 10 minutes. Try a shorter clip.";
+      userMessage = "Too long — I max out at 10 minutes. Try a shorter clip.";
     } else if (errCode === "NO_CONTENT") {
-      userMessage = "Couldn't extract any text or audio from this video. It might be music-only or visuals without speech.";
+      userMessage = "Nothing to transcribe — this looks music-only or visual-only.";
     } else if (rawMessage.includes("NOT_A_VIDEO") || rawMessage.includes("not a video")) {
-      userMessage = "This link doesn't seem to contain a video. Try sending a Reel, TikTok, or video post.";
+      userMessage = "This doesn't seem to be a video. Try a Reel, TikTok, or video post.";
     } else if (rawMessage.includes("Both yt-dlp and") || rawMessage.includes("SCRAPE_FAILED")) {
-      userMessage = "We tried multiple methods but couldn't access this content. The link might be private, expired, or the platform is blocking access. Try again in a minute.";
+      userMessage = "Couldn't access this one. Might be private, expired, or rate-limited. Try again in a minute.";
     } else if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
-      userMessage = "Couldn't download this video. Try again in a minute, or try a different link.";
+      userMessage = "Couldn't download this video. Try again in a minute.";
     } else if (rawMessage.includes("Network") || rawMessage.includes("timeout")) {
       userMessage = "Network issue — couldn't reach the platform. Try again in a moment.";
     } else {
-      userMessage = "Something went wrong analyzing this link. Your credit has been refunded.";
+      userMessage = "Something went wrong analyzing this link.";
     }
 
     await analyses.updateResult(analysisId, {
@@ -141,7 +141,7 @@ export async function runPipeline(
     });
 
     await ctx.reply(
-      `Sorry, I couldn't analyze that link. Your credit has been refunded.\n\n${userMessage}`,
+      `Couldn't analyze that one — your analysis has been refunded.\n\n${userMessage}`,
       replyOpts(ctx, replyToMessageId),
     );
   } finally {

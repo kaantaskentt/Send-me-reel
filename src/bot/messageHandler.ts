@@ -23,8 +23,8 @@ export async function handleMessage(ctx: MyContext) {
 
     if (!user || !user.onboarded) {
       await ctx.reply(
-        "Hey! I'm <b>ContextDrop</b> — I break down videos and articles so you can actually use what you watch.\n\n" +
-          "Tap /start to get set up (takes 30 seconds).",
+        "Hey — I'm <b>ContextDrop</b>. I break down videos and articles into personalized insights.\n\n" +
+          "Tap /start to get set up (30 seconds).",
         { parse_mode: "HTML" },
       );
       return;
@@ -32,17 +32,15 @@ export async function handleMessage(ctx: MyContext) {
 
     if (CHAT_PATTERNS.test(text)) {
       await ctx.reply(
-        "I analyze content from links — not conversations.\n\n" +
-          "Send me any Instagram, TikTok, X, LinkedIn, YouTube, or article link and I'll break it down for you.\n\n" +
-          "Or use /dashboard to revisit your past analyses.",
+        "I'm a link breakdown bot, not a chat bot. Send me any video or article link and I'll break it down for you.\n\n" +
+          "/dashboard to revisit past analyses.",
       );
       return;
     }
 
     await ctx.reply(
-      "I'm not a chatbot — I'm a content analyzer!\n\n" +
-        "Send me any Instagram, TikTok, X, LinkedIn, YouTube, or article link and I'll break it down for you.\n\n" +
-        "Or tap /dashboard to see your saved analyses.",
+      "Send me a link — Instagram, TikTok, X, LinkedIn, YouTube, or an article — and I'll break it down.\n\n" +
+        "/dashboard to see your saved analyses.",
     );
     return;
   }
@@ -56,7 +54,7 @@ export async function handleMessage(ctx: MyContext) {
     const user = await users.getByTelegramId(ctx.from.id);
     if (!user || !user.onboarded) {
       await ctx.reply(
-        `Hey @${ctx.from.username || ctx.from.first_name}, DM me first to set up your profile → https://t.me/contextdrop2027bot`,
+        `@${ctx.from.username || ctx.from.first_name} DM me first to set up your profile, then come back here → https://t.me/contextdrop2027bot`,
         { reply_parameters: messageId ? { message_id: messageId } : undefined },
       );
       return;

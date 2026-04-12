@@ -22,20 +22,19 @@ export async function notionSetup(conversation: MyConversation, ctx: MyContext) 
 
   if (existing) {
     await ctx.reply(
-      "✅ Notion is already connected!\n\n" +
-        "Every time you tap Learn or Apply, it auto-saves there.\n\n" +
-        "To reconnect with a new token, just paste it now. Or send /cancel to keep your current connection.",
+      "Notion is already connected. The Save to Notion button on your analyses drops them there.\n\n" +
+        "To reconnect with a new token, paste it now. Or /cancel to keep your current connection.",
     );
   } else {
     await ctx.reply(
-      "Let's connect your Notion! 📝\n\n" +
-        "<b>Quick setup (60 seconds):</b>\n\n" +
-        "1️⃣ Go to notion.so/profile/integrations\n" +
-        "2️⃣ Click <b>\"New integration\"</b> → Internal\n" +
-        "3️⃣ Name it <b>ContextDrop</b>\n" +
-        "4️⃣ Copy the <b>Internal Integration Secret</b>\n" +
-        "5️⃣ Paste it here 👇\n\n" +
-        "<i>Important: After creating it, go to any Notion page → click ••• menu → \"Connect to\" → select ContextDrop. This gives it access to that page.</i>",
+      "Let's connect Notion.\n\n" +
+        "<b>Quick setup:</b>\n\n" +
+        "1. Go to notion.so/profile/integrations\n" +
+        "2. Click <b>\"New integration\"</b> → Internal\n" +
+        "3. Name it <b>ContextDrop</b>\n" +
+        "4. Copy the <b>Internal Integration Secret</b>\n" +
+        "5. Paste it here\n\n" +
+        "<i>After creating it, go to any Notion page → ••• menu → \"Connect to\" → select ContextDrop. This gives it access to that page.</i>",
       { parse_mode: "HTML" },
     );
   }
@@ -78,18 +77,15 @@ export async function notionSetup(conversation: MyConversation, ctx: MyContext) 
     });
 
     await ctx.reply(
-      "✅ Notion connected!\n\n" +
-        "I created a <b>ContextDrop</b> database in your workspace.\n\n" +
-        "From now on, tapping 📚 Learn or ⚡ Apply will auto-save there. Try it!",
+      "Notion connected. I created a <b>ContextDrop</b> database in your workspace.\n\n" +
+        "From now on, the Save to Notion button on your analyses will drop them there.",
       { parse_mode: "HTML" },
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     await ctx.reply(
-      `❌ Couldn't connect: ${msg}\n\n` +
-        "Make sure you:\n" +
-        "• Copied the full token\n" +
-        "• Shared at least one page with the integration\n\n" +
+      `Couldn't connect — ${msg}\n\n` +
+        "Check that you copied the full token and shared at least one page with the integration.\n\n" +
         "Try /notion again when ready.",
     );
   }

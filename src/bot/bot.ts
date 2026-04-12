@@ -120,7 +120,7 @@ export function createBot(): Bot<MyContext> {
 
       const connectMessage =
         "To save this analysis, connect your Notion (one-time setup).\n\n" +
-        "You'll pick a page where ContextDrop can save — we'll create a folder there automatically. We only access the page you choose.\n\n" +
+        "You'll pick a page where ContextDrop can save — we'll create a database there automatically. We only access the page you choose.\n\n" +
         `<a href="${connectUrl}">Connect Notion & Save</a>`;
 
       // In groups, send the connect link via DM to avoid exposing the auth token

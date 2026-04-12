@@ -21,7 +21,7 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
   while (!confirmed) {
     await ctx.reply(
       "Welcome to <b>ContextDrop</b>! I break down videos and articles so you can actually use what you watch.\n\n" +
-        "Two quick questions so I can tailor your breakdowns. Just reply naturally.\n\n" +
+        "Two quick questions so I can tailor your breakdowns. Just type it out.\n\n" +
         "<b>1/2:</b> What do you do?\n" +
         "<i>(e.g. startup founder, product designer, marketing lead, student)</i>",
       { parse_mode: "HTML" },
@@ -81,7 +81,7 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
         "Perfect — you're set up.\n\n" +
           "Try it right now — paste this link:\n\n" +
           "https://www.instagram.com/reel/DFnVBmxx2Lj/\n\n" +
-          "Or send any Instagram, TikTok, X, LinkedIn, or article link.\n" +
+          "Or send any Instagram, TikTok, X, LinkedIn, YouTube, or article link.\n" +
           "You've got <b>50 free analyses</b> to play with — that's plenty.",
         { parse_mode: "HTML" },
       );
