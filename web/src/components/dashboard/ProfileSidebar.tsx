@@ -216,6 +216,18 @@ function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
             </div>
             <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
           </div>
+
+          {/* Linear */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#5E6AD2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 100 100" fill="white"><path d="M3.4 55.2a46 46 0 0 0 41.4 41.4L3.4 55.2zm5.3 11.7a46.2 46.2 0 0 0 24.4 24.4L8.7 66.9zM14.3 78a46.4 46.4 0 0 0 7.7 7.7L14.3 78z"/><path d="M50 3a47 47 0 1 0 47 47A47 47 0 0 0 50 3zm0 85.7A38.7 38.7 0 1 1 88.7 50 38.7 38.7 0 0 1 50 88.7z"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Linear</p>
+              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Create issues from tasks</p>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
+          </div>
         </div>
       )}
     </div>

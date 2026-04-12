@@ -77,6 +77,16 @@ export default function TasksPage() {
     });
   };
 
+  const handleEdit = async (task: TaskWithSource, newTitle: string) => {
+    if (!newTitle.trim() || newTitle.trim() === task.title) return;
+    setTasks((prev) => prev.map((t) => t.id === task.id ? { ...t, title: newTitle.trim() } : t));
+    await fetch(`/api/analyses/${task.analysis_id}/todos`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ todoId: task.id, title: newTitle.trim() }),
+    });
+  };
+
   const pending = tasks.filter((t) => !t.completed);
   const completed = tasks.filter((t) => t.completed);
   const total = tasks.length;
@@ -130,7 +140,7 @@ export default function TasksPage() {
         {/* Pending tasks */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {pending.map((task) => (
-            <TaskCard key={task.id} task={task} onToggle={() => handleToggle(task)} onDelete={() => handleDelete(task)} />
+            <TaskCard key={task.id} task={task} onToggle={() => handleToggle(task)} onDelete={() => handleDelete(task)} onEdit={(newTitle) => handleEdit(task, newTitle)} />
           ))}
         </div>
 
@@ -144,7 +154,7 @@ export default function TasksPage() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {completed.map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={() => handleToggle(task)} onDelete={() => handleDelete(task)} />
+                <TaskCard key={task.id} task={task} onToggle={() => handleToggle(task)} onDelete={() => handleDelete(task)} onEdit={(newTitle) => handleEdit(task, newTitle)} />
               ))}
             </div>
           </>
@@ -154,11 +164,27 @@ export default function TasksPage() {
   );
 }
 
-function TaskCard({ task, onToggle, onDelete }: { task: TaskWithSource; onToggle: () => void; onDelete: () => void }) {
+function TaskCard({ task, onToggle, onDelete, onEdit }: { task: TaskWithSource; onToggle: () => void; onDelete: () => void; onEdit: (title: string) => void }) {
   const [hovered, setHovered] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(task.title);
+  const editRef = useRef<HTMLInputElement>(null);
   const platform = task.analyses?.platform || "article";
   const sourceTitle = parseTitle(task.analyses?.verdict || null);
   const borderColor = PLATFORM_COLORS[platform] || "#e7e2d9";
+
+  useEffect(() => {
+    if (editing && editRef.current) editRef.current.focus();
+  }, [editing]);
+
+  const commitEdit = () => {
+    if (editText.trim() && editText.trim() !== task.title) {
+      onEdit(editText.trim());
+    } else {
+      setEditText(task.title);
+    }
+    setEditing(false);
+  };
 
   return (
     <div
@@ -199,21 +225,46 @@ function TaskCard({ task, onToggle, onDelete }: { task: TaskWithSource; onToggle
 
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{
-          fontSize: 14, fontWeight: 600, color: task.completed ? "#c4bdb5" : "#1c1917",
-          textDecoration: task.completed ? "line-through" : "none",
-          margin: 0, lineHeight: 1.4,
-        }}>
-          {task.title}
-        </p>
+        {editing ? (
+          <input
+            ref={editRef}
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            onBlur={commitEdit}
+            onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") { setEditText(task.title); setEditing(false); } }}
+            style={{
+              width: "100%", fontSize: 14, fontWeight: 600, color: "#1c1917",
+              border: "1px solid #f97316", borderRadius: 8, padding: "4px 8px",
+              outline: "none", fontFamily: "'DM Sans', sans-serif",
+              boxShadow: "0 0 0 3px rgba(249,115,22,0.1)",
+            }}
+          />
+        ) : (
+          <p
+            onClick={() => { if (!task.completed) setEditing(true); }}
+            style={{
+              fontSize: 14, fontWeight: 600, color: task.completed ? "#c4bdb5" : "#1c1917",
+              textDecoration: task.completed ? "line-through" : "none",
+              margin: 0, lineHeight: 1.4,
+              cursor: task.completed ? "default" : "text",
+            }}
+          >
+            {task.title}
+          </p>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
           <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.06em" }}>From</span>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: task.completed ? "#f5f3f0" : "#faf8f5", border: "1px solid #ede9e4", borderRadius: 20, padding: "2px 10px 2px 6px", maxWidth: 260, overflow: "hidden" }}>
+          <a
+            href={`/dashboard?expand=${task.analysis_id}`}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: task.completed ? "#f5f3f0" : "#faf8f5", border: "1px solid #ede9e4", borderRadius: 20, padding: "2px 10px 2px 6px", maxWidth: 260, overflow: "hidden", textDecoration: "none", transition: "border-color 0.15s" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#ede9e4"; }}
+          >
             <div style={{ width: 8, height: 8, borderRadius: 3, background: borderColor, flexShrink: 0 }} />
             <span style={{ fontSize: 11, fontWeight: 500, color: task.completed ? "#c4bdb5" : "#78716c", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {sourceTitle}
             </span>
-          </div>
+          </a>
         </div>
       </div>
 

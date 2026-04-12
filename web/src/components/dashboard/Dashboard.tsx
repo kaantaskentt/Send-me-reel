@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import type { Analysis, AnalysisFeedResponse, UserProfile } from "@/lib/types";
@@ -26,13 +27,16 @@ function CardSkeleton() {
 }
 
 export default function Dashboard() {
+  const searchParams = useSearchParams();
+  const expandId = searchParams.get("expand");
+
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(expandId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [intent, setIntent] = useState("all");
   const [platform, setPlatform] = useState("all");
