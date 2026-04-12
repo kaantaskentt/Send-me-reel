@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
             name: "ContextDrop Premium",
             description: "Unlimited analyses, AI chat, action items, and more",
           },
-          unit_amount: 1499, // $14.99
+          unit_amount: 999, // $9.99
           recurring: { interval: "month" },
         },
         quantity: 1,

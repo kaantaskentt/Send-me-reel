@@ -75,7 +75,7 @@ export default function PricingSection() {
 
             <span style={{ fontSize: 12, fontWeight: 700, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'DM Sans', sans-serif" }}>Pro</span>
             <div style={{ marginTop: 12, marginBottom: 12, display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontSize: 48, fontWeight: 800, color: "#fff", fontFamily: "'DM Sans', sans-serif", lineHeight: 1 }}>$9</span>
+              <span style={{ fontSize: 48, fontWeight: 800, color: "#fff", fontFamily: "'DM Sans', sans-serif", lineHeight: 1 }}>$9.99</span>
               <span style={{ fontSize: 14, color: "#a8a29e" }}>/month</span>
             </div>
             <p style={{ fontSize: 13, color: "#a8a29e", marginBottom: 24, lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>Unlimited everything. For people who actually use it.</p>
@@ -91,7 +91,7 @@ export default function PricingSection() {
 
             <a href="/pricing"
               style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "12px 24px", borderRadius: 12, background: "#f97316", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none", fontFamily: "'DM Sans', sans-serif", boxShadow: "0 4px 16px rgba(249,115,22,0.3)", transition: "all 0.15s" }}>
-              Get Pro — $9/mo
+              Get Pro — $9.99/mo
             </a>
           </div>
         </div>

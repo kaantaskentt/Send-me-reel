@@ -61,7 +61,7 @@ export default function PricingPage() {
               Most popular
             </div>
             <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#f97316", margin: "0 0 8px 0" }}>Premium</p>
-            <p style={{ fontSize: 32, fontWeight: 800, color: "#1c1917", margin: "0 0 4px 0" }}>$14.99<span style={{ fontSize: 14, fontWeight: 500, color: "#a8a29e" }}>/mo</span></p>
+            <p style={{ fontSize: 32, fontWeight: 800, color: "#1c1917", margin: "0 0 4px 0" }}>$9.99<span style={{ fontSize: 14, fontWeight: 500, color: "#a8a29e" }}>/mo</span></p>
             <p style={{ fontSize: 13, color: "#a8a29e", margin: "0 0 24px 0" }}>For power users</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
