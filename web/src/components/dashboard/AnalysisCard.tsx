@@ -473,30 +473,31 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     <button onClick={handleDeleteConfirm} style={{ ...btnBase, flex: "none", color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" }}>Delete</button>
                   </motion.div>
                 ) : (
-                  <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-                    style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                      style={{ ...btnBase, textDecoration: "none" }}>
-                      <ExternalLink style={{ width: 13, height: 13 }} /> View
-                    </a>
-                    <button onClick={handleShare}
-                      style={{ ...btnBase, ...(shareStatus === "copied" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : {}) }}>
-                      {shareStatus === "copied" ? <><Check style={{ width: 13, height: 13 }} /> Copied!</> : <><Share2 style={{ width: 13, height: 13 }} /> Share</>}
-                    </button>
-                    <button onClick={handleNotion} disabled={notionStatus === "sending" || notionStatus === "sent"}
-                      style={{ ...btnBase, ...(notionStatus === "sent" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : notionStatus === "error" ? { color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" } : {}) }}>
-                      {notionStatus === "sending" ? <><Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> Saving…</>
-                        : notionStatus === "sent" ? <><Check style={{ width: 13, height: 13 }} /> Saved!</>
-                        : notionStatus === "error" ? <><X style={{ width: 13, height: 13 }} /> Failed</>
-                        : notionConnected ? <><BookOpen style={{ width: 13, height: 13 }} /> Notion</>
-                        : <><BookOpen style={{ width: 13, height: 13 }} /> Connect</>}
-                    </button>
-                    <button onClick={handleDeleteClick} disabled={deleteState === "deleting"}
-                      style={{ ...btnBase, color: "#a8a29e" }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#ef4444"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#fecaca"; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "#a8a29e"; (e.currentTarget as HTMLButtonElement).style.borderColor = "#e7e2d9"; }}>
-                      {deleteState === "deleting" ? <Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> : <><Trash2 style={{ width: 13, height: 13 }} /> Delete</>}
-                    </button>
+                  <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                      <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                        style={{ ...btnBase, textDecoration: "none", flex: "none" }}>
+                        <ExternalLink style={{ width: 13, height: 13 }} /> View
+                      </a>
+                      <button onClick={handleShare}
+                        style={{ ...btnBase, flex: "none", ...(shareStatus === "copied" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : {}) }}>
+                        {shareStatus === "copied" ? <><Check style={{ width: 13, height: 13 }} /> Copied!</> : <><Share2 style={{ width: 13, height: 13 }} /> Share</>}
+                      </button>
+                      <button onClick={handleNotion} disabled={notionStatus === "sending" || notionStatus === "sent"}
+                        style={{ ...btnBase, flex: "none", ...(notionStatus === "sent" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : notionStatus === "error" ? { color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" } : {}) }}>
+                        {notionStatus === "sending" ? <><Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> Saving…</>
+                          : notionStatus === "sent" ? <><Check style={{ width: 13, height: 13 }} /> Saved!</>
+                          : notionStatus === "error" ? <><X style={{ width: 13, height: 13 }} /> Failed</>
+                          : notionConnected ? <><BookOpen style={{ width: 13, height: 13 }} /> Notion</>
+                          : <><BookOpen style={{ width: 13, height: 13 }} /> Connect</>}
+                      </button>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                      <button onClick={handleDeleteClick} disabled={deleteState === "deleting"}
+                        style={{ display: "flex", alignItems: "center", gap: 4, color: "#c4bdb5", border: "none", background: "none", fontSize: 11, padding: "4px 8px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                        {deleteState === "deleting" ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : <><Trash2 style={{ width: 12, height: 12 }} /> Delete</>}
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>

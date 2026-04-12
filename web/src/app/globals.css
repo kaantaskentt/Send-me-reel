@@ -318,4 +318,22 @@
   .typing-dot:nth-child(1) { animation: typing-dot 1.2s ease-in-out infinite 0s; }
   .typing-dot:nth-child(2) { animation: typing-dot 1.2s ease-in-out infinite 0.2s; }
   .typing-dot:nth-child(3) { animation: typing-dot 1.2s ease-in-out infinite 0.4s; }
+
+  /* ── Mobile optimizations ── */
+  @media (max-width: 640px) {
+    /* Hero grid stacks vertically on small screens */
+    .hero-before-after { flex-direction: column !important; align-items: center !important; }
+    .hero-before-after .hero-arrow { transform: rotate(90deg); }
+
+    /* Dashboard sidebar hides at this breakpoint (already handled by lg:block) */
+    .dashboard-sidebar { display: none !important; }
+
+    /* Tighter card padding on mobile */
+    .mobile-compact { padding: 12px !important; }
+  }
+
+  @media (max-width: 768px) {
+    /* VerdictSection stacks vertically */
+    .verdict-layout { flex-direction: column !important; }
+  }
 }
