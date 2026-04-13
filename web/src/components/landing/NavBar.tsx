@@ -58,15 +58,11 @@ export default function NavBar() {
             </Link>
           )}
 
-          {/* Primary CTA */}
-          {isInApp ? (
-            <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f97316", color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 12, padding: "7px 14px", borderRadius: 100, textDecoration: "none" }}>My Feed</Link>
-          ) : (
-            <Link href="/login"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f97316", color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 12, padding: "7px 16px", borderRadius: 100, textDecoration: "none", boxShadow: "0 2px 8px rgba(249,115,22,0.25)", transition: "all 0.15s", whiteSpace: "nowrap" }}>
-              Get started
-            </Link>
-          )}
+          {/* Primary CTA — session-aware */}
+          <Link href={hasSession ? "/dashboard" : "/login"}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#f97316", color: "#fff", fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 12, padding: "7px 16px", borderRadius: 100, textDecoration: "none", boxShadow: "0 2px 8px rgba(249,115,22,0.25)", transition: "all 0.15s", whiteSpace: "nowrap" }}>
+            {hasSession ? "Open dashboard" : "Get started"}
+          </Link>
         </div>
       </div>
     </nav>
