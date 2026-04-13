@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
 import { ExternalLink, LogOut, Home, CheckSquare, MessageSquare, Link2, ChevronUp, ChevronDown } from "lucide-react";
-import InstallPrompt from "./InstallPrompt";
 
 interface Props { profile: UserProfile; }
 
@@ -131,11 +130,6 @@ export default function ProfileSidebar({ profile }: Props) {
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
-      {/* Share Target Install */}
-      <InstallPrompt />
-
-      <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
-
       {/* Links */}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer"
@@ -233,6 +227,18 @@ function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
               <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Create issues from tasks</p>
             </div>
             <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
+          </div>
+
+          {/* Share Target (PWA) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Share Menu</p>
+              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Analyze from any app</p>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Install app</span>
           </div>
         </div>
       )}
