@@ -63,6 +63,7 @@ export type WorthSignal = "worth_your_time" | "skim_it" | "skip" | null;
 export interface ParsedVerdict {
   title: string;
   body: string;
+  forYou?: string;
   worthSignal?: WorthSignal;
   raw: string;
 }

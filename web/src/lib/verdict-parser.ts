@@ -5,8 +5,10 @@ export function parseVerdict(raw: string): ParsedVerdict {
 
   let title = "";
   let worthSignal: import("./types").WorthSignal = null;
-  const bodyLines: string[] = [];
+  const summaryLines: string[] = [];
+  const forYouLines: string[] = [];
   let pastTitle = false;
+  let inForYou = false;
 
   for (const line of lines) {
     if (line.startsWith("⭐")) {
@@ -17,21 +19,33 @@ export function parseVerdict(raw: string): ParsedVerdict {
     } else if (line.startsWith("🔷")) {
       title = line.replace("🔷", "").trim().split("—")[0]?.trim() || "";
       pastTitle = true;
+    } else if (line.startsWith("🎯")) {
+      inForYou = true;
+      const rest = line.replace("🎯", "").trim();
+      if (rest) forYouLines.push(rest);
     } else if (pastTitle) {
-      // Strip legacy emoji prefixes from old verdicts so they render cleanly
+      // Strip legacy emoji prefixes from old verdicts
       const cleaned = line
         .replace(/^🧠\s*/, "")
         .replace(/^🔧\s*/, "")
         .replace(/^💡\s*/, "")
         .replace(/^🔗\s*/, "")
         .trim();
-      if (cleaned) bodyLines.push(cleaned);
+      if (cleaned) {
+        if (inForYou) forYouLines.push(cleaned);
+        else summaryLines.push(cleaned);
+      }
     }
   }
 
+  // Backward compat: if no 🎯 section (old format), everything is body
+  const body = summaryLines.join("\n\n");
+  const forYou = forYouLines.join(" ");
+
   return {
     title: title || "Untitled",
-    body: bodyLines.join("\n\n"),
+    body: body || forYou, // fallback if somehow only forYou exists
+    forYou: forYou || undefined,
     worthSignal,
     raw,
   };

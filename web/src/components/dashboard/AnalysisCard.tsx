@@ -275,7 +275,14 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
 
               {parsed?.body && (
                 <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
-                  <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
+                  <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
+                </div>
+              )}
+
+              {parsed?.forYou && (
+                <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>🎯</span>
+                  <p style={{ fontSize: 13, color: "#9a3412", lineHeight: 1.65, margin: 0 }}>{parsed.forYou}</p>
                 </div>
               )}
 

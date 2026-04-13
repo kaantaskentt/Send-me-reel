@@ -44,6 +44,15 @@ export default function AnalysisDetail({ analysis, onBack }: Props) {
               {parsed.body}
             </p>
           )}
+
+          {parsed.forYou && (
+            <div className="bg-orange-950/30 border border-orange-800/40 rounded-lg p-3 flex gap-2 items-start">
+              <span className="text-sm flex-shrink-0 mt-0.5">🎯</span>
+              <p className="text-sm text-orange-200 leading-relaxed m-0">
+                {parsed.forYou}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
