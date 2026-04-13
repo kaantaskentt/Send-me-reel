@@ -35,59 +35,14 @@ export default function AnalysisDetail({ analysis, onBack }: Props) {
       {/* Verdict */}
       {parsed && (
         <div className="space-y-4 mb-8">
-          <div>
-            <h1 className="text-xl font-bold text-blue-400">
-              {parsed.title}
-            </h1>
-            {parsed.subtitle && (
-              <p className="text-sm text-zinc-500 mt-1">{parsed.subtitle}</p>
-            )}
-          </div>
+          <h1 className="text-xl font-bold text-blue-400">
+            {parsed.title}
+          </h1>
 
-          {parsed.explanation && (
-            <p className="text-sm text-zinc-300 leading-relaxed">
-              {parsed.explanation}
+          {parsed.body && (
+            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
+              {parsed.body}
             </p>
-          )}
-
-          {parsed.howTo && (
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              {parsed.howTo}
-            </p>
-          )}
-
-          {parsed.realWorldUse && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
-              <p className="text-xs text-zinc-400">
-                <span className="text-zinc-300 font-medium">Real-world use:</span>{" "}
-                {parsed.realWorldUse}
-              </p>
-            </div>
-          )}
-
-          {parsed.link && (
-            <a
-              href={parsed.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300"
-            >
-              {parsed.link}
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          )}
-
-          {parsed.tags && parsed.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {parsed.tags.map((tag, i) => (
-                <span
-                  key={i}
-                  className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
           )}
         </div>
       )}

@@ -273,40 +273,9 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
             <div style={{ padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ height: 1, background: "#f0ebe4" }} />
 
-              {parsed && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {parsed.explanation && (
-                    <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "12px 14px" }}>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 6 }}>🧠 What It Is</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.explanation}</p>
-                    </div>
-                  )}
-                  {parsed.howTo && (
-                    <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "12px 14px" }}>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 6 }}>🔧 What&apos;s Inside</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.howTo}</p>
-                    </div>
-                  )}
-                  {parsed.realWorldUse && (
-                    <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "12px 14px" }}>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, marginBottom: 6 }}>💡 Real-World Context</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.realWorldUse}</p>
-                    </div>
-                  )}
-                  {parsed.link && (
-                    <a href={parsed.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                      style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600 }}>
-                      <ExternalLink style={{ width: 12, height: 12 }} />
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{parsed.link}</span>
-                    </a>
-                  )}
-                  {parsed.tags && parsed.tags.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {parsed.tags.map((tag: string, i: number) => (
-                        <span key={i} style={{ fontSize: 11, background: "#f5f1eb", color: "#78716c", border: "1px solid #e7e2d9", padding: "2px 10px", borderRadius: 100 }}>{tag}</span>
-                      ))}
-                    </div>
-                  )}
+              {parsed?.body && (
+                <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
+                  <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
                 </div>
               )}
 

@@ -4,13 +4,9 @@ export function parseVerdict(raw: string): ParsedVerdict {
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
 
   let title = "";
-  let subtitle = "";
-  let explanation = "";
-  let howTo = "";
-  let realWorldUse: string | undefined;
   let worthSignal: import("./types").WorthSignal = null;
-  let link: string | undefined;
-  const tags: string[] = [];
+  const bodyLines: string[] = [];
+  let pastTitle = false;
 
   for (const line of lines) {
     if (line.startsWith("⭐")) {
@@ -19,41 +15,24 @@ export function parseVerdict(raw: string): ParsedVerdict {
       else if (val.includes("skim")) worthSignal = "skim_it";
       else if (val.includes("skip")) worthSignal = "skip";
     } else if (line.startsWith("🔷")) {
-      const parts = line.replace("🔷", "").trim().split("—");
-      title = parts[0]?.trim() || "";
-      subtitle = parts.slice(1).join("—").trim();
-    } else if (line.startsWith("🧠")) {
-      explanation = line.replace("🧠", "").trim();
-    } else if (line.startsWith("🔧")) {
-      howTo = line.replace("🔧", "").trim();
-    } else if (line.startsWith("💡")) {
-      realWorldUse = line.replace("💡", "").replace(/^Real-world use:\s*/i, "").trim();
-    } else if (line.startsWith("🔗")) {
-      link = line.replace("🔗", "").trim();
-    } else if (
-      line.includes("🆓") ||
-      line.includes("💰") ||
-      line.includes("🔓") ||
-      line.includes("💻") ||
-      line.includes("☁️") ||
-      line.includes("🐍") ||
-      line.includes("📦")
-    ) {
-      // Parse tag line: "🆓 Free · 🔓 Open source"
-      const parts = line.split("·").map((t) => t.trim()).filter(Boolean);
-      tags.push(...parts);
+      title = line.replace("🔷", "").trim().split("—")[0]?.trim() || "";
+      pastTitle = true;
+    } else if (pastTitle) {
+      // Strip legacy emoji prefixes from old verdicts so they render cleanly
+      const cleaned = line
+        .replace(/^🧠\s*/, "")
+        .replace(/^🔧\s*/, "")
+        .replace(/^💡\s*/, "")
+        .replace(/^🔗\s*/, "")
+        .trim();
+      if (cleaned) bodyLines.push(cleaned);
     }
   }
 
   return {
     title: title || "Untitled",
-    subtitle,
-    explanation,
-    howTo,
-    realWorldUse,
+    body: bodyLines.join("\n\n"),
     worthSignal,
-    link,
-    tags: tags.length > 0 ? tags : undefined,
     raw,
   };
 }

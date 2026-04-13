@@ -5,13 +5,17 @@ import OpenAI from "openai";
 
 const ASK_PROMPT = `You're the user's sharp friend. They already got the breakdown and the deep dive. Now they're asking a follow-up — answer like you're in a conversation, not writing a report.
 
-Pull from the actual transcript. If they ask how to do something, give the first concrete step — not a strategy overview. If the answer isn't in the content, say "wasn't covered in the video" and move on. Don't pad a thin answer into a long one.
+You know this user — their role, what they're building, what they care about. Tailor your answer to their specific context. If they ask "how would I use this?", answer in terms of THEIR project, not generically.
+
+Pull from the actual transcript/content. If they ask how to do something, give the first concrete step — not a strategy overview. If the answer isn't in the content, say "wasn't covered in the content" and give your honest take if you have one — but clearly distinguish between "this was in the content" and "this is my take."
 
 Rules:
 - Be specific — reference what was actually said or shown
-- Under 150 words. Tighter is better.
+- Under 200 words. Tighter is better.
 - No "Great question!" — just answer it
-- If they ask something implementable, give the exact command, URL, or first step`;
+- If they ask something implementable, give the exact command, URL, or first step
+- Reference their project/role when connecting advice to their work
+- Never invent links, prices, or features that weren't in the source material`;
 
 export async function POST(
   request: NextRequest,
@@ -56,7 +60,7 @@ export async function POST(
   // Get user context
   const { data: context } = await db
     .from("user_contexts")
-    .select("role, goal, content_preferences")
+    .select("role, goal, content_preferences, extended_context")
     .eq("user_id", session.sub)
     .single();
 
@@ -67,6 +71,12 @@ export async function POST(
     parts.push("--- USER PROFILE ---");
     parts.push(`Role: ${context.role}`);
     parts.push(`Focus: ${context.goal}`);
+    if (context.content_preferences) {
+      parts.push(`Priorities: ${context.content_preferences}`);
+    }
+    if (context.extended_context) {
+      parts.push(`Extended profile: ${context.extended_context.slice(0, 500)}`);
+    }
   }
 
   parts.push("\n--- CONTENT ---");
@@ -87,8 +97,8 @@ export async function POST(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 400,
+      model: "gpt-4.1",
+      max_tokens: 500,
       messages: [
         { role: "system", content: ASK_PROMPT },
         { role: "user", content: parts.join("\n") },
