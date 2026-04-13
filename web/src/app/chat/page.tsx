@@ -66,7 +66,7 @@ function ChatContent() {
 
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(preselectedId);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [chatHistory, setChatHistory] = useState<Record<string, Message[]>>({});
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
@@ -75,6 +75,13 @@ function ChatContent() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Current conversation (derived from map)
+  const messages = selectedId ? (chatHistory[selectedId] || []) : [];
+  const setMessages = (msgs: Message[]) => {
+    if (!selectedId) return;
+    setChatHistory((prev) => ({ ...prev, [selectedId]: msgs }));
+  };
 
   // Fetch analyses + user on mount
   useEffect(() => {
@@ -97,19 +104,24 @@ function ChatContent() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Clear messages when switching analysis
+  // Switch analysis — preserves existing chat
   const handleSelectAnalysis = (id: string) => {
     setSelectedId(id);
-    setMessages([]);
     setSelectorOpen(false);
+  };
+
+  const clearChat = () => {
+    if (!selectedId) return;
+    setChatHistory((prev) => { const next = { ...prev }; delete next[selectedId]; return next; });
   };
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || !selectedId || isLoading) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text.trim() };
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
+    const currentMsgs = chatHistory[selectedId] || [];
+    const newMessages = [...currentMsgs, userMsg];
+    setChatHistory((prev) => ({ ...prev, [selectedId]: newMessages }));
     setInput("");
     setIsLoading(true);
 
@@ -124,33 +136,28 @@ function ChatContent() {
 
       if (!res.ok) {
         const err = await res.json();
-        setMessages([...newMessages, {
-          id: crypto.randomUUID(),
-          role: "assistant",
+        setChatHistory((prev) => ({ ...prev, [selectedId]: [...newMessages, {
+          id: crypto.randomUUID(), role: "assistant" as const,
           content: err.error === "Premium required"
             ? "This feature requires Premium. Upgrade at /pricing to chat with your analyses."
             : "Something went wrong. Try again.",
-        }]);
+        }] }));
         return;
       }
 
       const data = await res.json();
-      setMessages([...newMessages, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: data.message,
-      }]);
+      setChatHistory((prev) => ({ ...prev, [selectedId]: [...newMessages, {
+        id: crypto.randomUUID(), role: "assistant" as const, content: data.message,
+      }] }));
     } catch {
-      setMessages([...newMessages, {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: "Network error. Please try again.",
-      }]);
+      setChatHistory((prev) => ({ ...prev, [selectedId]: [...newMessages, {
+        id: crypto.randomUUID(), role: "assistant" as const, content: "Network error. Please try again.",
+      }] }));
     } finally {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [selectedId, messages, isLoading]);
+  }, [selectedId, chatHistory, isLoading]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,7 +221,18 @@ function ChatContent() {
               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {parseTitle(selectedAnalysis.verdict)}
               </span>
-              <span style={{ fontSize: 11, color: "#a8a29e", flexShrink: 0 }}>{timeAgo(selectedAnalysis.created_at)}</span>
+              {hasMessages && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); clearChat(); }}
+                  title="Clear chat"
+                  style={{ padding: "2px 6px", background: "none", border: "1px solid #e7e2d9", borderRadius: 6, cursor: "pointer", color: "#c4bdb5", fontSize: 11, fontFamily: "'DM Sans', sans-serif", flexShrink: 0, transition: "all 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#ef4444"; e.currentTarget.style.color = "#ef4444"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e7e2d9"; e.currentTarget.style.color = "#c4bdb5"; }}
+                >
+                  Clear
+                </button>
+              )}
+              {!hasMessages && <span style={{ fontSize: 11, color: "#a8a29e", flexShrink: 0 }}>{timeAgo(selectedAnalysis.created_at)}</span>}
             </>
           ) : (
             <span style={{ flex: 1, fontSize: 13, color: "#a8a29e" }}>
@@ -254,7 +272,13 @@ function ChatContent() {
                     <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {parseTitle(a.verdict)}
                     </span>
-                    <span style={{ fontSize: 10, color: "#c4bdb5", flexShrink: 0 }}>{timeAgo(a.created_at)}</span>
+                    {chatHistory[a.id]?.length ? (
+                      <span style={{ fontSize: 9, fontWeight: 700, color: "#f97316", background: "#fff7ed", border: "1px solid #fed7aa", padding: "1px 6px", borderRadius: 20, flexShrink: 0 }}>
+                        {chatHistory[a.id].length}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 10, color: "#c4bdb5", flexShrink: 0 }}>{timeAgo(a.created_at)}</span>
+                    )}
                   </button>
                 ))}
               </div>
