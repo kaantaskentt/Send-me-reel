@@ -18,6 +18,21 @@ interface Message {
   content: string;
 }
 
+interface ParsedAction {
+  type: "add_task" | "save_notion";
+  payload?: string;
+  raw: string;
+}
+
+function parseAction(content: string): { text: string; action: ParsedAction | null } {
+  const match = content.match(/\[ACTION:(add_task|save_notion)(?::([^\]]*))?\]/);
+  if (!match) return { text: content, action: null };
+  return {
+    text: content.replace(match[0], "").trim(),
+    action: { type: match[1] as ParsedAction["type"], payload: match[2], raw: match[0] },
+  };
+}
+
 const PLATFORM_ICONS: Record<string, { color: string; label: string }> = {
   instagram: { color: "#ee2a7b", label: "Instagram" },
   tiktok: { color: "#010101", label: "TikTok" },
@@ -364,44 +379,53 @@ function ChatContent() {
         ) : (
           /* Message list */
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {messages.map((msg) => (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                style={{
-                  display: "flex",
-                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                }}
-              >
-                {msg.role === "assistant" && (
-                  <div style={{
-                    width: 28, height: 28, borderRadius: 8, background: "#f97316",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, marginRight: 10, marginTop: 2,
-                  }}>
-                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                      <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+            {messages.map((msg) => {
+              const parsed = msg.role === "assistant" ? parseAction(msg.content) : null;
+              const displayText = parsed ? parsed.text : msg.content;
+
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{
+                    display: "flex",
+                    justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                  }}
+                >
+                  {msg.role === "assistant" && (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 8, background: "#f97316",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      flexShrink: 0, marginRight: 10, marginTop: 2,
+                    }}>
+                      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                        <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                  )}
+                  <div style={{ maxWidth: msg.role === "user" ? "75%" : "calc(100% - 38px)" }}>
+                    <div style={{
+                      padding: "12px 16px",
+                      borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                      background: msg.role === "user" ? "#f97316" : "#fff",
+                      color: msg.role === "user" ? "#fff" : "#44403c",
+                      border: msg.role === "assistant" ? "1px solid #e7e2d9" : "none",
+                      fontSize: 14,
+                      lineHeight: 1.65,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}>
+                      {displayText}
+                    </div>
+                    {parsed?.action && selectedId && (
+                      <ActionButton action={parsed.action} analysisId={selectedId} />
+                    )}
                   </div>
-                )}
-                <div style={{
-                  maxWidth: msg.role === "user" ? "75%" : "calc(100% - 38px)",
-                  padding: "12px 16px",
-                  borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                  background: msg.role === "user" ? "#f97316" : "#fff",
-                  color: msg.role === "user" ? "#fff" : "#44403c",
-                  border: msg.role === "assistant" ? "1px solid #e7e2d9" : "none",
-                  fontSize: 14,
-                  lineHeight: 1.65,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}>
-                  {msg.content}
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
 
             {/* Typing indicator */}
             {isLoading && (
@@ -479,6 +503,64 @@ function ChatContent() {
         </div>
       )}
     </div>
+  );
+}
+
+function ActionButton({ action, analysisId }: { action: ParsedAction; analysisId: string }) {
+  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+
+  const execute = async () => {
+    setStatus("loading");
+    try {
+      if (action.type === "add_task" && action.payload) {
+        const res = await fetch(`/api/analyses/${analysisId}/todos`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: action.payload }),
+        });
+        if (!res.ok) throw new Error();
+      } else if (action.type === "save_notion") {
+        const res = await fetch("/api/notion/push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysisId }),
+        });
+        if (!res.ok) throw new Error();
+      }
+      setStatus("done");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  const labels: Record<string, { idle: string; loading: string; done: string; error: string; icon: string }> = {
+    add_task: { idle: `Add task: "${action.payload}"`, loading: "Adding...", done: "Added to tasks", error: "Failed — try again", icon: "+" },
+    save_notion: { idle: "Save to Notion", loading: "Saving...", done: "Saved to Notion", error: "Failed — try again", icon: "N" },
+  };
+
+  const label = labels[action.type] || labels.add_task;
+  const isDone = status === "done";
+  const isError = status === "error";
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      onClick={status === "done" ? undefined : execute}
+      disabled={status === "loading" || status === "done"}
+      style={{
+        display: "flex", alignItems: "center", gap: 8,
+        marginTop: 8, padding: "10px 16px",
+        background: isDone ? "#f0fdf4" : isError ? "#fef2f2" : "#fff7ed",
+        border: `1px solid ${isDone ? "#bbf7d0" : isError ? "#fecaca" : "#fed7aa"}`,
+        borderRadius: 10, cursor: isDone ? "default" : "pointer",
+        fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600,
+        color: isDone ? "#16a34a" : isError ? "#dc2626" : "#f97316",
+        transition: "all 0.15s", width: "100%",
+      }}
+    >
+      {isDone ? "✓" : label.icon} {label[status]}
+    </motion.button>
   );
 }
 
