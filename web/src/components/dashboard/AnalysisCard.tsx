@@ -118,6 +118,7 @@ interface Props {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, isPremium, onDeleted }: Props) {
+  const [activeTab, setActiveTab] = useState<"act" | "chat" | "sync">("act");
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
@@ -286,184 +287,182 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 </div>
               )}
 
-              {/* ── Deep Dive ── */}
-              {actionItems ? (
-                <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 0 }}>
+              {/* ── Act · Chat · Sync Tab Bar ── */}
+              <div style={{ display: "flex", background: "#f5f1eb", borderRadius: 10, padding: 3 }}>
+                {([
+                  { key: "act" as const, label: "✅ Act" },
+                  { key: "chat" as const, label: "💬 Chat" },
+                  { key: "sync" as const, label: "🔄 Sync" },
+                ]).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={(e) => { e.stopPropagation(); setActiveTab(tab.key); }}
+                    style={{
+                      flex: 1, padding: "7px 0", fontSize: 12, fontWeight: 600, borderRadius: 8,
+                      border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                      background: activeTab === tab.key ? "#fff" : "transparent",
+                      color: activeTab === tab.key ? "#1c1917" : "#a8a29e",
+                      boxShadow: activeTab === tab.key ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                  {/* Key Insights */}
-                  {(actionItems.insights as { text: string }[])?.length > 0 && (
-                    <div style={{ paddingBottom: 12 }}>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>💡 Insights</p>
-                      {(actionItems.insights as { text: string }[]).map((item, i) => (
-                        <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: i > 0 ? "6px 0 0 0" : 0 }}>{item.text}</p>
-                      ))}
-                    </div>
-                  )}
+              {/* ── Tab Content ── */}
+              <div onClick={(e) => e.stopPropagation()} style={{ minHeight: 60 }}>
 
-                  {/* Tools & Resources */}
-                  {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[])?.length > 0 && (
-                    <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12, paddingBottom: 12 }}>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 8px 0" }}>🔧 Mentioned</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[]).map((item, i) => (
-                          item.link ? (
-                            <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                              title={item.description}
-                              style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                              {item.name} {item.price && <span style={{ fontSize: 10, color: "#64748b" }}>· {item.price}</span>}
-                            </a>
-                          ) : (
-                            <span key={i} title={item.description}
-                              style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 100, background: "#f5f1eb", color: "#44403c", border: "1px solid #e7e2d9", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                              {item.name} {item.price && <span style={{ fontSize: 10, color: "#a8a29e" }}>· {item.price}</span>}
-                            </span>
-                          )
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* For You */}
-                  {(actionItems.for_you as { text: string }[])?.length > 0 && (
-                    <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12, paddingBottom: 12 }}>
-                      <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>🎯 For you</p>
-                      {(actionItems.for_you as { text: string }[]).map((item, i) => (
-                        <p key={i} style={{ fontSize: 13, color: "#78716c", lineHeight: 1.65, margin: i > 0 ? "4px 0 0 0" : 0, fontStyle: "italic" }}>{item.text}</p>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Try This Week */}
-                  {(actionItems.try_this as { title: string; description: string }[])?.length > 0 && (
-                    <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12 }}>
-                      {(actionItems.try_this as { title: string; description: string }[]).map((item, i) => (
-                        <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                          <span style={{ fontSize: 14, marginTop: 1 }}>→</span>
-                          <div>
-                            <p style={{ fontSize: 13, fontWeight: 700, color: "#f97316", margin: 0 }}>{item.title}</p>
-                            <p style={{ fontSize: 12, color: "#44403c", margin: "2px 0 0 0", lineHeight: 1.6 }}>{item.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <button
-                  onClick={handleActionItems}
-                  disabled={actionItemsLoading}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                    width: "100%", padding: "12px 16px", borderRadius: 12,
-                    background: actionItemsLoading ? "#fefce8" : "linear-gradient(135deg, #fef9c3, #fef08a)",
-                    border: "1px solid #fde047",
-                    color: "#a16207", fontSize: 13, fontWeight: 700,
-                    cursor: actionItemsLoading ? "wait" : "pointer",
-                    fontFamily: "'DM Sans', sans-serif",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {actionItemsLoading ? (
-                    <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating deep dive...</>
-                  ) : (
-                    <>⚡ Deep Dive</>
-                  )}
-                </button>
-              )}
-
-              {/* ── Tasks ── */}
-              <TodoList analysisId={analysis.id} />
-
-              {/* ── Ask about this (Premium) ── */}
-              {isPremium ? (
-                <div style={{ background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 14, padding: 14 }}>
-                  {askAnswer && (
-                    <div style={{ marginBottom: 12, background: "#fff", border: "1px solid #e7e2d9", borderRadius: 10, padding: 12 }}>
-                      <p style={{ fontSize: 10, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>Answer</p>
-                      <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{askAnswer}</p>
-                    </div>
-                  )}
-                  <form onSubmit={handleAsk} onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8 }}>
-                    <input
-                      type="text"
-                      value={askQuestion}
-                      onChange={(e) => setAskQuestion(e.target.value)}
-                      placeholder="Ask about this content..."
-                      style={{ flex: 1, padding: "9px 12px", fontSize: 13, border: "1px solid #e7e2d9", borderRadius: 10, outline: "none", color: "#1c1917", fontFamily: "'DM Sans', sans-serif", background: "#fff" }}
-                      onFocus={(e) => { e.target.style.borderColor = "#f97316"; }}
-                      onBlur={(e) => { e.target.style.borderColor = "#e7e2d9"; }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={askLoading || !askQuestion.trim()}
-                      style={{ padding: "9px 16px", background: askLoading ? "#fb923c" : "#f97316", color: "#fff", fontWeight: 600, fontSize: 12, borderRadius: 10, border: "none", cursor: askLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}
-                    >
-                      {askLoading ? "..." : "Ask"}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <a href="/pricing" onClick={(e) => e.stopPropagation()} style={{ display: "block", textDecoration: "none" }}>
-                  <div style={{ background: "#faf8f5", border: "1px dashed #e7e2d9", borderRadius: 14, padding: "12px 14px", textAlign: "center" }}>
-                    <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>
-                      💬 <span style={{ color: "#f97316", fontWeight: 600 }}>Upgrade to Premium</span> to ask follow-up questions about this content
-                    </p>
-                  </div>
-                </a>
-              )}
-
-              {hasVideoMeta && (
-                <>
-                  <div style={{ height: 1, background: "#f0ebe4" }} />
-                  <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 12, color: "#a8a29e" }}>
-                    {views && <span>{fmtCount(views)} views</span>}
-                    {likes && <span>{fmtCount(likes)} likes</span>}
-                    {comments && <span>{fmtCount(comments)} comments</span>}
-                    {duration && <span>{fmtDuration(duration)}</span>}
-                  </div>
-                </>
-              )}
-
-              <div style={{ height: 1, background: "#f0ebe4" }} />
-
-              {/* ── Action buttons ── */}
-              <AnimatePresence mode="wait" initial={false}>
-                {deleteState === "confirm" ? (
-                  <motion.div key="confirm" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}
-                    style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 13, color: "#44403c", flex: 1 }}>Delete this analysis?</span>
-                    <button onClick={cancelDelete} style={{ ...btnBase, flex: "none", color: "#78716c" }}>Cancel</button>
-                    <button onClick={handleDeleteConfirm} style={{ ...btnBase, flex: "none", color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" }}>Delete</button>
-                  </motion.div>
-                ) : (
-                  <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
-                      <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                        style={{ ...btnBase, textDecoration: "none", flex: "none" }}>
-                        <ExternalLink style={{ width: 13, height: 13 }} /> View
-                      </a>
-                      <button onClick={handleShare}
-                        style={{ ...btnBase, flex: "none", ...(shareStatus === "copied" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : {}) }}>
-                        {shareStatus === "copied" ? <><Check style={{ width: 13, height: 13 }} /> Copied!</> : <><Share2 style={{ width: 13, height: 13 }} /> Share</>}
-                      </button>
-                      <button onClick={handleNotion} disabled={notionStatus === "sending" || notionStatus === "sent"}
-                        style={{ ...btnBase, flex: "none", ...(notionStatus === "sent" ? { color: "#10b981", borderColor: "#a7f3d0", background: "#f0fdf4" } : notionStatus === "error" ? { color: "#ef4444", borderColor: "#fecaca", background: "#fef2f2" } : {}) }}>
-                        {notionStatus === "sending" ? <><Loader2 style={{ width: 13, height: 13 }} className="animate-spin" /> Saving…</>
-                          : notionStatus === "sent" ? <><Check style={{ width: 13, height: 13 }} /> Saved!</>
-                          : notionStatus === "error" ? <><X style={{ width: 13, height: 13 }} /> Failed</>
-                          : notionConnected ? <><BookOpen style={{ width: 13, height: 13 }} /> Notion</>
-                          : <><BookOpen style={{ width: 13, height: 13 }} /> Connect</>}
-                      </button>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
-                      <button onClick={handleDeleteClick} disabled={deleteState === "deleting"}
-                        style={{ display: "flex", alignItems: "center", gap: 4, color: "#c4bdb5", border: "none", background: "none", fontSize: 11, padding: "4px 8px", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                        {deleteState === "deleting" ? <Loader2 style={{ width: 12, height: 12 }} className="animate-spin" /> : <><Trash2 style={{ width: 12, height: 12 }} /> Delete</>}
-                      </button>
-                    </div>
-                  </motion.div>
+                {/* ACT tab — tasks */}
+                {activeTab === "act" && (
+                  <TodoList analysisId={analysis.id} />
                 )}
-              </AnimatePresence>
+
+                {/* CHAT tab — deep dive + ask */}
+                {activeTab === "chat" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {/* Deep Dive */}
+                    {actionItems ? (
+                      <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                        {(actionItems.insights as { text: string }[])?.length > 0 && (
+                          <div>
+                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>💡 Insights</p>
+                            {(actionItems.insights as { text: string }[]).map((item, i) => (
+                              <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: i > 0 ? "4px 0 0 0" : 0 }}>{item.text}</p>
+                            ))}
+                          </div>
+                        )}
+                        {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[])?.length > 0 && (
+                          <div style={{ borderTop: "1px solid #e7e2d9", paddingTop: 10 }}>
+                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>🔧 Mentioned</p>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                              {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[]).map((item, i) => (
+                                item.link ? (
+                                  <a key={i} href={item.link} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={item.description}
+                                    style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", textDecoration: "none" }}>
+                                    {item.name}
+                                  </a>
+                                ) : (
+                                  <span key={i} title={item.description} style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 100, background: "#f5f1eb", color: "#44403c", border: "1px solid #e7e2d9" }}>{item.name}</span>
+                                )
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {(actionItems.for_you as { text: string }[])?.length > 0 && (
+                          <div style={{ borderTop: "1px solid #e7e2d9", paddingTop: 10 }}>
+                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 4px 0" }}>🎯 For you</p>
+                            {(actionItems.for_you as { text: string }[]).map((item, i) => (
+                              <p key={i} style={{ fontSize: 13, color: "#78716c", lineHeight: 1.65, margin: i > 0 ? "4px 0 0 0" : 0, fontStyle: "italic" }}>{item.text}</p>
+                            ))}
+                          </div>
+                        )}
+                        {(actionItems.try_this as { title: string; description: string }[])?.length > 0 && (
+                          <div style={{ borderTop: "1px solid #e7e2d9", paddingTop: 10 }}>
+                            {(actionItems.try_this as { title: string; description: string }[]).map((item, i) => (
+                              <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                <span style={{ fontSize: 13, marginTop: 1 }}>→</span>
+                                <div>
+                                  <p style={{ fontSize: 12, fontWeight: 700, color: "#f97316", margin: 0 }}>{item.title}</p>
+                                  <p style={{ fontSize: 12, color: "#44403c", margin: "2px 0 0 0", lineHeight: 1.5 }}>{item.description}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <button onClick={handleActionItems} disabled={actionItemsLoading}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "11px 16px", borderRadius: 10, background: actionItemsLoading ? "#fefce8" : "linear-gradient(135deg, #fef9c3, #fef08a)", border: "1px solid #fde047", color: "#a16207", fontSize: 13, fontWeight: 700, cursor: actionItemsLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+                        {actionItemsLoading ? <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating...</> : <>⚡ Generate deep dive</>}
+                      </button>
+                    )}
+
+                    {/* Ask */}
+                    {askAnswer && (
+                      <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 10, padding: 12 }}>
+                        <p style={{ fontSize: 10, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 4px 0" }}>Answer</p>
+                        <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{askAnswer}</p>
+                      </div>
+                    )}
+                    <form onSubmit={handleAsk} style={{ display: "flex", gap: 8 }}>
+                      <input type="text" value={askQuestion} onChange={(e) => setAskQuestion(e.target.value)} placeholder="Ask anything about this..."
+                        style={{ flex: 1, padding: "9px 12px", fontSize: 13, border: "1px solid #e7e2d9", borderRadius: 10, outline: "none", color: "#1c1917", fontFamily: "'DM Sans', sans-serif", background: "#fff" }}
+                        onFocus={(e) => { e.target.style.borderColor = "#f97316"; }}
+                        onBlur={(e) => { e.target.style.borderColor = "#e7e2d9"; }}
+                      />
+                      <button type="submit" disabled={askLoading || !askQuestion.trim()}
+                        style={{ padding: "9px 14px", background: askLoading ? "#fb923c" : "#f97316", color: "#fff", fontWeight: 600, fontSize: 12, borderRadius: 10, border: "none", cursor: askLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>
+                        {askLoading ? "..." : "Ask"}
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* SYNC tab — connectors */}
+                {activeTab === "sync" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button onClick={handleNotion} disabled={notionStatus === "sending" || notionStatus === "sent"}
+                      style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "10px 14px", background: notionStatus === "sent" ? "#f0fdf4" : "#faf8f5", border: `1px solid ${notionStatus === "sent" ? "#bbf7d0" : "#e7e2d9"}`, borderRadius: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textAlign: "left" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, background: "#1c1917", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <span style={{ color: "white", fontSize: 14, fontWeight: 700 }}>N</span>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: "#1c1917", margin: 0 }}>Notion</p>
+                        <p style={{ fontSize: 11, color: "#a8a29e", margin: 0 }}>{notionConnected ? "Save this analysis" : "Connect Notion first"}</p>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: notionStatus === "sent" ? "#16a34a" : notionStatus === "sending" ? "#f97316" : "#78716c" }}>
+                        {notionStatus === "sending" ? "Saving..." : notionStatus === "sent" ? "✓ Saved" : notionStatus === "error" ? "Failed" : "Save"}
+                      </span>
+                    </button>
+                    {[
+                      { name: "Todoist", color: "#e44332", icon: "✓" },
+                      { name: "Google Calendar", color: "#4285f4", icon: "📅" },
+                    ].map((c) => (
+                      <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, opacity: 0.6 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: c.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <span style={{ color: "white", fontSize: 12 }}>{c.icon}</span>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontSize: 13, fontWeight: 600, color: "#1c1917", margin: 0 }}>{c.name}</p>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Compact action links ── */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, paddingTop: 4 }}>
+                <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                  style={{ fontSize: 12, color: "#a8a29e", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, transition: "color 0.15s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}>
+                  <ExternalLink style={{ width: 12, height: 12 }} /> View
+                </a>
+                <button onClick={handleShare}
+                  style={{ fontSize: 12, color: shareStatus === "copied" ? "#10b981" : "#a8a29e", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}>
+                  {shareStatus === "copied" ? <><Check style={{ width: 12, height: 12 }} /> Copied</> : <><Share2 style={{ width: 12, height: 12 }} /> Share</>}
+                </button>
+                <AnimatePresence mode="wait">
+                  {deleteState === "confirm" ? (
+                    <motion.div key="del-confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <button onClick={handleDeleteConfirm} style={{ fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>Confirm</button>
+                      <button onClick={cancelDelete} style={{ fontSize: 11, color: "#a8a29e", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                    </motion.div>
+                  ) : (
+                    <motion.button key="del-btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      onClick={handleDeleteClick}
+                      style={{ fontSize: 12, color: "#d6d3d1", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = "#d6d3d1"; }}>
+                      <Trash2 style={{ width: 12, height: 12 }} />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </motion.div>
         )}
