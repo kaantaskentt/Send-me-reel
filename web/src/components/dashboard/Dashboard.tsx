@@ -11,7 +11,6 @@ import StatsBar from "./StatsBar";
 import FilterBar from "./FilterBar";
 import SearchBar from "./SearchBar";
 import EmptyState from "./EmptyState";
-import InstallPrompt from "./InstallPrompt";
 
 function CardSkeleton() {
   return (
@@ -138,7 +137,6 @@ export default function Dashboard() {
 
         <main style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 720 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <InstallPrompt />
             <StatsBar total={total} learnCount={learnCount} applyCount={applyCount} />
             <SearchBar value={search} onChange={setSearch} />
             <FilterBar intent={intent} onIntentChange={setIntent} platform={platform} onPlatformChange={setPlatform} />

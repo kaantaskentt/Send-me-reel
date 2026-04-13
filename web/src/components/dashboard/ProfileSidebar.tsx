@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
 import { ExternalLink, LogOut, Home, CheckSquare, MessageSquare, Link2, ChevronUp, ChevronDown } from "lucide-react";
+import InstallPrompt from "./InstallPrompt";
 
 interface Props { profile: UserProfile; }
 
@@ -127,6 +128,11 @@ export default function ProfileSidebar({ profile }: Props) {
 
       {/* Connectors */}
       <ConnectorsSection notionConnected={notionConnected} />
+
+      <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
+
+      {/* Share Target Install */}
+      <InstallPrompt />
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
