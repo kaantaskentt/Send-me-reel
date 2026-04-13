@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 const HERO_VIDEO_URL =
   "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/hero_loop_5e8e7a1f.mp4";
 
-const ROTATING_WORDS = ["summarised.", "actioned.", "useful."];
+const ROTATING_WORDS = ["understood.", "decoded.", "actionable."];
 
 const GRID_IMAGES = [
   "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/RZMhPDNnbZpx_ab1add6e.jpg",
@@ -105,7 +105,7 @@ export default function HeroSection() {
 
         {/* Subline — tighter */}
         <p style={{ fontSize: "clamp(15px, 1.8vw, 17px)", color: "#78716c", maxWidth: 440, margin: "0 auto 2.5rem", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", fontWeight: 400, ...fade(0.2) }}>
-          Send a link. Get back what actually matters — in 30 seconds.
+          Send a link. Get back what it says, what's actionable, and whether it's worth your time.
         </p>
 
         {/* CTAs */}
