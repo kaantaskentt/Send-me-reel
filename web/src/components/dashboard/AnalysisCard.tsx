@@ -440,7 +440,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                   style={{ fontSize: 12, color: "#a8a29e", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, transition: "color 0.15s" }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}>
-                  <ExternalLink style={{ width: 12, height: 12 }} /> View
+                  <ExternalLink style={{ width: 12, height: 12 }} /> View Post
                 </a>
                 <button onClick={handleShare}
                   style={{ fontSize: 12, color: shareStatus === "copied" ? "#10b981" : "#a8a29e", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}>
