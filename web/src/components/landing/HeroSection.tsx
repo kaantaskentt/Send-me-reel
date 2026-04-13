@@ -112,12 +112,15 @@ export default function HeroSection() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem", ...fade(0.3) }}>
           <CTAButton />
           <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
-            <a href="/dashboard" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 13, textDecoration: "none", borderBottom: "1px solid #d6d3d1", paddingBottom: 1, transition: "color 0.15s, border-color 0.15s" }}
-              onMouseEnter={(e) => { const el = e.currentTarget; el.style.color = "#44403c"; el.style.borderBottomColor = "#78716c"; }}
-              onMouseLeave={(e) => { const el = e.currentTarget; el.style.color = "#78716c"; el.style.borderBottomColor = "#d6d3d1"; }}
-            >Open dashboard →</a>
+            <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: 13, textDecoration: "none", transition: "color 0.15s", display: "inline-flex", alignItems: "center", gap: 4 }}
+              onMouseEnter={(e) => { (e.currentTarget).style.color = "#44403c"; }}
+              onMouseLeave={(e) => { (e.currentTarget).style.color = "#78716c"; }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/></svg>
+              or try on Telegram →
+            </a>
             <span style={{ color: "#d6d3d1", fontSize: 12 }}>·</span>
-            <a href="#how-it-works" style={{ color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: 13, textDecoration: "none", transition: "color 0.15s" }}
+            <a href="#preview" style={{ color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", fontWeight: 500, fontSize: 13, textDecoration: "none", transition: "color 0.15s" }}
               onMouseEnter={(e) => { (e.currentTarget).style.color = "#78716c"; }}
               onMouseLeave={(e) => { (e.currentTarget).style.color = "#a8a29e"; }}
             >See how it works ↓</a>
@@ -254,9 +257,7 @@ function CTAButton() {
   const [hovered, setHovered] = useState(false);
   return (
     <a
-      href="https://t.me/contextdrop2027bot"
-      target="_blank"
-      rel="noopener noreferrer"
+      href="/login"
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -266,7 +267,7 @@ function CTAButton() {
         fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
         fontWeight: 700,
         fontSize: 15,
-        padding: "14px 26px",
+        padding: "14px 28px",
         borderRadius: 100,
         textDecoration: "none",
         boxShadow: hovered
@@ -278,10 +279,7 @@ function CTAButton() {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
-      </svg>
-      Start free on Telegram
+      Create free account
     </a>
   );
 }

@@ -242,26 +242,13 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
           <PlatformIcon platform={analysis.platform} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-            <WorthBadge signal={parsed?.worthSignal} />
-            <span style={{ fontSize: 11, color: "#c4bdb5", marginLeft: "auto", flexShrink: 0 }}>{timeAgo}</span>
-          </div>
-          <h3 style={{ fontSize: 13, fontWeight: 600, color: "#1c1917", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1c1917", lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "0 0 4px 0" }}>
             {parsed?.title || "Untitled"}
           </h3>
-          {(parsed?.subtitle || parsed?.explanation) && (
-            <p style={{ fontSize: 12, color: "#a8a29e", marginTop: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", fontStyle: "italic" }}>
-              {parsed?.subtitle || parsed?.explanation}
-            </p>
-          )}
-          {authorUsername && <p style={{ fontSize: 11, color: "#c4bdb5", marginTop: 4 }}>@{authorUsername}</p>}
-          {!isOpen && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
-              <span style={{ fontSize: 10, color: "#d6d3d1", display: "flex", alignItems: "center", gap: 3 }}>⚡ Deep Dive</span>
-              <span style={{ fontSize: 10, color: "#e7e2d9" }}>·</span>
-              <span style={{ fontSize: 10, color: "#d6d3d1", display: "flex", alignItems: "center", gap: 3 }}>💬 Ask</span>
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <WorthBadge signal={parsed?.worthSignal} />
+            <span style={{ fontSize: 11, color: "#c4bdb5" }}>{timeAgo}</span>
+          </div>
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
