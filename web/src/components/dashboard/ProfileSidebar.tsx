@@ -72,11 +72,11 @@ export default function ProfileSidebar({ profile }: Props) {
         >
           <CheckSquare style={{ width: 15, height: 15 }} /> Tasks
         </a>
-        <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+        <a href="/chat" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f1eb"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
-          <MessageSquare style={{ width: 15, height: 15 }} /> Ask AI
+          <MessageSquare style={{ width: 15, height: 15 }} /> Chat
           {user.premium && <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "2px 6px", borderRadius: 20 }}>NEW</span>}
         </a>
       </div>
@@ -229,17 +229,6 @@ function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
             <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
           </div>
 
-          {/* Share Target (PWA) */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Share Menu</p>
-              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Analyze from any app</p>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Install app</span>
-          </div>
         </div>
       )}
     </div>

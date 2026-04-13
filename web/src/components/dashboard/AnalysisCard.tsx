@@ -379,24 +379,14 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                       </button>
                     )}
 
-                    {/* Ask */}
-                    {askAnswer && (
-                      <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 10, padding: 12 }}>
-                        <p style={{ fontSize: 10, color: "#f97316", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 4px 0" }}>Answer</p>
-                        <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{askAnswer}</p>
-                      </div>
-                    )}
-                    <form onSubmit={handleAsk} style={{ display: "flex", gap: 8 }}>
-                      <input type="text" value={askQuestion} onChange={(e) => setAskQuestion(e.target.value)} placeholder="Ask anything about this..."
-                        style={{ flex: 1, padding: "9px 12px", fontSize: 13, border: "1px solid #e7e2d9", borderRadius: 10, outline: "none", color: "#1c1917", fontFamily: "'DM Sans', sans-serif", background: "#fff" }}
-                        onFocus={(e) => { e.target.style.borderColor = "#f97316"; }}
-                        onBlur={(e) => { e.target.style.borderColor = "#e7e2d9"; }}
-                      />
-                      <button type="submit" disabled={askLoading || !askQuestion.trim()}
-                        style={{ padding: "9px 14px", background: askLoading ? "#fb923c" : "#f97316", color: "#fff", fontWeight: 600, fontSize: 12, borderRadius: 10, border: "none", cursor: askLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif", flexShrink: 0 }}>
-                        {askLoading ? "..." : "Ask"}
-                      </button>
-                    </form>
+                    {/* Chat link */}
+                    <a href={`/chat?analysis=${analysis.id}`} onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", padding: "11px 14px", background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 10, transition: "all 0.15s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.background = "#fff7ed"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e7e2d9"; e.currentTarget.style.background = "#faf8f5"; }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "#f97316" }}>Chat about this →</span>
+                    </a>
                   </div>
                 )}
 
