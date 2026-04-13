@@ -40,12 +40,17 @@ export function parseVerdict(raw: string): ParsedVerdict {
 
   // Backward compat: if no 🎯 section (old format), everything is body
   const body = summaryLines.join("\n\n");
-  const forYou = forYouLines.join(" ");
+  let forYou: string | undefined = forYouLines.join(" ") || undefined;
+
+  // Filter out stale "nothing here for X" lines from old cached verdicts
+  if (forYou && /nothing here for/i.test(forYou)) {
+    forYou = undefined;
+  }
 
   return {
     title: title || "Untitled",
-    body: body || forYou, // fallback if somehow only forYou exists
-    forYou: forYou || undefined,
+    body: body || (forYou ?? ""),
+    forYou,
     worthSignal,
     raw,
   };
