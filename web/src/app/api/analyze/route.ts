@@ -1,0 +1,70 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
+import { getSupabase } from "@/lib/supabase";
+import { extractUrl, detectPlatform } from "@/lib/url-utils";
+
+export async function POST(request: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const { url: rawUrl } = await request.json();
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return NextResponse.json({ error: "URL is required" }, { status: 400 });
+  }
+
+  // Extract clean URL (handles "Check this out https://..." text)
+  const url = extractUrl(rawUrl) || rawUrl.trim();
+  const platform = detectPlatform(url);
+
+  if (platform === "unknown") {
+    return NextResponse.json(
+      { error: "Unrecognized link. We support Instagram, TikTok, X, LinkedIn, YouTube, and article URLs." },
+      { status: 400 },
+    );
+  }
+
+  const db = getSupabase();
+  const userId = session.sub;
+
+  // Check credits
+  const { data: creditRow } = await db
+    .from("credits")
+    .select("balance")
+    .eq("user_id", userId)
+    .single();
+
+  if (!creditRow || creditRow.balance <= 0) {
+    return NextResponse.json({ error: "No analyses remaining" }, { status: 402 });
+  }
+
+  // Deduct one credit
+  const { error: deductErr } = await db.rpc("deduct_credit", { p_user_id: userId });
+  if (deductErr) {
+    // Fallback: manual deduction
+    await db
+      .from("credits")
+      .update({ balance: creditRow.balance - 1 })
+      .eq("user_id", userId);
+  }
+
+  // Create pending analysis for the queue worker to pick up
+  const { data: analysis, error: insertErr } = await db
+    .from("analyses")
+    .insert({
+      user_id: userId,
+      source_url: url,
+      platform,
+      status: "pending",
+      source: "web",
+    })
+    .select("id")
+    .single();
+
+  if (insertErr || !analysis) {
+    return NextResponse.json({ error: "Failed to create analysis" }, { status: 500 });
+  }
+
+  return NextResponse.json({ analysisId: analysis.id });
+}

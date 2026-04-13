@@ -50,6 +50,14 @@ export default function LoginContent({ botDashboardLink }: { botDashboardLink: s
         return;
       }
 
+      // Resume pending share if user came from /share while unauthenticated
+      const next = searchParams.get("next");
+      const pendingUrl = searchParams.get("url");
+      if (next === "/share" && pendingUrl) {
+        router.push(`/share?url=${encodeURIComponent(pendingUrl)}`);
+        return;
+      }
+
       // Redirect based on onboarding status
       router.push(data.onboarded ? "/dashboard" : "/context");
     } catch {
@@ -104,7 +112,13 @@ export default function LoginContent({ botDashboardLink }: { botDashboardLink: s
         )}
 
         {/* Google */}
-        <a href="/api/auth/google" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%", padding: "12px 24px", background: "#fff", color: "#1c1917", fontWeight: 600, fontSize: 14, borderRadius: 100, textDecoration: "none", boxSizing: "border-box", border: "1px solid #e7e2d9", marginBottom: 20, cursor: "pointer", transition: "all 0.15s" }}>
+        <a href="/api/auth/google" onClick={(e) => {
+          // Persist pending share URL in cookie for Google OAuth round trip
+          const pendingUrl = searchParams.get("url");
+          if (searchParams.get("next") === "/share" && pendingUrl) {
+            document.cookie = `cd_pending_url=${encodeURIComponent(pendingUrl)}; path=/; max-age=600; SameSite=Lax`;
+          }
+        }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%", padding: "12px 24px", background: "#fff", color: "#1c1917", fontWeight: 600, fontSize: 14, borderRadius: 100, textDecoration: "none", boxSizing: "border-box", border: "1px solid #e7e2d9", marginBottom: 20, cursor: "pointer", transition: "all 0.15s" }}>
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />

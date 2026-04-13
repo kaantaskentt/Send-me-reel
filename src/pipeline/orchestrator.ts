@@ -154,14 +154,16 @@ export async function runPipeline(
   }
 }
 
-async function runVideoPipeline(
-  ctx: MyContext,
+/**
+ * Grammy-free video pipeline — processes video and writes results to DB.
+ * Used by both the Telegram bot wrapper and the web queue worker.
+ */
+export async function executeVideoPipeline(
   userId: string,
   analysisId: string,
   url: string,
   platform: Platform,
-  replyToMessageId?: number,
-): Promise<void> {
+): Promise<string> {
   await analyses.updateStatus(analysisId, "scraping");
 
   // Step 1: Get metadata — yt-dlp first, Apify fallback
@@ -257,16 +259,18 @@ async function runVideoPipeline(
     status: "done",
   });
 
-  await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
+  return verdict;
 }
 
-async function runArticlePipeline(
-  ctx: MyContext,
+/**
+ * Grammy-free article pipeline — processes article and writes results to DB.
+ * Used by both the Telegram bot wrapper and the web queue worker.
+ */
+export async function executeArticlePipeline(
   userId: string,
   analysisId: string,
   url: string,
-  replyToMessageId?: number,
-): Promise<void> {
+): Promise<string> {
   await analyses.updateStatus(analysisId, "scraping");
   const article = await scraper.scrapeArticle(url);
 
@@ -307,6 +311,76 @@ async function runArticlePipeline(
     status: "done",
   });
 
+  return verdict;
+}
+
+/**
+ * Grammy-free pipeline dispatcher — routes to video or article pipeline with fallback.
+ * Used by the web queue worker. Handles credits refund on failure.
+ */
+export async function executePipeline(
+  userId: string,
+  analysisId: string,
+  url: string,
+  platform: Platform,
+): Promise<void> {
+  try {
+    if (platform === "article") {
+      await executeArticlePipeline(userId, analysisId, url);
+    } else {
+      try {
+        await executeVideoPipeline(userId, analysisId, url, platform);
+      } catch (videoErr) {
+        const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
+        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED"];
+        if (fallbackCodes.includes(errCode)) {
+          console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
+          await executeArticlePipeline(userId, analysisId, url);
+        } else {
+          throw videoErr;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[pipeline] executePipeline error:", err);
+    await credits.refund(userId);
+
+    const rawMessage =
+      err instanceof ServiceError ? err.message : "An unexpected error occurred";
+
+    await analyses.updateResult(analysisId, {
+      status: "failed",
+      errorMessage: rawMessage,
+    });
+
+    throw err;
+  } finally {
+    await storage.cleanup(analysisId);
+  }
+}
+
+// Telegram-specific wrappers that delegate to the Grammy-free core
+
+async function runVideoPipeline(
+  ctx: MyContext,
+  userId: string,
+  analysisId: string,
+  url: string,
+  platform: Platform,
+  replyToMessageId?: number,
+): Promise<void> {
+  const verdict = await executeVideoPipeline(userId, analysisId, url, platform);
+  await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
+}
+
+async function runArticlePipeline(
+  ctx: MyContext,
+  userId: string,
+  analysisId: string,
+  url: string,
+  replyToMessageId?: number,
+): Promise<void> {
+  const verdict = await executeArticlePipeline(userId, analysisId, url);
   await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 

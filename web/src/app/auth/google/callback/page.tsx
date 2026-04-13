@@ -39,6 +39,18 @@ export default function GoogleCallbackPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
+          // Check for pending share URL before redirecting
+          const pendingUrl = document.cookie
+            .split("; ")
+            .find((c) => c.startsWith("cd_pending_url="))
+            ?.split("=")
+            .slice(1)
+            .join("=");
+          if (pendingUrl) {
+            document.cookie = "cd_pending_url=; path=/; max-age=0";
+            window.location.href = `/share?url=${encodeURIComponent(decodeURIComponent(pendingUrl))}`;
+            return;
+          }
           window.location.href = data.redirect || "/dashboard";
         } else {
           setStatus("Something went wrong. Redirecting...");
