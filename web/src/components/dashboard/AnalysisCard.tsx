@@ -379,14 +379,24 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                       </button>
                     )}
 
-                    {/* Chat link */}
-                    <a href={`/chat?analysis=${analysis.id}`} onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", padding: "11px 14px", background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 10, transition: "all 0.15s" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.background = "#fff7ed"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e7e2d9"; e.currentTarget.style.background = "#faf8f5"; }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#f97316" }}>Chat about this →</span>
-                    </a>
+                    {/* Chat link (premium) / upsell (free) */}
+                    {isPremium ? (
+                      <a href={`/chat?analysis=${analysis.id}`} onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none", padding: "11px 14px", background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 10, transition: "all 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#f97316"; e.currentTarget.style.background = "#fff7ed"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e7e2d9"; e.currentTarget.style.background = "#faf8f5"; }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#f97316" }}>Chat about this →</span>
+                      </a>
+                    ) : (
+                      <a href="/pricing" onClick={(e) => e.stopPropagation()} style={{ display: "block", textDecoration: "none" }}>
+                        <div style={{ background: "#faf8f5", border: "1px dashed #e7e2d9", borderRadius: 10, padding: "11px 14px", textAlign: "center" }}>
+                          <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>
+                            💬 <span style={{ color: "#f97316", fontWeight: 600 }}>Upgrade to Premium</span> to chat about this content
+                          </p>
+                        </div>
+                      </a>
+                    )}
                   </div>
                 )}
 
