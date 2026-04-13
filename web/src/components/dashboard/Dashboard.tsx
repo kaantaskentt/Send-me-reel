@@ -38,6 +38,16 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(expandId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [sidebarOpen]);
   const [intent, setIntent] = useState("all");
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
