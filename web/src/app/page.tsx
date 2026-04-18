@@ -3,7 +3,6 @@ import HeroSection from "@/components/landing/HeroSection";
 import StatsBar from "@/components/landing/StatsBar";
 import ProblemSection from "@/components/landing/ProblemSection";
 import DashboardPreviewSection from "@/components/landing/DashboardPreviewSection";
-import VerdictSection from "@/components/landing/VerdictSection";
 import PricingSection from "@/components/landing/PricingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
@@ -15,7 +14,6 @@ export default function Home() {
       <StatsBar />
       <ProblemSection />
       <DashboardPreviewSection />
-      <VerdictSection />
       <PricingSection />
       <FinalCTASection />
     </div>
