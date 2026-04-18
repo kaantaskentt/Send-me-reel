@@ -1,8 +1,13 @@
 import ffmpeg from "fluent-ffmpeg";
+import ffmpegPath from "ffmpeg-static";
+import ffprobePath from "ffprobe-static";
 import sharp from "sharp";
 import fs from "fs/promises";
 import path from "path";
 import { ServiceError } from "../pipeline/types.js";
+
+if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath.path);
 
 export function getVideoDuration(videoPath: string): Promise<number> {
   return new Promise((resolve, reject) => {
