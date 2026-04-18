@@ -8,9 +8,9 @@ RUN apt-get update && \
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY . .
-RUN npm run build
+RUN npm run build && npm prune --omit=dev
 
 CMD ["node", "dist/index.js"]
