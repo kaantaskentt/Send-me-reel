@@ -208,9 +208,17 @@ export async function executeVideoPipeline(
   }
 
   await analyses.updateStatus(analysisId, "transcribing");
+
+  // Wrap transcription and frame extraction so one failing doesn't kill the other
   const [transcript, framePaths] = await Promise.all([
-    transcriber.transcribe(videoPath),
-    frameExtractor.extractFrames(videoPath),
+    transcriber.transcribe(videoPath).catch((err) => {
+      console.error(`[pipeline] Transcription failed (continuing with empty):`, err instanceof Error ? err.message : err);
+      return "";
+    }),
+    frameExtractor.extractFrames(videoPath).catch((err) => {
+      console.error(`[pipeline] Frame extraction failed (continuing with empty):`, err instanceof Error ? err.message : err);
+      return [] as string[];
+    }),
   ]);
 
   await analyses.updateStatus(analysisId, "analyzing");

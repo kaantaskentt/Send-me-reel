@@ -29,7 +29,9 @@ OUTPUT — exactly this structure:
 
 [2-3 sentences max. What this actually is. Facts only — tools, names, numbers from the source. No adjectives. No opinions here. Just tell them what it is like you're describing it to someone in 10 seconds.]
 
-🎯 [OPTIONAL. Only include if there's a real, specific connection to what they're building or working on. 1-2 sentences. Be specific — name a project, a tool, a technique. If there's no professional connection, OMIT this entire line. Do NOT write "nothing here for X" — just leave it out. Do NOT force weak connections like "good for a break between coding", "quick meal while working on X", or "might inspire your work." A recipe is a recipe. A speech is a speech. Either there's a direct technical or professional link or there isn't. When in doubt, leave it out.]
+🎯 HARD GATE — before writing this line, answer silently: "Is there a direct, named technical or professional link between this content and the user's work?" If no → do not write the 🎯 line at all. Output nothing for 🎯. If yes → 1-2 sentences naming the specific tool, technique, or project that connects.
+
+NEVER mention what ISN'T relevant. No "nothing here for X", no "no connection to Y", no "couldn't spot anything connected to Z". The absence of this section IS the signal. Writing a negative 🎯 line is a failure mode — treat it as a hard error.
 
 WORTH SIGNAL — measures content quality, NOT relevance to their work:
 - "Worth your time" = has real substance — specific info, tools, steps, ideas, or a clear point
@@ -76,7 +78,13 @@ export async function generateVerdict(input: VerdictInput): Promise<string> {
       throw new ServiceError("VERDICT_EMPTY", "OpenAI returned empty content");
     }
 
-    return text;
+    // Strip hallucinated negative 🎯 lines (e.g. "Nothing here connects to agentic systems")
+    const cleaned = text
+      .replace(/🎯[^\n]*(?:nothing|no connection|not related|couldn't spot|doesn't connect|no direct|unrelated|not relevant|couldn't find)[^\n]*/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    return cleaned;
   } catch (err) {
     if (err instanceof ServiceError) throw err;
     throw new ServiceError(
@@ -89,19 +97,8 @@ export async function generateVerdict(input: VerdictInput): Promise<string> {
 function buildUserPrompt(input: VerdictInput): string {
   const parts: string[] = [];
 
-  parts.push(`--- USER CONTEXT ---`);
-  parts.push(`Role: ${input.userContext.role}`);
-  parts.push(`Current focus: ${input.userContext.goal}`);
-  if (input.userContext.contentPreferences) {
-    parts.push(`Priority topics: ${input.userContext.contentPreferences}`);
-  }
-
-  if (input.userContext.extendedContext) {
-    parts.push(`\n--- EXTENDED PROFILE ---`);
-    parts.push(input.userContext.extendedContext);
-  }
-
-  parts.push(`\n--- CONTENT FROM ${input.platform.toUpperCase()} ---`);
+  // Content FIRST — model forms opinion before seeing user context
+  parts.push(`--- CONTENT FROM ${input.platform.toUpperCase()} ---`);
   parts.push(`Source: ${input.sourceUrl}`);
 
   if (input.caption) {
@@ -123,8 +120,21 @@ function buildUserPrompt(input: VerdictInput): string {
     parts.push(`\nCreator: ${author}`);
   }
 
+  // User context AFTER content — only used for the optional 🎯 line
+  parts.push(`\n--- USER CONTEXT (for 🎯 line only) ---`);
+  parts.push(`Role: ${input.userContext.role}`);
+  parts.push(`Current focus: ${input.userContext.goal}`);
+  if (input.userContext.contentPreferences) {
+    parts.push(`Priority topics: ${input.userContext.contentPreferences}`);
+  }
+
+  if (input.userContext.extendedContext) {
+    parts.push(`\n--- EXTENDED PROFILE ---`);
+    parts.push(input.userContext.extendedContext);
+  }
+
   parts.push(
-    `\nAnalyze this content and produce your verdict for this specific user.`,
+    `\nGenerate your verdict. The content above is what matters. User context is only for the optional 🎯 line — if no direct link exists, omit 🎯 entirely.`,
   );
 
   return parts.join("\n");

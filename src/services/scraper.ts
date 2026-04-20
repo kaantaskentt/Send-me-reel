@@ -145,6 +145,12 @@ export async function scrapeVideoWithFallback(
       throw ytdlpErr;
     }
 
+    // No Apify actors for YouTube/LinkedIn — skip straight to article fallback
+    if (platform === "youtube" || platform === "linkedin") {
+      console.log(`[scraper] yt-dlp failed for ${platform} — no Apify fallback, routing to article pipeline`);
+      throw ytdlpErr;
+    }
+
     console.log(`[scraper] yt-dlp failed, trying Apify fallback: ${ytdlpErr instanceof Error ? ytdlpErr.message : ytdlpErr}`);
 
     try {

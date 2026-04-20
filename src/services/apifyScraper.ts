@@ -5,6 +5,7 @@ import path from "path";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, ScrapedVideo } from "../pipeline/types.js";
 import { ensureTmpDir } from "./storage.js";
+import { config } from "../config.js";
 
 const client = new ApifyClient({
   token: process.env.APIFY_TOKEN,
@@ -178,7 +179,7 @@ export async function downloadFromCdn(
   const dir = await ensureTmpDir(analysisId);
   const filePath = path.join(dir, "video.mp4");
 
-  const appUrl = process.env.APP_URL || "https://send-me-reel.vercel.app";
+  const appUrl = config.appUrl;
   const proxySecret = process.env.JWT_SECRET || "";
 
   console.log(`[apify] Downloading video via proxy: ${videoUrl.slice(0, 80)}...`);
