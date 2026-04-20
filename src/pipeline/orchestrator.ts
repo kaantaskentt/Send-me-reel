@@ -100,7 +100,7 @@ export async function runPipeline(
         await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
-        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED"];
+        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
 
         if (fallbackCodes.includes(errCode)) {
           // Video pipeline can't handle this — try article pipeline as last resort
@@ -130,6 +130,8 @@ export async function runPipeline(
       userMessage = rawMessage;
     } else if (errCode === "VIDEO_TOO_LONG") {
       userMessage = "Too long — I max out at 10 minutes. Try a shorter clip.";
+    } else if (errCode === "SCRAPE_MISMATCH" || errCode === "APIFY_NO_MATCH") {
+      userMessage = "Couldn't reliably fetch that link — it might be private, deleted, or rate-limited. Try again in a minute.";
     } else if (rawMessage.includes("Both yt-dlp and") || rawMessage.includes("SCRAPE_FAILED")) {
       userMessage = "Couldn't access this one. Might be private, expired, or rate-limited. Try again in a minute.";
     } else if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
@@ -171,6 +173,16 @@ export async function executeVideoPipeline(
 
   // Save the Apify video URL from metadata scrape so we don't call Apify twice
   const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
+
+  // Canonical integrity log — grep for [integrity] to spot wrong-content bugs
+  const requestedShortcode = url.match(/\/(reel|p|video)\/([A-Za-z0-9_-]+)/)?.[2] || "n/a";
+  const scrapedId = String(scraped.metadata?.id || "unknown");
+  const source = String(scraped.metadata?.source || "yt-dlp");
+  console.log(
+    `[integrity] analysisId=${analysisId} platform=${platform} source=${source} ` +
+    `requested=${requestedShortcode} scraped_id=${scrapedId} author=${scraped.authorUsername || "n/a"} ` +
+    `caption_len=${scraped.caption?.length || 0}`,
+  );
 
   // Guard: reject videos longer than 10 minutes (cost + timeout risk)
   const duration = scraped.metadata?.duration as number | undefined;
@@ -340,7 +352,7 @@ export async function executePipeline(
         await executeVideoPipeline(userId, analysisId, url, platform);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
-        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED"];
+        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
         if (fallbackCodes.includes(errCode)) {
           console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
           await executeArticlePipeline(userId, analysisId, url);

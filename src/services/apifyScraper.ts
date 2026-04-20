@@ -95,8 +95,11 @@ export async function scrapeWithApify(
     data = items[0] as Record<string, any>;
   }
 
-  console.log(`[apify] Raw output keys:`, Object.keys(data).join(", "));
-  console.log(`[apify] Matched shortcode: ${shortcode}, caption: ${(data.caption || "").slice(0, 60)}`);
+  console.log(
+    `[apify] actor=${actorId} items_returned=${items.length} requested_shortcode=${shortcode || "n/a"} ` +
+    `matched=${!!data} keys=[${Object.keys(data).slice(0, 10).join(",")}]`,
+  );
+  console.log(`[apify] caption_preview: ${(data.caption || data.text || "").slice(0, 60)}`);
 
   return mapToScrapedVideo(platform, url, data);
 }
@@ -111,26 +114,57 @@ function mapToScrapedVideo(
   data: Record<string, any>,
 ): ScrapedVideo & { apifyVideoUrl?: string } {
   switch (platform) {
-    case "instagram":
+    case "instagram": {
+      // Try all known field shapes across apify/instagram-scraper and instagram-reel-scraper
+      const videoUrl =
+        data.videoUrl ||
+        data.video_url ||
+        data.videoPlaybackUrl ||
+        (Array.isArray(data.videoUrls) ? data.videoUrls[0]?.url || data.videoUrls[0] : undefined);
+
+      const caption =
+        data.caption ||
+        data.description ||
+        data.text ||
+        data.edge_media_to_caption?.edges?.[0]?.node?.text ||
+        "";
+
+      const authorUsername =
+        data.ownerUsername ||
+        data.owner_username ||
+        data.owner?.username ||
+        data.author?.username ||
+        data.ownerId ||
+        "";
+
+      const authorName =
+        data.ownerFullName ||
+        data.owner?.full_name ||
+        data.author?.full_name ||
+        authorUsername;
+
+      const shortCode = data.shortCode || data.shortcode || "";
+
       return {
         videoUrl: url,
-        caption: data.caption || data.description || data.text || "",
-        authorName: data.ownerFullName || data.owner_username || data.ownerUsername || "",
-        authorUsername: data.owner_username || data.ownerUsername || data.ownerId || "",
-        likes: data.likesCount || data.likes || 0,
-        views: data.videoPlayCount || data.videoViewCount || data.viewCount || 0,
+        caption,
+        authorName,
+        authorUsername,
+        likes: data.likesCount || data.likes || data.like_count || 0,
+        views: data.videoPlayCount || data.videoViewCount || data.viewCount || data.view_count || 0,
         hashtags: data.hashtags || [],
         metadata: {
-          id: data.id || data.shortCode,
-          duration: data.videoDuration || data.duration,
-          timestamp: data.timestamp,
-          comment_count: data.commentsCount || data.comments || 0,
-          thumbnail: data.displayUrl || data.thumbnailUrl,
+          id: shortCode || data.id,
+          duration: data.videoDuration || data.duration || data.video_duration,
+          timestamp: data.timestamp || data.taken_at_timestamp,
+          comment_count: data.commentsCount || data.comments || data.comment_count || 0,
+          thumbnail: data.displayUrl || data.display_url || data.thumbnailUrl || data.thumbnail_src,
           webpage_url: url,
           source: "apify",
         },
-        apifyVideoUrl: data.video_url || data.videoUrl || data.videoPlaybackUrl,
+        apifyVideoUrl: videoUrl,
       };
+    }
 
     case "tiktok":
       return {

@@ -131,6 +131,43 @@ export async function scrapeVideo(
 }
 
 /**
+ * Verify scraped content actually matches the requested URL.
+ * Prevents silent wrong-content bugs (e.g. Apify returning a random post).
+ */
+function verifyScrapedContent(
+  platform: Platform,
+  url: string,
+  scraped: ScrapedVideo,
+): void {
+  // Instagram: shortcode in URL must appear in scraped metadata
+  if (platform === "instagram") {
+    const shortcode = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/)?.[2];
+    if (!shortcode) return; // Can't verify, let it through
+
+    const metaId = String(scraped.metadata?.id || "");
+    const metaUrl = String(scraped.metadata?.webpage_url || "");
+    const matches = metaId === shortcode || metaUrl.includes(shortcode);
+
+    if (!matches) {
+      throw new ServiceError(
+        "SCRAPE_MISMATCH",
+        `Scraped content does not match requested URL. Requested shortcode: ${shortcode}, got id: ${metaId}`,
+        false,
+      );
+    }
+  }
+  // TikTok/X/YouTube: yt-dlp resolves URL directly, and Apify actors are URL-specific.
+  // Integrity here is structural: must have an id and either caption or author.
+  if (!scraped.metadata?.id) {
+    throw new ServiceError(
+      "SCRAPE_MISMATCH",
+      `Scraped content has no id field — cannot verify integrity`,
+      false,
+    );
+  }
+}
+
+/**
  * Try yt-dlp first, fall back to Apify if it fails.
  */
 export async function scrapeVideoWithFallback(
@@ -138,7 +175,9 @@ export async function scrapeVideoWithFallback(
   url: string,
 ): Promise<ScrapedVideo> {
   try {
-    return await scrapeVideo(platform, url);
+    const result = await scrapeVideo(platform, url);
+    verifyScrapedContent(platform, url, result);
+    return result;
   } catch (ytdlpErr) {
     // Don't fallback for non-video content — Apify won't help
     if (ytdlpErr instanceof ServiceError && ytdlpErr.code === "NOT_A_VIDEO") {
@@ -155,10 +194,15 @@ export async function scrapeVideoWithFallback(
 
     try {
       const result = await scrapeWithApify(platform, url);
-      console.log(`[scraper] Apify fallback succeeded`);
+      verifyScrapedContent(platform, url, result);
+      console.log(`[scraper] Apify fallback succeeded and integrity verified`);
       return result;
     } catch (apifyErr) {
       console.error(`[scraper] Apify fallback also failed:`, apifyErr instanceof Error ? apifyErr.message : apifyErr);
+      // Preserve specific error codes so orchestrator can route correctly
+      if (apifyErr instanceof ServiceError && (apifyErr.code === "SCRAPE_MISMATCH" || apifyErr.code === "APIFY_NO_MATCH")) {
+        throw apifyErr;
+      }
       throw new ServiceError(
         "SCRAPE_FAILED",
         `Both yt-dlp and Apify failed for ${platform}. yt-dlp: ${ytdlpErr instanceof Error ? ytdlpErr.message : ytdlpErr}`,
