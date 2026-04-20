@@ -13,7 +13,9 @@ const client = new ApifyClient({
 
 /** Map platform → Apify actor ID */
 const ACTOR_MAP: Partial<Record<Platform, string>> = {
-  instagram: "apify/instagram-reel-scraper",
+  // Use the general instagram-scraper which honors directUrls exactly.
+  // The instagram-reel-scraper was returning the @instagram feed when combined with a username input.
+  instagram: "apify/instagram-scraper",
   tiktok: "clockworks/tiktok-scraper",
   x: "apidojo/tweet-scraper",
 };
@@ -22,9 +24,8 @@ const ACTOR_MAP: Partial<Record<Platform, string>> = {
 function buildInput(platform: Platform, url: string): Record<string, unknown> {
   switch (platform) {
     case "instagram":
-      // username is required by the actor but we only care about directUrls
-      // directUrls are processed independently of the username field
-      return { username: ["instagram"], directUrls: [url], resultsLimit: 5 };
+      // ONLY directUrls — no username input that causes the actor to scrape a whole feed
+      return { directUrls: [url], resultsType: "posts", resultsLimit: 1, addParentData: false };
     case "tiktok":
       return { postURLs: [url], resultsPerPage: 1 };
     case "x":
@@ -70,9 +71,29 @@ export async function scrapeWithApify(
 
   // For Instagram: filter to the result matching our directUrl (not the dummy username's posts)
   const shortcode = url.match(/\/(reel|p)\/([A-Za-z0-9_-]+)/)?.[2];
-  const data = (shortcode
-    ? items.find((item: any) => item.shortCode === shortcode || item.inputUrl?.includes(shortcode))
-    : items[0]) as Record<string, any> || items[0] as Record<string, any>;
+  let data: Record<string, any> | undefined;
+
+  if (platform === "instagram" && shortcode) {
+    // STRICT match — do not fall back to items[0] for Instagram, or we return a random stranger's post
+    data = items.find((item: any) =>
+      item.shortCode === shortcode ||
+      item.shortcode === shortcode ||
+      item.inputUrl?.includes(shortcode) ||
+      item.url?.includes(shortcode),
+    ) as Record<string, any> | undefined;
+
+    if (!data) {
+      console.error(`[apify] No item matched shortcode ${shortcode} — refusing to use wrong content. Items returned: ${items.length}`);
+      throw new ServiceError(
+        "APIFY_NO_MATCH",
+        `Apify returned results but none matched the requested reel (${shortcode}). Refusing to analyze wrong content.`,
+        false,
+      );
+    }
+  } else {
+    // TikTok/X: single-URL actors, items[0] is correct
+    data = items[0] as Record<string, any>;
+  }
 
   console.log(`[apify] Raw output keys:`, Object.keys(data).join(", "));
   console.log(`[apify] Matched shortcode: ${shortcode}, caption: ${(data.caption || "").slice(0, 60)}`);
