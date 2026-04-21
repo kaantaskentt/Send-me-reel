@@ -79,20 +79,46 @@ export async function runPipeline(
     return;
   }
 
-  // Create analysis record
-  const analysisId = await analyses.create({
-    userId: user.id,
-    sourceUrl: url,
-    platform,
-  });
+  // Create analysis record — if this fails, refund + tell user, never silently lose them
+  let analysisId: string;
+  try {
+    analysisId = await analyses.create({
+      userId: user.id,
+      sourceUrl: url,
+      platform,
+    });
+  } catch (createErr) {
+    console.error("[pipeline] Failed to create analysis record:", createErr);
+    credits.refund(user.id).catch((refundErr) =>
+      console.error("[pipeline] CRITICAL: refund failed after create failure for user", user.id, refundErr),
+    );
+    await ctx.reply(
+      "Something went wrong on our end — your analysis has been refunded. Try again in a moment.",
+      replyOpts(ctx, replyToMessageId),
+    ).catch((replyErr) => console.error("[pipeline] Failed to send error reply:", replyErr));
+    return;
+  }
 
   // Acknowledge receipt
   await ctx.reply(
     "On it — about 30 seconds.",
     replyOpts(ctx, replyToMessageId),
-  );
+  ).catch((replyErr) => {
+    // If we can't even acknowledge, log but keep going — the pipeline will still try to deliver a verdict
+    console.error("[pipeline] Failed to send 'On it' ack:", replyErr);
+  });
 
-  try {
+  // 45s progress ping — reassures user they're not forgotten on slow videos
+  const progressTimer = setTimeout(() => {
+    ctx.reply("Still working on it — shouldn't be much longer.", replyOpts(ctx, replyToMessageId))
+      .catch((err) => console.error("[pipeline] Failed to send progress ping:", err));
+  }, 45_000);
+  if (typeof progressTimer.unref === "function") progressTimer.unref();
+
+  // Hard timeout at 3 min. Anything beyond this → refund + clear message.
+  const PIPELINE_TIMEOUT_MS = 180_000;
+
+  const pipelineWork = async () => {
     if (platform === "article") {
       await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
     } else {
@@ -103,7 +129,6 @@ export async function runPipeline(
         const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
 
         if (fallbackCodes.includes(errCode)) {
-          // Video pipeline can't handle this — try article pipeline as last resort
           console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
           await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
         } else {
@@ -111,23 +136,36 @@ export async function runPipeline(
         }
       }
     }
+  };
+
+  try {
+    await Promise.race([
+      pipelineWork(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new ServiceError("PIPELINE_TIMEOUT", "Analysis took longer than 3 minutes", false)),
+          PIPELINE_TIMEOUT_MS,
+        ),
+      ),
+    ]);
   } catch (err) {
     console.error("Pipeline error:", err);
-    await credits.refund(user.id);
+    // Fire-and-forget refund — never block the error reply if the DB is flaky
+    credits.refund(user.id).catch((refundErr) =>
+      console.error("[pipeline] CRITICAL: refund failed for user", user.id, refundErr),
+    );
 
     const rawMessage =
       err instanceof ServiceError
         ? err.message
         : "An unexpected error occurred";
 
-    // Clean error message for user
-    // If the quality gate provided the reason, use it directly — it's already user-friendly.
-    // Otherwise fall back to static messages for known error codes.
     const errCode = err instanceof ServiceError ? err.code : "";
     let userMessage: string;
     if (errCode === "NO_CONTENT") {
-      // Gate provides a specific, human-readable reason — use it directly
       userMessage = rawMessage;
+    } else if (errCode === "PIPELINE_TIMEOUT") {
+      userMessage = "This one's taking longer than usual — we refunded it. Try again in a moment.";
     } else if (errCode === "VIDEO_TOO_LONG") {
       userMessage = "Too long — I max out at 10 minutes. Try a shorter clip.";
     } else if (errCode === "SCRAPE_MISMATCH" || errCode === "APIFY_NO_MATCH") {
@@ -142,17 +180,23 @@ export async function runPipeline(
       userMessage = "Something went wrong analyzing this link.";
     }
 
-    await analyses.updateResult(analysisId, {
+    // DB write is best-effort — don't let it swallow the user reply
+    analyses.updateResult(analysisId, {
       status: "failed",
       errorMessage: rawMessage,
-    });
+    }).catch((dbErr) => console.error("[pipeline] Failed to record failure in DB:", dbErr));
 
     await ctx.reply(
       `Couldn't analyze that one — your analysis has been refunded.\n\n${userMessage}`,
       replyOpts(ctx, replyToMessageId),
-    );
+    ).catch((replyErr) => console.error("[pipeline] Failed to send error reply:", replyErr));
   } finally {
-    await storage.cleanup(analysisId);
+    clearTimeout(progressTimer);
+    try {
+      await storage.cleanup(analysisId);
+    } catch (cleanupErr) {
+      console.error("[pipeline] Cleanup failed (non-blocking):", cleanupErr);
+    }
   }
 }
 

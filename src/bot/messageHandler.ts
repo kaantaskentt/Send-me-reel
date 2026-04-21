@@ -61,8 +61,19 @@ export async function handleMessage(ctx: MyContext) {
     }
   }
 
-  // Run pipeline — pass messageId so replies can thread in groups
-  runPipeline(ctx, url, messageId).catch((err) => {
-    console.error("Pipeline error (unhandled):", err);
+  // Run pipeline — pass messageId so replies can thread in groups.
+  // Fire-and-forget (don't block other incoming messages), but ensure we ALWAYS reply
+  // even if the pipeline throws before sending its own message.
+  runPipeline(ctx, url, messageId).catch(async (err) => {
+    console.error("[handler] Pipeline crashed at top level:", err);
+    try {
+      const replyOpts = isGroup && messageId ? { reply_parameters: { message_id: messageId } } : {};
+      await ctx.reply(
+        "Something went wrong on our end — we've logged it. Try again in a moment.",
+        replyOpts,
+      );
+    } catch (replyErr) {
+      console.error("[handler] Failed to send fallback error reply:", replyErr);
+    }
   });
 }
