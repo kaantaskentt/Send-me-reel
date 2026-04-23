@@ -40,7 +40,7 @@ export default function FinalCTASection() {
             }}
           />
         </div>
-        <div className="container" style={{ position: "relative", zIndex: 1 }}>
+        <div className="landing-container" style={{ position: "relative", zIndex: 1 }}>
           <div ref={ctaRef} className="fade-up max-w-2xl mx-auto text-center">
             {/* Telegram icon */}
             <div
@@ -123,7 +123,7 @@ export default function FinalCTASection() {
 
       {/* Footer */}
       <footer className="border-t py-10" style={{ borderColor: "#f0ede8", background: "white" }}>
-        <div className="container">
+        <div className="landing-container">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             {/* Logo */}
             <div className="flex items-center gap-2">

@@ -49,7 +49,7 @@ export default function ProblemSection() {
 
   return (
     <section className="py-24 lg:py-36" style={{ background: "#FAFAF8" }}>
-      <div className="container max-w-5xl mx-auto">
+      <div className="landing-container max-w-5xl mx-auto">
 
         {/* ── Headline ── */}
         <div ref={headlineRef} className="fade-up text-center mb-16">

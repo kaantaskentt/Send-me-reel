@@ -80,7 +80,7 @@ export default function StatsBar() {
       className="border-y"
       style={{ borderColor: "#f0ede8", background: "white" }}
     >
-      <div className="container">
+      <div className="landing-container">
         <div className="grid grid-cols-2 sm:grid-cols-4 divide-x"
           style={{ borderColor: "#f0ede8" }}
         >
