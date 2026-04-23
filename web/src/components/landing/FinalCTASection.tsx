@@ -42,143 +42,120 @@ export default function FinalCTASection() {
         </div>
         <div className="landing-container" style={{ position: "relative", zIndex: 1 }}>
           <div ref={ctaRef} className="fade-up max-w-2xl mx-auto text-center">
-            {/* Telegram icon */}
+            {/* Small eyebrow label */}
             <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-8"
-              style={{ background: "#F97316", boxShadow: "0 8px 32px rgba(249,115,22,0.3)" }}
+              className="text-xs font-bold tracking-widest uppercase mb-6"
+              style={{ color: "#F97316", fontFamily: "'DM Sans', sans-serif" }}
             >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="white">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-              </svg>
+              Your move
             </div>
 
             <h2
-              className="text-3xl sm:text-4xl lg:text-5xl text-[#1a1a1a] mb-4"
-              style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.04em" }}
+              className="text-4xl sm:text-5xl lg:text-6xl text-[#1a1a1a] mb-6"
+              style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.05 }}
             >
               Ready to actually use
-              <br />what you watch?
+              <br />
+              <span style={{ fontFamily: "var(--font-instrument-serif), 'Instrument Serif', Georgia, serif", fontStyle: "italic", fontWeight: 400, letterSpacing: "-0.02em" }}>
+                what you watch?
+              </span>
             </h2>
 
             <p
-              className="text-slate-500 text-lg mb-3 leading-relaxed"
+              className="text-slate-500 text-lg mb-10 leading-relaxed max-w-xl mx-auto"
               style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}
             >
-              Your first 10 analyses are free. No credit card. No signup.
-              Just send a link and see what happens.
+              Your first ten verdicts are free. No credit card. No sign-up.
+              Just send a link and see what comes back.
             </p>
 
-            <p
-              className="text-orange-400 text-sm mb-10"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              "Send it. Understand it. Actually use it."
-            </p>
-
-            {/* CTA button */}
-            <a
-              href="https://t.me/contextdrop2027bot"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-primary pulse-orange text-base !py-4 !px-8 inline-flex"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-              </svg>
-              Start free on Telegram
-            </a>
-
-            {/* Trust signals */}
-            <div className="flex flex-wrap items-center justify-center gap-5 mt-8">
-              {[
-                { emoji: "✅", text: "10 free analyses" },
-                { emoji: "🔒", text: "No account needed" },
-                { emoji: "⚡", text: "60-second verdicts" },
-                { emoji: "📱", text: "Works in groups" },
-              ].map((t) => (
-                <span
-                  key={t.text}
-                  className="flex items-center gap-1.5 text-slate-400 text-sm"
-                  style={{ fontFamily: "'DM Sans', sans-serif" }}
-                >
-                  <span>{t.emoji}</span>
-                  {t.text}
-                </span>
-              ))}
-            </div>
-
-            {/* Secondary link */}
-            <div className="mt-6">
+            {/* Two-button CTA */}
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
+              <a
+                href="https://t.me/contextdrop2027bot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-base font-semibold py-3.5 px-7 rounded-full transition-all"
+                style={{ background: "#1c1917", color: "white", fontFamily: "'DM Sans', sans-serif", textDecoration: "none" }}
+              >
+                Start free on Telegram
+                <span style={{ fontSize: 18, marginTop: -1 }}>→</span>
+              </a>
               <a
                 href="/dashboard"
-                className="text-slate-400 text-sm hover:text-slate-600 transition-colors animated-link"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
+                className="inline-flex items-center text-base font-semibold py-3.5 px-7 rounded-full transition-all"
+                style={{ background: "transparent", color: "#1c1917", border: "1px solid #d6d3d1", fontFamily: "'DM Sans', sans-serif", textDecoration: "none" }}
               >
-                Already using ContextDrop? Open your dashboard →
+                Open dashboard
               </a>
+            </div>
+
+            {/* Trust signals — dots, no emojis */}
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
+              {[
+                "10 free verdicts",
+                "No account required",
+                "60-second turnaround",
+                "Works in Telegram groups",
+              ].map((t) => (
+                <span key={t} className="inline-flex items-center gap-2">
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#84cc16", display: "inline-block" }} />
+                  {t}
+                </span>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-10" style={{ borderColor: "#f0ede8", background: "white" }}>
+      <footer className="border-t py-8" style={{ borderColor: "#f0ede8", background: "#faf8f5" }}>
         <div className="landing-container">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div
-                className="w-6 h-6 rounded-lg flex items-center justify-center"
-                style={{ background: "#F97316" }}
-              >
-                <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                  <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+            {/* Logo + tagline */}
+            <div className="flex items-center gap-3 flex-wrap justify-center">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ background: "#F97316" }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+                    <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <span
+                  className="text-[#1a1a1a] text-sm"
+                  style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700 }}
+                >
+                  ContextDrop
+                </span>
               </div>
-              <span
-                className="text-[#1a1a1a] text-sm"
-                style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700 }}
-              >
-                ContextDrop
+              <span className="text-sm" style={{ color: "#a8a29e", fontFamily: "'DM Sans', sans-serif" }}>
+                — send it, understand it, actually use it.
               </span>
             </div>
 
             {/* Links */}
-            <div className="flex items-center gap-6">
-              <a
-                href="#how-it-works"
-                className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
+            <div className="flex items-center gap-6 flex-wrap justify-center">
+              <a href="#preview" className="text-sm hover:text-slate-700 transition-colors" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
                 How it works
               </a>
-              <a
-                href="https://t.me/contextdrop2027bot"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
+              <a href="#pricing" className="text-sm hover:text-slate-700 transition-colors" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
+                Pricing
+              </a>
+              <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer" className="text-sm hover:text-slate-700 transition-colors" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
                 Telegram
               </a>
-              <a
-                href="/privacy"
-                className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
+              <a href="/privacy" className="text-sm hover:text-slate-700 transition-colors" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
                 Privacy
               </a>
-              <a
-                href="/terms"
-                className="text-slate-400 text-sm hover:text-slate-600 transition-colors"
-                style={{ fontFamily: "'DM Sans', sans-serif" }}
-              >
+              <a href="/terms" className="text-sm hover:text-slate-700 transition-colors" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
                 Terms
               </a>
             </div>
 
             {/* Copyright */}
-            <p className="text-slate-400 text-xs" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            <p className="text-sm" style={{ color: "#a8a29e", fontFamily: "'DM Sans', sans-serif" }}>
               © {new Date().getFullYear()} ContextDrop
             </p>
           </div>
