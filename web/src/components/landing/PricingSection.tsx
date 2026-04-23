@@ -61,7 +61,7 @@ export default function PricingSection() {
                 <span className="font-black" style={{ fontSize: "2.5rem", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1 }}>$0</span>
                 <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
               </div>
-              <p className="text-sm" style={{ color: "#6b7280" }}>Good enough to see if this is for you. No card required.</p>
+              <p className="text-sm" style={{ color: "#6b7280" }}>Enough to see if this fits your week.</p>
             </div>
             <ul className="flex flex-col gap-3 mb-8 flex-1">
               {FREE_FEATURES.map((f) => (
@@ -80,7 +80,7 @@ export default function PricingSection() {
           {/* Pro */}
           <div className="rounded-2xl p-8 flex flex-col relative overflow-hidden" onMouseEnter={() => setHovered("pro")} onMouseLeave={() => setHovered(null)}
             style={{ background: "#1a1a1a", border: "1.5px solid #F97316", boxShadow: hovered === "pro" ? "0 12px 48px rgba(249,115,22,0.25)" : "0 4px 24px rgba(249,115,22,0.12)", transition: "box-shadow 0.2s" }}>
-            <div className="absolute top-4 right-4 text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#F97316", color: "white" }}>Most popular</div>
+            <div className="absolute top-5 right-6 text-xs font-bold tracking-widest uppercase" style={{ color: "#9ca3af" }}>Cancel anytime</div>
             <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 80% 0%, rgba(249,115,22,0.08) 0%, transparent 60%)" }} />
             <div className="mb-6 relative">
               <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#F97316" }}>Pro</div>
@@ -88,7 +88,7 @@ export default function PricingSection() {
                 <span className="font-black" style={{ fontSize: "2.5rem", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>$9.99</span>
                 <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
               </div>
-              <p className="text-sm" style={{ color: "#9ca3af" }}>Unlimited everything. For people who actually use it.</p>
+              <p className="text-sm" style={{ color: "#9ca3af" }}>For people who actually use it.</p>
             </div>
             <ul className="flex flex-col gap-3 mb-8 flex-1 relative">
               {PRO_FEATURES.map((f) => (
