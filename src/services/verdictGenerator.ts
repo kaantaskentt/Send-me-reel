@@ -13,6 +13,7 @@ export interface VerdictInput {
   userContext: UserContext;
   platform: Platform;
   sourceUrl: string;
+  userNote?: string;
 }
 
 const SYSTEM_PROMPT = `You're a friend who watches the same stuff. Not an AI assistant. Not a content reviewer. A person texting back what they thought.
@@ -118,6 +119,17 @@ function buildUserPrompt(input: VerdictInput): string {
     (input.metadata.authorUsername as string);
   if (author) {
     parts.push(`\nCreator: ${author}`);
+  }
+
+  // User's own note about why they're saving this — takes priority over
+  // the general user context for the 🎯 line. If they asked a question,
+  // answer it. If they said "for X project", use that.
+  if (input.userNote) {
+    parts.push(`\n--- USER'S NOTE WHEN SAVING (their intent for this link) ---`);
+    parts.push(input.userNote);
+    parts.push(
+      `(If they asked a question, answer it specifically in the 🎯 line. If they said why they're saving it, use that to judge relevance. Their note overrides the general user profile below.)`,
+    );
   }
 
   // User context AFTER content — only used for the optional 🎯 line

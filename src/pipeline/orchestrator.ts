@@ -33,6 +33,7 @@ export async function runPipeline(
   ctx: MyContext,
   url: string,
   replyToMessageId?: number,
+  userNote?: string,
 ): Promise<void> {
   const from = ctx.from!;
   const user = await users.getByTelegramId(from.id);
@@ -120,17 +121,17 @@ export async function runPipeline(
 
   const pipelineWork = async () => {
     if (platform === "article") {
-      await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
+      await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote);
     } else {
       try {
-        await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId);
+        await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId, userNote);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
         const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
 
         if (fallbackCodes.includes(errCode)) {
           console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
-          await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId);
+          await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote);
         } else {
           throw videoErr;
         }
@@ -209,6 +210,7 @@ export async function executeVideoPipeline(
   analysisId: string,
   url: string,
   platform: Platform,
+  userNote?: string,
 ): Promise<string> {
   await analyses.updateStatus(analysisId, "scraping");
 
@@ -311,6 +313,7 @@ export async function executeVideoPipeline(
     userContext,
     platform,
     sourceUrl: url,
+    userNote,
   });
 
   await analyses.updateResult(analysisId, {
@@ -318,7 +321,7 @@ export async function executeVideoPipeline(
     frameDescriptions: frameAnalyses,
     visualSummary,
     caption: scraped.caption,
-    metadata: scraped.metadata,
+    metadata: userNote ? { ...scraped.metadata, userNote } : scraped.metadata,
     verdict,
     status: "done",
   });
@@ -334,6 +337,7 @@ export async function executeArticlePipeline(
   userId: string,
   analysisId: string,
   url: string,
+  userNote?: string,
 ): Promise<string> {
   await analyses.updateStatus(analysisId, "scraping");
   const article = await scraper.scrapeArticle(url);
@@ -365,12 +369,13 @@ export async function executeArticlePipeline(
     userContext,
     platform: "article",
     sourceUrl: url,
+    userNote,
   });
 
   await analyses.updateResult(analysisId, {
     transcript: null,
     caption: article.title,
-    metadata: article.metadata,
+    metadata: userNote ? { ...article.metadata, userNote } : article.metadata,
     verdict,
     status: "done",
   });
@@ -387,19 +392,20 @@ export async function executePipeline(
   analysisId: string,
   url: string,
   platform: Platform,
+  userNote?: string,
 ): Promise<void> {
   try {
     if (platform === "article") {
-      await executeArticlePipeline(userId, analysisId, url);
+      await executeArticlePipeline(userId, analysisId, url, userNote);
     } else {
       try {
-        await executeVideoPipeline(userId, analysisId, url, platform);
+        await executeVideoPipeline(userId, analysisId, url, platform, userNote);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
         const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
         if (fallbackCodes.includes(errCode)) {
           console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
-          await executeArticlePipeline(userId, analysisId, url);
+          await executeArticlePipeline(userId, analysisId, url, userNote);
         } else {
           throw videoErr;
         }
@@ -432,8 +438,9 @@ async function runVideoPipeline(
   url: string,
   platform: Platform,
   replyToMessageId?: number,
+  userNote?: string,
 ): Promise<void> {
-  const verdict = await executeVideoPipeline(userId, analysisId, url, platform);
+  const verdict = await executeVideoPipeline(userId, analysisId, url, platform, userNote);
   await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 
@@ -443,8 +450,9 @@ async function runArticlePipeline(
   analysisId: string,
   url: string,
   replyToMessageId?: number,
+  userNote?: string,
 ): Promise<void> {
-  const verdict = await executeArticlePipeline(userId, analysisId, url);
+  const verdict = await executeArticlePipeline(userId, analysisId, url, userNote);
   await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 

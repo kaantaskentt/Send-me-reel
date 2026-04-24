@@ -64,7 +64,7 @@ export function startQueueWorker(): void {
       // Atomically claim the oldest pending web analysis under max attempts
       const { data: row, error } = await supabase
         .from("analyses")
-        .select("id, user_id, source_url, platform, attempt_count")
+        .select("id, user_id, source_url, platform, attempt_count, metadata")
         .eq("status", "pending")
         .eq("source", "web")
         .lt("attempt_count", MAX_ATTEMPTS)
@@ -91,7 +91,10 @@ export function startQueueWorker(): void {
 
       try {
         const platform = row.platform || detectPlatform(row.source_url);
-        await executePipeline(row.user_id, row.id, row.source_url, platform);
+        // Pull user's note from metadata if it was stored at submission time
+        const userNote: string | undefined =
+          (row.metadata as { userNote?: string } | null)?.userNote || undefined;
+        await executePipeline(row.user_id, row.id, row.source_url, platform, userNote);
         console.log(`[queue] Completed web analysis ${row.id}`);
       } catch (pipelineErr) {
         const errMsg = pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr);

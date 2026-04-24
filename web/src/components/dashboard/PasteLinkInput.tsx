@@ -15,6 +15,8 @@ const PROCESSING_LABELS: Record<string, string> = {
 
 export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void }) {
   const [url, setUrl] = useState("");
+  const [note, setNote] = useState("");
+  const [noteOpen, setNoteOpen] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [statusText, setStatusText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), note: note.trim() || undefined }),
       });
 
       if (!res.ok) {
@@ -51,9 +53,11 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
       setStatus("processing");
       setStatusText(PROCESSING_LABELS.pending);
 
-      // Clear the input so user knows it was received
+      // Clear inputs so user knows the submission was received
       const submittedUrl = url.trim();
       setUrl("");
+      setNote("");
+      setNoteOpen(false);
 
       // Poll status
       pollRef.current = setInterval(async () => {
@@ -144,6 +148,55 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
           {status === "submitting" ? "Sending…" : "Analyze"}
         </button>
       </form>
+
+      {!disabled && (
+        <button
+          type="button"
+          onClick={() => setNoteOpen((v) => !v)}
+          style={{
+            alignSelf: "flex-start",
+            padding: "4px 10px",
+            fontSize: 12,
+            color: "#78716c",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          {noteOpen ? "− Hide note" : "+ Add a note (optional)"}
+        </button>
+      )}
+
+      {noteOpen && !disabled && (
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Why are you saving this? Or ask a question about it — e.g. 'is this useful for my launch?'"
+          rows={2}
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "#1c1917",
+            background: "#fff",
+            border: "1px solid #e7e2d9",
+            borderRadius: 14,
+            outline: "none",
+            fontFamily: "'DM Sans', sans-serif",
+            resize: "vertical",
+            boxSizing: "border-box",
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = "#f97316";
+            e.target.style.boxShadow = "0 0 0 3px rgba(249,115,22,0.1)";
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = "#e7e2d9";
+            e.target.style.boxShadow = "none";
+          }}
+        />
+      )}
 
       <AnimatePresence mode="wait">
         {status === "processing" && (

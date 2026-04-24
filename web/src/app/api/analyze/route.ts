@@ -9,7 +9,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { url: rawUrl } = await request.json();
+  const body = await request.json();
+  const rawUrl: string | undefined = body?.url;
+  const note: string | undefined = typeof body?.note === "string" ? body.note.trim() : undefined;
   if (!rawUrl || typeof rawUrl !== "string") {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
@@ -49,7 +51,8 @@ export async function POST(request: NextRequest) {
       .eq("user_id", userId);
   }
 
-  // Create pending analysis for the queue worker to pick up
+  // Create pending analysis for the queue worker to pick up.
+  // Store the user's note in metadata so queueWorker → executePipeline can read it.
   const { data: analysis, error: insertErr } = await db
     .from("analyses")
     .insert({
@@ -58,6 +61,7 @@ export async function POST(request: NextRequest) {
       platform,
       status: "pending",
       source: "web",
+      metadata: note ? { userNote: note } : null,
     })
     .select("id")
     .single();

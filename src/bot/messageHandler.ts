@@ -61,10 +61,14 @@ export async function handleMessage(ctx: MyContext) {
     }
   }
 
+  // Capture any non-URL text the user sent along with the link —
+  // their "note" about why they're saving this. Used as additional prompt context.
+  const userNote = text.replace(url, "").trim() || undefined;
+
   // Run pipeline — pass messageId so replies can thread in groups.
   // Fire-and-forget (don't block other incoming messages), but ensure we ALWAYS reply
   // even if the pipeline throws before sending its own message.
-  runPipeline(ctx, url, messageId).catch(async (err) => {
+  runPipeline(ctx, url, messageId, userNote).catch(async (err) => {
     console.error("[handler] Pipeline crashed at top level:", err);
     try {
       const replyOpts = isGroup && messageId ? { reply_parameters: { message_id: messageId } } : {};
