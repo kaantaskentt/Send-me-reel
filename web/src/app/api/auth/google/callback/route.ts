@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
   }
 
   const email = authData.user.email;
-  const displayName = authData.user.user_metadata?.full_name || email.split("@")[0];
+  const googleName = authData.user.user_metadata?.full_name as string | undefined;
+  const displayName = googleName || email.split("@")[0];
 
   // Look up or create user in our users table (same logic as email callback)
   const db = getSupabase();
@@ -56,6 +57,19 @@ export async function POST(request: NextRequest) {
     const { error: creditsErr } = await db.from("credits").insert({ user_id: user.id });
     if (creditsErr) {
       console.error("Credits creation error:", creditsErr);
+    }
+  } else if (googleName && user.first_name !== googleName) {
+    // User exists (likely from Telegram onboarding). Refresh their name from Google —
+    // this fixes weird/typo names set during the bot's onboarding prompt.
+    const { data: updated } = await db
+      .from("users")
+      .update({ first_name: googleName })
+      .eq("id", user.id)
+      .select()
+      .single();
+    if (updated) {
+      console.log(`[google-callback] Updated first_name for ${user.id}: "${user.first_name}" → "${googleName}"`);
+      user = updated;
     }
   }
 
