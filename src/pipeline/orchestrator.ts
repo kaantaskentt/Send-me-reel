@@ -467,11 +467,11 @@ async function sendVerdict(
   const from = ctx.from!;
   const telegramId = from.id;
 
-  // Build inline keyboard: View Original + Dashboard + Save to Notion
-  const keyboard = new InlineKeyboard()
-    .url("👁 View Original", sourceUrl);
+  // Inline keyboard in TWO rows so nothing gets squashed on mobile:
+  //   Row 1: View Dashboard (primary — full width)
+  //   Row 2: View Original + Save to Notion (secondary — side by side)
+  const keyboard = new InlineKeyboard();
 
-  // Add "Dashboard" URL button with a signed JWT link
   if (config.jwtSecret) {
     const secret = new TextEncoder().encode(config.jwtSecret);
     const token = await new SignJWT({
@@ -484,10 +484,12 @@ async function sendVerdict(
       .setIssuedAt()
       .sign(secret);
 
-    keyboard.url("View Dashboard", `${config.appUrl}/auth?token=${token}`);
+    keyboard.url("📊 Open dashboard", `${config.appUrl}/auth?token=${token}`).row();
   }
 
-  keyboard.text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
+  keyboard
+    .url("🔗 Original", sourceUrl)
+    .text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
 
   await ctx.reply(verdict, {
     reply_markup: keyboard,
