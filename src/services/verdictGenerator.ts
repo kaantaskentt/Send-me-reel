@@ -80,8 +80,10 @@ export async function generateVerdict(input: VerdictInput): Promise<string> {
     }
 
     // Strip hallucinated negative 🎯 lines (e.g. "Nothing here connects to agentic systems")
+    // Anchored to start of 🎯 line OR followed by "here/for/to" so we don't false-positive
+    // on legitimate phrases like "nothing fancy" or "not related frameworks".
     const cleaned = text
-      .replace(/🎯[^\n]*(?:nothing|no connection|not related|couldn't spot|doesn't connect|no direct|unrelated|not relevant|couldn't find)[^\n]*/gi, '')
+      .replace(/🎯\s*(?:nothing\s+(?:here|for|to|connects)|no\s+(?:connection|direct\s+link|real\s+link)|doesn't\s+connect|not\s+(?:relevant|directly\s+related)|unrelated\s+to|couldn't\s+(?:spot|find)\s+(?:a|any|anything))\b[^\n]*/gi, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
