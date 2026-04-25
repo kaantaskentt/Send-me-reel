@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("analyses")
     .select(
-      "id, source_url, platform, status, caption, metadata, verdict, verdict_intent, created_at, completed_at",
+      "id, source_url, platform, status, caption, metadata, verdict, verdict_intent, created_at, completed_at, tried_at, set_aside_at",
       { count: "exact" },
     )
     .eq("user_id", session.sub)

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Analysis } from "@/lib/types";
+import type { Analysis, AnalysisState } from "@/lib/types";
+import { getAnalysisState } from "@/lib/types";
 import { parseVerdict } from "@/lib/verdict-parser";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ExternalLink, Share2, BookOpen, Trash2, Check, Loader2, X } from "lucide-react";
@@ -72,20 +73,22 @@ function PlatformIcon({ platform }: { platform: string }) {
   }
 }
 
-// ── Worth signal badge ────────────────────────────────────────────────────────
-function WorthBadge({ signal }: { signal?: import("@/lib/types").WorthSignal }) {
-  if (!signal) return null;
-  const map: Record<string, { bg: string; color: string; border: string; label: string }> = {
-    worth_your_time: { bg: "#f0fdf4", color: "#16a34a", border: "#bbf7d0", label: "Worth your time" },
-    skim_it: { bg: "#fffbeb", color: "#d97706", border: "#fde68a", label: "Skim it" },
-    skip: { bg: "#f5f5f4", color: "#a8a29e", border: "#e7e5e4", label: "Skip" },
+// ── State badge — Phase 2 user-action axis ────────────────────────────────
+// Replaces the old WorthBadge (⭐ Worth your time / Skim it / Skip).
+// Saved is the default — no badge so the unmarked state is visually quiet.
+// Tried and Set aside are both terminal-good states.
+function StateBadge({ state }: { state: AnalysisState }) {
+  if (state === "saved") return null;
+  const map: Record<Exclude<AnalysisState, "saved">, { bg: string; color: string; border: string; label: string }> = {
+    tried: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0", label: "Tried" },
+    set_aside: { bg: "#faf8f5", color: "#78716c", border: "#e7e2d9", label: "Set aside" },
   };
-  const s = map[signal] ?? map.skip;
+  const s = map[state];
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",
-      fontSize: 9, fontWeight: 700,
-      padding: "2px 8px", borderRadius: 100,
+      fontSize: 10, fontWeight: 600,
+      padding: "2px 9px", borderRadius: 100,
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
       fontFamily: "'DM Sans', sans-serif",
     }}>
@@ -114,10 +117,12 @@ interface Props {
   notionConnected: boolean;
   isPremium: boolean;
   onDeleted: (id: string) => void;
+  /** Phase 2: parent informs the feed to re-bucket this analysis after a state change. */
+  onStateChanged?: (id: string, state: AnalysisState) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, isPremium, onDeleted }: Props) {
+export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, isPremium, onDeleted, onStateChanged }: Props) {
   const [activeTab, setActiveTab] = useState<"act" | "chat" | "sync">("act");
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
@@ -127,6 +132,11 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   const [askQuestion, setAskQuestion] = useState("");
   const [askAnswer, setAskAnswer] = useState<string | null>(null);
   const [askLoading, setAskLoading] = useState(false);
+
+  // Phase 2 state machine. Optimistic local state — parent re-bucket fires on
+  // confirmed server response.
+  const [localState, setLocalState] = useState<AnalysisState>(getAnalysisState(analysis));
+  const [stateBusy, setStateBusy] = useState(false);
 
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
@@ -179,6 +189,27 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
       // Silently fail — button stays available to retry
     }
     setActionItemsLoading(false);
+  };
+
+  // Phase 2: state transitions. Optimistic — flips local state immediately,
+  // tells the parent so the analysis re-buckets, reverts if the server rejects.
+  const setState = async (target: AnalysisState) => {
+    if (stateBusy || target === localState) return;
+    setStateBusy(true);
+    const previous = localState;
+    setLocalState(target);
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: target }),
+      });
+      if (!res.ok) throw new Error("state update failed");
+      onStateChanged?.(analysis.id, target);
+    } catch {
+      setLocalState(previous);
+    }
+    setStateBusy(false);
   };
 
   const handleAsk = async (e: React.FormEvent) => {
@@ -247,7 +278,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
             {parsed?.title || "Untitled"}
           </h3>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <WorthBadge signal={parsed?.worthSignal} />
+            <StateBadge state={localState} />
             <span style={{ fontSize: 11, color: "#c4bdb5" }}>{timeAgo}</span>
           </div>
         </div>
@@ -278,6 +309,50 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
                   <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
                 </div>
+              )}
+
+              {/* Phase 2 state controls — neutral, equal weight. Both states are valid. */}
+              <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setState(localState === "tried" ? "saved" : "tried")}
+                  disabled={stateBusy}
+                  style={{
+                    flex: 1, padding: "10px 14px", fontSize: 13, fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif",
+                    color: localState === "tried" ? "#15803d" : "#57534e",
+                    background: localState === "tried" ? "#f0fdf4" : "#fafaf9",
+                    border: `1px solid ${localState === "tried" ? "#bbf7d0" : "#e7e2d9"}`,
+                    borderRadius: 12, cursor: stateBusy ? "wait" : "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {localState === "tried" ? "✓ Tried it" : "I tried it"}
+                </button>
+                <button
+                  onClick={() => setState(localState === "set_aside" ? "saved" : "set_aside")}
+                  disabled={stateBusy}
+                  style={{
+                    flex: 1, padding: "10px 14px", fontSize: 13, fontWeight: 600,
+                    fontFamily: "'DM Sans', sans-serif",
+                    color: localState === "set_aside" ? "#44403c" : "#57534e",
+                    background: localState === "set_aside" ? "#faf8f5" : "#fafaf9",
+                    border: `1px solid ${localState === "set_aside" ? "#d4cec4" : "#e7e2d9"}`,
+                    borderRadius: 12, cursor: stateBusy ? "wait" : "pointer",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {localState === "set_aside" ? "🍵 Set aside" : "🍵 Just watched it"}
+                </button>
+              </div>
+              {localState === "tried" && (
+                <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center", margin: 0, fontStyle: "italic" }}>
+                  Good. That's the whole point.
+                </p>
+              )}
+              {localState === "set_aside" && (
+                <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center", margin: 0, fontStyle: "italic" }}>
+                  No homework today. You're allowed to just have watched it.
+                </p>
               )}
 
               {parsed?.forYou && (

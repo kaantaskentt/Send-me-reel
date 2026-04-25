@@ -467,9 +467,11 @@ async function sendVerdict(
   const from = ctx.from!;
   const telegramId = from.id;
 
-  // Inline keyboard in TWO rows so nothing gets squashed on mobile:
-  //   Row 1: View Dashboard (primary — full width)
-  //   Row 2: View Original + Save to Notion (secondary — side by side)
+  // Phase 2 keyboard: two buttons, one row. Action axis only.
+  //   📍 Open dashboard — bridge to the action archive
+  //   🍵 Just watched it — explicit "no homework" tap, marks set_aside
+  // The Original URL is already in the message text and Telegram auto-links it.
+  // Save-to-Notion moves to auto-push on "I tried it" (Phase 5).
   const keyboard = new InlineKeyboard();
 
   if (config.jwtSecret) {
@@ -484,12 +486,10 @@ async function sendVerdict(
       .setIssuedAt()
       .sign(secret);
 
-    keyboard.url("📊 Open dashboard", `${config.appUrl}/auth?token=${token}`).row();
+    keyboard.url("📍 Open in dashboard", `${config.appUrl}/auth?token=${token}`);
   }
 
-  keyboard
-    .url("🔗 Original", sourceUrl)
-    .text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
+  keyboard.text("🍵 Just watched it", `action_setaside_${analysisId}_${telegramId}`);
 
   // Telegram render: strip the 🪜 "go further" block — that line lives on the
   // dashboard only. Storage already has the full verdict; we only trim at send.

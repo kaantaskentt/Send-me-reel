@@ -64,3 +64,36 @@ export async function getById(id: string) {
   const { data } = await supabase.from("analyses").select("*").eq("id", id).single();
   return data;
 }
+
+// ── State machine: saved → tried | set_aside ────────────────────────────────
+// Phase 2 (transformation-plan §6). Both terminal-good states.
+
+export async function markTried(id: string): Promise<void> {
+  await supabase
+    .from("analyses")
+    .update({ tried_at: new Date().toISOString(), set_aside_at: null })
+    .eq("id", id);
+}
+
+export async function markSetAside(id: string): Promise<void> {
+  await supabase
+    .from("analyses")
+    .update({ set_aside_at: new Date().toISOString(), tried_at: null })
+    .eq("id", id);
+}
+
+export async function revertToSaved(id: string): Promise<void> {
+  await supabase
+    .from("analyses")
+    .update({ tried_at: null, set_aside_at: null })
+    .eq("id", id);
+}
+
+export async function getOwnerId(id: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("analyses")
+    .select("user_id")
+    .eq("id", id)
+    .single();
+  return data?.user_id ?? null;
+}

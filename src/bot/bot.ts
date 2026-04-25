@@ -60,6 +60,44 @@ export function createBot(): Bot<MyContext> {
     await ctx.conversation.enter("notionSetup");
   });
 
+  // Phase 2 — "Just watched it" sets the analysis to set_aside in one tap.
+  // Encodes the strategy at the interaction level: explicit permission to
+  // not act, no homework, no shame. (transformation-plan §10)
+  bot.callbackQuery(/^action_setaside_([^_]+)_(\d+)$/, async (ctx) => {
+    const match = ctx.match as RegExpMatchArray;
+    const analysisId = match[1];
+    const ownerTelegramId = parseInt(match[2], 10);
+    const from = ctx.from;
+    if (!from) return;
+
+    if (from.id !== ownerTelegramId) {
+      await ctx.answerCallbackQuery({
+        text: "This isn't your analysis.",
+        show_alert: true,
+      });
+      return;
+    }
+
+    try {
+      await analyses.markSetAside(analysisId);
+      await ctx.answerCallbackQuery({
+        text: "Set aside. No homework today.",
+      });
+      // Edit the inline keyboard so the button doesn't get tapped again
+      try {
+        await ctx.editMessageReplyMarkup({ reply_markup: undefined });
+      } catch {
+        // Editing can fail if the message is too old — non-critical
+      }
+    } catch (err) {
+      console.error("[bot] setaside callback failed:", err);
+      await ctx.answerCallbackQuery({
+        text: "Something didn't work. Try again from the dashboard.",
+        show_alert: true,
+      });
+    }
+  });
+
   // Action button callbacks — format: action_{dashboard|notion}_{analysisId}_{telegramId}
   bot.callbackQuery(/^action_(dashboard|notion)_([^_]+)_(\d+)$/, async (ctx) => {
     const match = ctx.match as RegExpMatchArray;

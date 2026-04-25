@@ -47,6 +47,19 @@ export interface Analysis {
   } | null;
   created_at: string;
   completed_at: string | null;
+
+  // Phase 2 state machine: saved (both null) | tried | set_aside.
+  // Both terminal-good states.
+  tried_at?: string | null;
+  set_aside_at?: string | null;
+}
+
+export type AnalysisState = "saved" | "tried" | "set_aside";
+
+export function getAnalysisState(a: Pick<Analysis, "tried_at" | "set_aside_at">): AnalysisState {
+  if (a.tried_at) return "tried";
+  if (a.set_aside_at) return "set_aside";
+  return "saved";
 }
 
 export interface Todo {
