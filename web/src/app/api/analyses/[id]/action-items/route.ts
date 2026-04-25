@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
+import { HUMANIZER_RULES } from "@/lib/humanizer-rules";
 
 const ACTION_ITEMS_PROMPT = `The reader tapped "Look closer." They already saw the short verdict. They want the substance — what the topic ACTUALLY IS, where to try it, and what to do with it.
 
@@ -95,6 +96,8 @@ Return as JSON:
   "for_you": [],
   "try_this": [{"title": "...", "description": "..."}]
 }
+
+${HUMANIZER_RULES}
 
 IMPORTANT: Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 

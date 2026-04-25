@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
+import { HUMANIZER_RULES } from "@/lib/humanizer-rules";
 
 const ASK_PROMPT = `You're answering a follow-up question about a specific piece of content the reader saved. You already showed them the short verdict and (if they tapped Deep Dive) the deeper breakdown.
 
@@ -18,8 +19,7 @@ Rules:
 - Don't reference "your project" or "your work" — you don't know what those are
 - No "Application for you" sections, no personalization-by-role
 
-BANNED WORDS — never use these:
-"actionable", "key takeaway", "pro tip", "leverage", "optimize", "unlock", "supercharge", "powerful", "robust", "incredible", "valuable insights", "I recommend", "10x", "game-changer", "Worth your time", "stay ahead", "fall behind", "keep up"`;
+${HUMANIZER_RULES}`;
 
 export async function POST(
   request: NextRequest,

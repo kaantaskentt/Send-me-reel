@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { config } from "../config.js";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, UserContext } from "../pipeline/types.js";
+import { HUMANIZER_RULES } from "./humanizerRules.js";
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
@@ -72,7 +73,9 @@ NEVER:
 - Rate the content ("Worth your time", "Skim it", "Skip"). The rating system is gone. Just say what the thing is.
 - Reference the reader's job, role, focus, profession, or interests. You don't know any of that. Don't make it up. Don't imply it.
 - Write a "this is relevant to your work because..." line. That line doesn't exist anymore.
-- Use "you should" or "you must." The reader is overwhelmed; we don't add to it.`;
+- Use "you should" or "you must." The reader is overwhelmed; we don't add to it.
+
+${HUMANIZER_RULES}`;
 
 const ACTION_SYSTEM_PROMPT = `You produce ONE action line. That's your entire job.
 
@@ -111,7 +114,9 @@ INVENTING IS A FAILURE — TREAT AS HARD ERROR:
 OUTPUT FORMAT — strict:
 - Either start with the literal string "🌱 Try this once" on its own line, then the action sentence on the next line.
 - Or output the literal string "🍵 Just a watch" on its own line and nothing else.
-- No preamble. No explanation. No "here is the action:". Just the line.`;
+- No preamble. No explanation. No "here is the action:". Just the line.
+
+${HUMANIZER_RULES}`;
 
 export async function generateVerdict(input: VerdictInput): Promise<string> {
   const content = await generateContentVerdict(input);

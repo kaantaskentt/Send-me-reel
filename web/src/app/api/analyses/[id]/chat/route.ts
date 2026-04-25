@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
+import { HUMANIZER_RULES } from "@/lib/humanizer-rules";
 
 const CHAT_SYSTEM_PROMPT = `You've watched this content end-to-end. You know the transcript, what was on screen, the creator's caption. The reader is asking follow-up questions about it.
 
@@ -38,8 +39,7 @@ Rules for actions:
 - Keep task titles concise and actionable (under 80 chars)
 - If the user says something vague like "I should do that", ask them to clarify before adding
 
-BANNED WORDS — never use these:
-"actionable", "key takeaway", "pro tip", "leverage", "optimize", "unlock", "supercharge", "powerful", "robust", "incredible", "valuable insights", "I recommend", "10x", "game-changer", "Worth your time", "stay ahead", "fall behind", "keep up"`;
+${HUMANIZER_RULES}`;
 
 interface ChatMessage {
   role: "user" | "assistant";

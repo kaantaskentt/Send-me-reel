@@ -60,10 +60,10 @@ function timeAgo(date: string): string {
 }
 
 const SUGGESTED_PROMPTS = [
-  "What are the key takeaways?",
-  "How can I apply this to my work?",
-  "What was the most interesting insight?",
-  "Summarize this in 3 bullet points",
+  "What's the main point?",
+  "What's the smallest thing I could try?",
+  "Give me a prompt I can paste into Claude Code.",
+  "What would I miss if I just skimmed this?",
 ];
 
 export default function ChatPage() {

@@ -54,10 +54,10 @@ export default function FinalCTASection() {
               className="text-4xl sm:text-5xl lg:text-6xl text-[#1a1a1a] mb-6"
               style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.04em", lineHeight: 1.05 }}
             >
-              Ready to actually use
+              You're not behind.
               <br />
               <span style={{ fontFamily: "var(--font-instrument-serif), 'Instrument Serif', Georgia, serif", fontStyle: "italic", fontWeight: 400, letterSpacing: "-0.02em" }}>
-                what you watch?
+                Just one sip at a time.
               </span>
             </h2>
 
@@ -65,8 +65,7 @@ export default function FinalCTASection() {
               className="text-slate-500 text-lg mb-10 leading-relaxed max-w-xl mx-auto"
               style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 400 }}
             >
-              Your first ten verdicts are free. No credit card. No sign-up.
-              Just send a link and see what comes back.
+              Your first 50 are free. No card. Send a link, see what comes back.
             </p>
 
             {/* Two-button CTA */}
@@ -93,8 +92,8 @@ export default function FinalCTASection() {
             {/* Trust signals — dots, no emojis */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm" style={{ color: "#78716c", fontFamily: "'DM Sans', sans-serif" }}>
               {[
-                "10 free verdicts",
-                "No account required",
+                "50 free verdicts",
+                "No card required",
                 "60-second turnaround",
                 "Works in Telegram groups",
               ].map((t) => (
@@ -131,7 +130,7 @@ export default function FinalCTASection() {
                 </span>
               </div>
               <span className="text-sm" style={{ color: "#a8a29e", fontFamily: "'DM Sans', sans-serif" }}>
-                — send it, understand it, actually use it.
+                — for people who feel behind on AI.
               </span>
             </div>
 

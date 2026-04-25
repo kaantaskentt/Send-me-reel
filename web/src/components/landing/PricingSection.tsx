@@ -88,7 +88,7 @@ export default function PricingSection() {
                 <span className="font-black" style={{ fontSize: "2.5rem", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>$9.99</span>
                 <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
               </div>
-              <p className="text-sm" style={{ color: "#9ca3af" }}>For people who actually use it.</p>
+              <p className="text-sm" style={{ color: "#9ca3af" }}>For when you want more after the free 50.</p>
             </div>
             <ul className="flex flex-col gap-3 mb-8 flex-1 relative">
               {PRO_FEATURES.map((f) => (

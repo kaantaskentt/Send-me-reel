@@ -23,9 +23,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "ContextDrop — Send it. Understand it. Actually use it.",
+  title: "ContextDrop — for people who feel behind on AI",
   description:
-    "AI-powered content analysis. Send any video link, get a personalized verdict in 60 seconds.",
+    "Send me any AI / tech / business link. I'll send back the one small thing you could try with it. No coding, no catching up.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
