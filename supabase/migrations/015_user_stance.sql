@@ -23,13 +23,21 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS pattern_to_stop text;
 
 -- Soft validation: stance must be one of four values when set. NULL is allowed
 -- (existing users, or users who haven't picked yet).
-ALTER TABLE users
-  ADD CONSTRAINT users_stance_valid
-  CHECK (
-    stance IS NULL OR stance IN (
-      'curious_not_started',
-      'watching_not_doing',
-      'tried_gave_up',
-      'using_want_more'
-    )
-  );
+-- Wrapped in DO block so re-running the migration is idempotent.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_stance_valid'
+  ) THEN
+    ALTER TABLE users
+      ADD CONSTRAINT users_stance_valid
+      CHECK (
+        stance IS NULL OR stance IN (
+          'curious_not_started',
+          'watching_not_doing',
+          'tried_gave_up',
+          'using_want_more'
+        )
+      );
+  END IF;
+END $$;

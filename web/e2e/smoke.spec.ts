@@ -241,7 +241,7 @@ test.describe("Dashboard (logged in)", () => {
     expect(page.url()).toContain("/login");
   });
 
-  test("mobile: stats cards visible at top", async ({ page, viewport }) => {
+  test("mobile: dashboard renders paste-link input and pile structure", async ({ page, viewport }) => {
     test.skip(!(viewport && viewport.width < 768), "Mobile-only layout check");
     await loginAs(page);
     await page.goto("/dashboard");
@@ -250,8 +250,13 @@ test.describe("Dashboard (logged in)", () => {
 
     await page.screenshot({ path: "test-results/25-dashboard-mobile.png", fullPage: true });
 
-    // Mobile dashboard shows stats cards at the top
-    await expect(page.locator("text=SAVED").first()).toBeVisible();
+    // Phase 3 dashboard: paste-link input is the always-present anchor.
+    // Hero ("This week's one thing") only appears when there's a recent
+    // saved-not-decided analysis with an action — so we assert the input
+    // and at least one pile heading OR the empty state.
+    await expect(page.getByPlaceholder(/Paste any link/i)).toBeVisible();
+    const heroOrPiles = page.getByText(/This week's one thing|Saved, not yet decided|Get your first verdict/i);
+    await expect(heroOrPiles.first()).toBeVisible();
   });
 });
 
