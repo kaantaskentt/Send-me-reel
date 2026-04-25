@@ -299,10 +299,14 @@ export async function executeVideoPipeline(
     throw new ServiceError("NO_CONTENT", decision.reason, false);
   }
 
-  const userContext = await users.getContext(userId);
-  if (!userContext) {
-    throw new ServiceError("NO_CONTEXT", "User has no context profile");
-  }
+  // Phase 4: stance is the only signal Pass 2 uses for tone calibration.
+  // userContext is fetched for back-compat with the type but Phase 1 already
+  // removed it from the verdict prompt. Both can be NULL for new users —
+  // the verdict pipeline handles that gracefully.
+  const [userContext, stance] = await Promise.all([
+    users.getContext(userId),
+    users.getStance(userId),
+  ]);
 
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
@@ -310,10 +314,11 @@ export async function executeVideoPipeline(
     visualSummary,
     caption: scraped.caption,
     metadata: scraped.metadata,
-    userContext,
+    userContext: userContext ?? { role: "", goal: "" },
     platform,
     sourceUrl: url,
     userNote,
+    stance: stance ?? undefined,
   });
 
   await analyses.updateResult(analysisId, {
@@ -355,10 +360,11 @@ export async function executeArticlePipeline(
     throw new ServiceError("NO_CONTENT", decision.reason, false);
   }
 
-  const userContext = await users.getContext(userId);
-  if (!userContext) {
-    throw new ServiceError("NO_CONTEXT", "User has no context profile");
-  }
+  // Phase 4: stance + back-compat userContext. Both can be NULL.
+  const [userContext, stance] = await Promise.all([
+    users.getContext(userId),
+    users.getStance(userId),
+  ]);
 
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
@@ -366,10 +372,11 @@ export async function executeArticlePipeline(
     visualSummary: "",
     caption: article.text.slice(0, 3000),
     metadata: { title: article.title, ...article.metadata },
-    userContext,
+    userContext: userContext ?? { role: "", goal: "" },
     platform: "article",
     sourceUrl: url,
     userNote,
+    stance: stance ?? undefined,
   });
 
   await analyses.updateResult(analysisId, {

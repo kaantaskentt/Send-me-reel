@@ -77,26 +77,38 @@ export async function handleProfile(ctx: MyContext) {
     return;
   }
 
-  const context = await users.getContext(user.id);
-  if (!context) {
-    await ctx.reply("No profile yet. Tap /start to set one up.");
+  // Phase 4: /profile retires the Role/Focus surface in favour of the stance.
+  // Stance is shown as a quiet acknowledgement, never a CV claim.
+  const stance = await users.getStance(user.id);
+
+  const stanceLabels: Record<string, string> = {
+    curious_not_started: "🌱 Curious, haven't really started",
+    watching_not_doing: "🪞 Watching, not yet doing",
+    tried_gave_up: "🌀 Tried, got overwhelmed, gave up",
+    using_want_more: "🛠 Using a bit, want to use more on purpose",
+  };
+
+  if (!stance) {
+    // Existing pre-Phase-4 user OR fresh user — show legacy context if it exists,
+    // otherwise nudge to /start.
+    const context = await users.getContext(user.id);
+    if (!context) {
+      await ctx.reply("No profile yet. Tap /start to set one up.");
+      return;
+    }
+    await ctx.reply(
+      "<i>Where you said you are with AI:</i> not set yet\n\n" +
+        "/reset to pick · /dashboard to edit on web",
+      { parse_mode: "HTML" },
+    );
     return;
   }
 
-  const lines = [
-    `<b>Role:</b> ${context.role}`,
-    `<b>Focus:</b> ${context.goal}`,
-  ];
-  if (context.contentPreferences) {
-    lines.push(`<b>Interests:</b> ${context.contentPreferences}`);
-  }
-  if (context.extendedContext) {
-    lines.push(`<b>Deep profile:</b> connected`);
-  }
-  lines.push(``);
-  lines.push("/reset to redo · /dashboard to edit on web");
-
-  await ctx.reply(lines.join("\n"), { parse_mode: "HTML" });
+  await ctx.reply(
+    `<i>Where you said you are with AI:</i>\n${stanceLabels[stance] ?? stance}\n\n` +
+      "/reset to pick again · /dashboard for the web view",
+    { parse_mode: "HTML" },
+  );
 }
 
 export async function handleReset(ctx: MyContext) {

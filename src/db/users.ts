@@ -1,5 +1,6 @@
 import { supabase } from "./client.js";
 import type { UserContext } from "../pipeline/types.js";
+import type { UserStance } from "../services/verdictGenerator.js";
 
 export interface DbUser {
   id: string;
@@ -12,6 +13,9 @@ export interface DbUser {
   notion_workspace_id: string | null;
   notion_workspace_name: string | null;
   notion_database_id: string | null;
+  stance?: UserStance | null;
+  intention?: string | null;
+  pattern_to_stop?: string | null;
 }
 
 export async function getOrCreate(
@@ -76,6 +80,32 @@ export async function getByTelegramId(telegramId: number): Promise<DbUser | null
 
 export async function setOnboarded(userId: string, onboarded: boolean): Promise<void> {
   await supabase.from("users").update({ onboarded }).eq("id", userId);
+}
+
+// Phase 4 stance + reflection ──────────────────────────────────────────────
+// Stance is the only signal we use for verdict tone calibration. Intention
+// and pattern_to_stop are personal reflection notes the user keeps for
+// themselves; we never reference them by content in verdicts.
+
+export async function setStance(userId: string, stance: UserStance): Promise<void> {
+  await supabase.from("users").update({ stance }).eq("id", userId);
+}
+
+export async function getStance(userId: string): Promise<UserStance | null> {
+  const { data } = await supabase
+    .from("users")
+    .select("stance")
+    .eq("id", userId)
+    .single();
+  return (data?.stance as UserStance | null) ?? null;
+}
+
+export async function setIntention(userId: string, intention: string | null): Promise<void> {
+  await supabase.from("users").update({ intention }).eq("id", userId);
+}
+
+export async function setPatternToStop(userId: string, pattern: string | null): Promise<void> {
+  await supabase.from("users").update({ pattern_to_stop: pattern }).eq("id", userId);
 }
 
 export async function upsertContext(

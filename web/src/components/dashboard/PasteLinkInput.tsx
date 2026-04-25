@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Status = "idle" | "submitting" | "processing" | "done" | "failed";
+type Status = "idle" | "submitting" | "processing" | "done" | "failed" | "confirming";
 
 const PROCESSING_LABELS: Record<string, string> = {
   pending: "Queuing…",
@@ -20,6 +20,8 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
   const [status, setStatus] = useState<Status>("idle");
   const [statusText, setStatusText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  // Phase 4: vertical-filter "try anyway" prompt state.
+  const [confirmation, setConfirmation] = useState<{ message: string; pendingUrl: string; pendingNote: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -28,19 +30,36 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
     };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!url.trim() || status === "submitting" || status === "processing") return;
-
+  async function submit(targetUrl: string, targetNote: string, force: boolean) {
     setStatus("submitting");
     setError(null);
+    setConfirmation(null);
 
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), note: note.trim() || undefined }),
+        body: JSON.stringify({
+          url: targetUrl,
+          note: targetNote || undefined,
+          force,
+        }),
       });
+
+      // Phase 4: vertical-filter refusal arrives as 422 with requiresConfirmation.
+      // Show the calm "Try anyway / save elsewhere" prompt instead of an error.
+      if (res.status === 422) {
+        const data = await res.json().catch(() => ({}));
+        if (data.requiresConfirmation) {
+          setStatus("confirming");
+          setConfirmation({
+            message: data.message ?? "I'm not sure this is the right kind of content for me.",
+            pendingUrl: targetUrl,
+            pendingNote: targetNote,
+          });
+          return;
+        }
+      }
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: "Something went wrong" }));
@@ -54,7 +73,7 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
       setStatusText(PROCESSING_LABELS.pending);
 
       // Clear inputs so user knows the submission was received
-      const submittedUrl = url.trim();
+      const submittedUrl = targetUrl;
       setUrl("");
       setNote("");
       setNoteOpen(false);
@@ -95,7 +114,23 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
     }
   }
 
-  const disabled = status === "submitting" || status === "processing";
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!url.trim() || status === "submitting" || status === "processing" || status === "confirming") return;
+    await submit(url.trim(), note.trim(), false);
+  }
+
+  async function handleTryAnyway() {
+    if (!confirmation) return;
+    await submit(confirmation.pendingUrl, confirmation.pendingNote, true);
+  }
+
+  function handleSaveElsewhere() {
+    setConfirmation(null);
+    setStatus("idle");
+  }
+
+  const disabled = status === "submitting" || status === "processing" || status === "confirming";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -199,6 +234,64 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
       )}
 
       <AnimatePresence mode="wait">
+        {status === "confirming" && confirmation && (
+          <motion.div
+            key="confirming"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              padding: "12px 14px",
+              background: "#faf8f5",
+              border: "1px solid #e7e2d9",
+              borderRadius: 14,
+              fontSize: 13,
+              color: "#57534e",
+            }}
+          >
+            <span>{confirmation.message} Want me to try anyway?</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleTryAnyway}
+                style={{
+                  flex: 1,
+                  padding: "8px 14px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#fff",
+                  background: "#f97316",
+                  border: "none",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                Yes, try it
+              </button>
+              <button
+                onClick={handleSaveElsewhere}
+                style={{
+                  flex: 1,
+                  padding: "8px 14px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#57534e",
+                  background: "#fff",
+                  border: "1px solid #e7e2d9",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}
+              >
+                I'll save it elsewhere
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {status === "processing" && (
           <motion.div
             key="processing"

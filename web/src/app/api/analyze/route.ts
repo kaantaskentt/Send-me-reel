@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { extractUrl, detectPlatform } from "@/lib/url-utils";
+import { classifyUrl, shouldRefuse } from "@/lib/vertical-classifier";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -12,6 +13,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const rawUrl: string | undefined = body?.url;
   const note: string | undefined = typeof body?.note === "string" ? body.note.trim() : undefined;
+  const force: boolean = body?.force === true;
   if (!rawUrl || typeof rawUrl !== "string") {
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
@@ -25,6 +27,22 @@ export async function POST(request: NextRequest) {
       { error: "Unrecognized link. We support Instagram, TikTok, X, LinkedIn, YouTube, and article URLs." },
       { status: 400 },
     );
+  }
+
+  // Phase 4 — soft vertical filter. Refuse non-AI/tech/business with a confirmation
+  // prompt the frontend can re-submit with `force: true`. No charge on refusal.
+  if (!force) {
+    const decision = await classifyUrl(url, note);
+    if (shouldRefuse(decision)) {
+      return NextResponse.json(
+        {
+          requiresConfirmation: true,
+          topic: decision.reason || "this kind of content",
+          message: `This looks like ${decision.reason || "non-tech content"}. I'm built for the AI / tech / business stuff — I won't do my best work here.`,
+        },
+        { status: 422 },
+      );
+    }
   }
 
   const db = getSupabase();
