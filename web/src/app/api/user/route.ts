@@ -17,7 +17,7 @@ export async function GET() {
 
   const supabase = getSupabase();
 
-  const [userRes, contextRes, creditsRes] = await Promise.all([
+  const [userRes, contextRes, creditsRes, triedRes, premiumUseRes] = await Promise.all([
     supabase.from("users").select("*").eq("id", session.sub).single(),
     supabase
       .from("user_contexts")
@@ -29,12 +29,33 @@ export async function GET() {
       .select("balance, lifetime_used")
       .eq("user_id", session.sub)
       .single(),
+    // Phase 5: action-earns-depth gate. Count of analyses the user has marked
+    // tried. Premium tabs unlock at >= 3.
+    supabase
+      .from("analyses")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.sub)
+      .not("tried_at", "is", null),
+    // Grandfather rule: anyone who's ever generated action_items keeps the
+    // premium tabs visible regardless of their tried count.
+    supabase
+      .from("analyses")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.sub)
+      .not("action_items", "is", null),
   ]);
+
+  const lifetimeTriedCount = triedRes.count ?? 0;
+  const hasUsedPremium = (premiumUseRes.count ?? 0) > 0;
 
   return NextResponse.json({
     user: userRes.data,
     context: contextRes.data,
     credits: creditsRes.data || { balance: 0, lifetime_used: 0 },
+    lifetime_tried_count: lifetimeTriedCount,
+    has_used_premium: hasUsedPremium,
+    // Premium-tab gate: >= 3 tries OR previously used. transformation-plan §11.
+    premium_tabs_unlocked: lifetimeTriedCount >= 3 || hasUsedPremium,
   });
 }
 

@@ -116,13 +116,16 @@ interface Props {
   onToggle: () => void;
   notionConnected: boolean;
   isPremium: boolean;
+  /** Phase 5: Deep Dive / Ask / Chat tabs only show when user has earned them
+   *  (>= 3 tries lifetime OR has previously used a premium feature). */
+  premiumTabsUnlocked?: boolean;
   onDeleted: (id: string) => void;
   /** Phase 2: parent informs the feed to re-bucket this analysis after a state change. */
   onStateChanged?: (id: string, state: AnalysisState) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, isPremium, onDeleted, onStateChanged }: Props) {
+export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnected, isPremium, premiumTabsUnlocked, onDeleted, onStateChanged }: Props) {
   const [activeTab, setActiveTab] = useState<"act" | "chat" | "sync">("act");
   const [notionStatus, setNotionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
@@ -191,8 +194,14 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
     setActionItemsLoading(false);
   };
 
+  // Phase 5: one-time inline message after the first auto-push to Notion.
+  // localStorage so we don't need a server-side flag — purely cosmetic.
+  const [showNotionAck, setShowNotionAck] = useState(false);
+
   // Phase 2: state transitions. Optimistic — flips local state immediately,
   // tells the parent so the analysis re-buckets, reverts if the server rejects.
+  // Phase 5: when target=tried and Notion is connected, the server auto-pushes.
+  // We surface a one-time ack so existing Notion users learn the new behaviour.
   const setState = async (target: AnalysisState) => {
     if (stateBusy || target === localState) return;
     setStateBusy(true);
@@ -205,7 +214,22 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
         body: JSON.stringify({ state: target }),
       });
       if (!res.ok) throw new Error("state update failed");
+      const data = await res.json().catch(() => ({}));
       onStateChanged?.(analysis.id, target);
+
+      if (data.notion_auto_pushed) {
+        try {
+          const acked = typeof window !== "undefined" && localStorage.getItem("cd_notion_autopush_acked");
+          if (!acked) {
+            setShowNotionAck(true);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("cd_notion_autopush_acked", "1");
+            }
+          }
+        } catch {
+          // ignore localStorage failures
+        }
+      }
     } catch {
       setLocalState(previous);
     }
@@ -351,8 +375,44 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
               )}
               {localState === "set_aside" && (
                 <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center", margin: 0, fontStyle: "italic" }}>
-                  No homework today. You're allowed to just have watched it.
+                  No homework today. You&apos;re allowed to just have watched it.
                 </p>
+              )}
+
+              {/* Phase 5 — one-time inline ack after first Notion auto-push */}
+              {showNotionAck && (
+                <div style={{
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  fontSize: 12,
+                  color: "#15803d",
+                  lineHeight: 1.55,
+                }}>
+                  <span style={{ flexShrink: 0 }}>📒</span>
+                  <span>
+                    Saved to your Notion. From now on, anything you mark &quot;tried&quot; auto-saves there — your tried-it archive.
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowNotionAck(false); }}
+                    style={{
+                      flexShrink: 0,
+                      marginLeft: "auto",
+                      background: "none",
+                      border: "none",
+                      color: "#15803d",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    Got it
+                  </button>
+                </div>
               )}
 
               {parsed?.forYou && (
@@ -362,32 +422,36 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 </div>
               )}
 
-              {/* ── Act · Chat · Sync Tab Bar ── */}
-              <div style={{ display: "flex", background: "#f5f1eb", borderRadius: 10, padding: 3 }}>
-                {([
-                  { key: "act" as const, label: "✅ Act" },
-                  { key: "chat" as const, label: "💬 Chat" },
-                  { key: "sync" as const, label: "🔄 Sync" },
-                ]).map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={(e) => { e.stopPropagation(); setActiveTab(tab.key); }}
-                    style={{
-                      flex: 1, padding: "7px 0", fontSize: 12, fontWeight: 600, borderRadius: 8,
-                      border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                      background: activeTab === tab.key ? "#fff" : "transparent",
-                      color: activeTab === tab.key ? "#1c1917" : "#a8a29e",
-                      boxShadow: activeTab === tab.key ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
+              {/* Phase 5 — Act / Chat / Sync tabs only show when the user has
+                   earned them (>= 3 tries OR previously used Deep Dive).
+                   Action unlocks depth. (transformation-plan §11) */}
+              {premiumTabsUnlocked && (
+                <div style={{ display: "flex", background: "#f5f1eb", borderRadius: 10, padding: 3 }}>
+                  {([
+                    { key: "act" as const, label: "✅ Act" },
+                    { key: "chat" as const, label: "💬 Chat" },
+                    { key: "sync" as const, label: "🔄 Sync" },
+                  ]).map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={(e) => { e.stopPropagation(); setActiveTab(tab.key); }}
+                      style={{
+                        flex: 1, padding: "7px 0", fontSize: 12, fontWeight: 600, borderRadius: 8,
+                        border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                        background: activeTab === tab.key ? "#fff" : "transparent",
+                        color: activeTab === tab.key ? "#1c1917" : "#a8a29e",
+                        boxShadow: activeTab === tab.key ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-              {/* ── Tab Content ── */}
-              <div onClick={(e) => e.stopPropagation()} style={{ minHeight: 60 }}>
+              {/* ── Tab Content (only when premium tabs are unlocked) ── */}
+              {premiumTabsUnlocked && <div onClick={(e) => e.stopPropagation()} style={{ minHeight: 60 }}>
 
                 {/* ACT tab — tasks */}
                 {activeTab === "act" && (
@@ -507,7 +571,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     ))}
                   </div>
                 )}
-              </div>
+              </div>}
 
               {/* ── Compact action links ── */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, paddingTop: 4 }}>

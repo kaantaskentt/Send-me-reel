@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { pushToNotion } from "@/lib/notion-push";
 
 type StateValue = "saved" | "tried" | "set_aside";
 
@@ -68,10 +69,48 @@ export async function POST(
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
+  // Phase 5: auto-push to Notion on transition to "tried" — but only when this
+  // is the first time this analysis goes to tried (no prior tried_at). This
+  // makes Notion the user's tried-it archive without needing a manual button.
+  // Failure here doesn't fail the state change — auto-push is best-effort.
+  let notionAutoPushed = false;
+  if (target === "tried" && !row.tried_at) {
+    try {
+      const { data: u } = await supabase
+        .from("users")
+        .select("notion_access_token, notion_database_id")
+        .eq("id", session.sub)
+        .single();
+
+      if (u?.notion_access_token && u?.notion_database_id) {
+        const { data: full } = await supabase
+          .from("analyses")
+          .select("verdict, transcript, visual_summary, source_url, platform, verdict_intent")
+          .eq("id", id)
+          .single();
+        if (full?.verdict) {
+          await pushToNotion(u.notion_access_token, u.notion_database_id, {
+            verdict: full.verdict,
+            transcript: full.transcript,
+            visual_summary: full.visual_summary,
+            source_url: full.source_url,
+            platform: full.platform,
+            verdict_intent: full.verdict_intent,
+          });
+          notionAutoPushed = true;
+        }
+      }
+    } catch (err) {
+      // Best-effort — never block the state change on Notion failure
+      console.error("[state] Notion auto-push failed:", err);
+    }
+  }
+
   return NextResponse.json({
     success: true,
     state: target,
     tried_at: update.tried_at,
     set_aside_at: update.set_aside_at,
+    notion_auto_pushed: notionAutoPushed,
   });
 }

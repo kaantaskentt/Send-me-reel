@@ -166,7 +166,7 @@ export default function Dashboard() {
                 <AnimatePresence initial={false}>
                   {analyses.map((a, i) => (
                     <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, duration: 0.2 }}>
-                      <AnalysisCard analysis={a} isOpen={openId === a.id} onToggle={() => handleToggle(a.id)} notionConnected={!!profile?.user.notion_access_token} isPremium={!!profile?.user.premium} onDeleted={handleDeleted} />
+                      <AnalysisCard analysis={a} isOpen={openId === a.id} onToggle={() => handleToggle(a.id)} notionConnected={!!profile?.user.notion_access_token} isPremium={!!profile?.user.premium} premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean })?.premium_tabs_unlocked} onDeleted={handleDeleted} />
                     </motion.div>
                   ))}
                 </AnimatePresence>
