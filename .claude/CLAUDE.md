@@ -1,6 +1,26 @@
 # ContextDrop
 
-AI-powered content analysis bot. Users send social media video links via Telegram, and the system analyzes the video (visual + audio + text), generates a personalized verdict using Claude, and replies with actionable insights.
+A bridge between where people are and where they know they could be — for the very specific person who feels left behind by AI and has slowly stopped trying.
+
+The user saves an AI reel. We translate it into the smallest next thing they could actually try. No verdict, no judgement, no homework.
+
+> "The product is the same. The entry point is User A. The purpose is User B. The honest version of what you are building is not a content analyser. It is a bridge between where people are and where they know they could be." — Kaan/Claude pivot conversation, Apr 24
+
+## Strategic Source of Truth — READ FIRST
+
+**[`.claude/strategy.md`](.claude/strategy.md)** is the source of truth for every product, design, copy, and code decision. Built from a research drop of 31+ verbatim quotes across 8 communities (Reddit, IH, HN, ProductHunt, Threads, Instagram, Twitter, YouTube comments) plus a competitor positioning audit.
+
+Every decision must trace to a quote, pattern, or signal in that document. If you can't trace it, don't make the change. Read strategy.md before strategic decisions; read design.md before UI work.
+
+Core ideas you must internalise before doing anything:
+
+- **The pain is "AI guilt"** — watching the world move faster than they can process it, knowing they should be doing something, slowly disconnecting because the gap feels too big.
+- **User A → User B** — they are the same person at different stages. We acquire User A (still saving AI content). The mission is User B (already gave up). User B is reached through User A's results, not marketing.
+- **The output is action, not a verdict.** No "Worth your time / Skim it / Skip." The new structure is 🌱 try this once / 📍 what this is / 🪜 if you want to go further / 🍵 no homework today.
+- **Anti-feed.** Their existing feeds are the cause of the wound. We never look like one.
+- **Vertical: AI / tech / business / productivity only.** Recipes and fashion get a polite redirect. The product loses meaning if it tries to serve everyone.
+- **Tone:** calm, slow, MyMind-coded. Never urgent, never hustle-coded, never patronising.
+- **Success metric:** rate of "I tried it" toggles, not analyses generated.
 
 ## Architecture
 
