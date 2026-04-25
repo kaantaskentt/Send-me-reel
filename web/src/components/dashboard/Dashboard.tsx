@@ -258,7 +258,7 @@ export default function Dashboard() {
                 {/* Three piles, all collapsed by default. Counts visible but
                     never styled as notification badges. (transformation-plan §8) */}
                 <AnalysisPile
-                  title="Saved, not yet decided"
+                  title="Still saved"
                   analyses={savedRest}
                   profile={profile}
                   premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}

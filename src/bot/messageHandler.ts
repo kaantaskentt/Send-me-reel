@@ -46,8 +46,8 @@ export async function handleMessage(ctx: MyContext) {
 
     if (!user || !user.onboarded) {
       await ctx.reply(
-        "Hey — I'm <b>ContextDrop</b>. I break down videos and articles into personalized insights.\n\n" +
-          "Tap /start to get set up (30 seconds).",
+        "Hey. <b>ContextDrop</b> here. I help with the AI / tech / business stuff you save.\n\n" +
+          "Tap /start to set up (10 seconds).",
         { parse_mode: "HTML" },
       );
       return;
@@ -55,15 +55,15 @@ export async function handleMessage(ctx: MyContext) {
 
     if (CHAT_PATTERNS.test(text)) {
       await ctx.reply(
-        "I'm a link breakdown bot, not a chat bot. Send me any video or article link and I'll break it down for you.\n\n" +
-          "/dashboard to revisit past analyses.",
+        "I'm a link bot, not a chat bot. Send a link and I'll do the rest.\n\n" +
+          "/dashboard to revisit what's saved.",
       );
       return;
     }
 
     await ctx.reply(
-      "Send me a link — Instagram, TikTok, X, LinkedIn, YouTube, or an article — and I'll break it down.\n\n" +
-        "/dashboard to see your saved analyses.",
+      "Send a link. Instagram, TikTok, X, LinkedIn, YouTube, or an article.\n\n" +
+        "/dashboard to revisit what's saved.",
     );
     return;
   }
@@ -109,7 +109,7 @@ export async function handleMessage(ctx: MyContext) {
 
     const topic = decision.reason || "this kind of content";
     await ctx.reply(
-      `This looks like ${topic}. I'm built for the AI / tech / business stuff — I won't do my best work here. Want me to try anyway? No charge unless you tap yes.`,
+      `Looks like ${topic}. I'm built for the AI / tech / business stuff. I won't do my best work here. Want me to try anyway? No charge unless you tap yes.`,
       {
         reply_markup: keyboard,
         ...(isGroup && messageId ? { reply_parameters: { message_id: messageId } } : {}),
@@ -126,7 +126,7 @@ export async function handleMessage(ctx: MyContext) {
     try {
       const replyOpts = isGroup && messageId ? { reply_parameters: { message_id: messageId } } : {};
       await ctx.reply(
-        "Something went wrong on our end — we've logged it. Try again in a moment.",
+        "Something broke on our end. Logged it. Try again in a sec.",
         replyOpts,
       );
     } catch (replyErr) {

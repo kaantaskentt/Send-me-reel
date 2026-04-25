@@ -28,8 +28,8 @@ export async function handleStart(ctx: MyContext) {
       : "";
 
   await ctx.reply(
-    `Welcome back, <b>${from.first_name ?? "there"}</b>.\n\n` +
-      `You've got <b>${balance} analyses</b> ready.\n` +
+    `Hey <b>${from.first_name ?? "there"}</b>.\n\n` +
+      `<b>${balance}</b> left.\n` +
       demoPrompt +
       "\nDrop any Instagram, TikTok, X, LinkedIn, YouTube, or article link.\n\n" +
       "/profile · /credits · /dashboard · /reset",
@@ -39,8 +39,8 @@ export async function handleStart(ctx: MyContext) {
 
 export async function handleHelp(ctx: MyContext) {
   await ctx.reply(
-    "<b>ContextDrop</b> — I break down videos and articles into personalized insights.\n\n" +
-      "Send me any link from Instagram, TikTok, X, LinkedIn, YouTube, or an article URL.\n\n" +
+    "<b>ContextDrop</b>. I help with the AI / tech / business stuff you save and never come back to. " +
+      "Send a link, I'll send back the one small thing you could try with it.\n\n" +
       "Try this one:\nhttps://www.instagram.com/reel/DFnVBmxx2Lj/\n\n" +
       "/profile · /credits · /dashboard · /reset",
     { parse_mode: "HTML" },
@@ -53,7 +53,7 @@ export async function handleCredits(ctx: MyContext) {
 
   const user = await users.getByTelegramId(from.id);
   if (!user) {
-    await ctx.reply("Start with /start to set up your account.");
+    await ctx.reply("Tap /start to set up.");
     return;
   }
 
@@ -61,8 +61,7 @@ export async function handleCredits(ctx: MyContext) {
   const used = await credits.getLifetimeUsed(user.id);
 
   await ctx.reply(
-    `<b>${balance} analyses left</b> (${used} used)\n` +
-      "<i>1 analysis = 1 link breakdown.</i>",
+    `<b>${balance}</b> left. ${used} done.`,
     { parse_mode: "HTML" },
   );
 }
@@ -73,7 +72,7 @@ export async function handleProfile(ctx: MyContext) {
 
   const user = await users.getByTelegramId(from.id);
   if (!user) {
-    await ctx.reply("Start with /start to set up your account.");
+    await ctx.reply("Tap /start to set up.");
     return;
   }
 
@@ -112,7 +111,7 @@ export async function handleProfile(ctx: MyContext) {
 }
 
 export async function handleReset(ctx: MyContext) {
-  await ctx.reply("Let's redo your profile.");
+  await ctx.reply("Let's redo it.");
   await ctx.conversation.enter("onboarding");
 }
 
@@ -122,7 +121,7 @@ export async function handleDashboard(ctx: MyContext) {
 
   const user = await users.getByTelegramId(from.id);
   if (!user) {
-    await ctx.reply("Start with /start to set up your account.");
+    await ctx.reply("Tap /start to set up.");
     return;
   }
 

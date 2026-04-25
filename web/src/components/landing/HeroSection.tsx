@@ -10,10 +10,10 @@ import { useEffect, useState } from "react";
 const HERO_VIDEO_URL =
   "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/hero_loop_5e8e7a1f.mp4";
 
-// PROPOSED — open for tweaking. The old rotation ("understood / decoded / actionable")
-// sold the retired ⭐ rating model. New rotation tells the new story: every save
-// resolves into one of three calm states. Tweak the words live in /web dev.
-const ROTATING_WORDS = ["tried.", "shelved.", "smaller."];
+// New rotation tells the post-pivot story: every save resolves into one of
+// three calm states. The old rotation sold the retired ⭐ rating model.
+// "one sip." anchors to womenlearningaifearlessly — most-quoted line in the research.
+const ROTATING_WORDS = ["tried.", "shelved.", "one sip."];
 
 const GRID_IMAGES = [
   "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/RZMhPDNnbZpx_ab1add6e.jpg",

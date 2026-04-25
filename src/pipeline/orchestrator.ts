@@ -57,7 +57,7 @@ export async function runPipeline(
   const balance = await credits.getBalance(user.id);
   if (balance <= 0) {
     await ctx.reply(
-      "You're out of analyses. Top-ups coming soon — tap /dashboard to revisit what you've saved.",
+      "You're out for now. Top-ups soon. /dashboard to revisit what's saved.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
@@ -67,7 +67,7 @@ export async function runPipeline(
   const platform = detectPlatform(url);
   if (platform === "unknown") {
     await ctx.reply(
-      "I don't recognize that link. I work with Instagram, TikTok, X, LinkedIn, YouTube, or any article URL.",
+      "Don't recognize that one. I do Instagram, TikTok, X, LinkedIn, YouTube, articles.",
       replyOpts(ctx, replyToMessageId),
     );
     return;
@@ -76,7 +76,7 @@ export async function runPipeline(
   // Deduct credit upfront
   const deducted = await credits.deduct(user.id);
   if (!deducted) {
-    await ctx.reply("You're out of analyses.", replyOpts(ctx, replyToMessageId));
+    await ctx.reply("You're out for now.", replyOpts(ctx, replyToMessageId));
     return;
   }
 
@@ -94,7 +94,7 @@ export async function runPipeline(
       console.error("[pipeline] CRITICAL: refund failed after create failure for user", user.id, refundErr),
     );
     await ctx.reply(
-      "Something went wrong on our end — your analysis has been refunded. Try again in a moment.",
+      "Something broke on our end. Credit's back. Try again in a sec.",
       replyOpts(ctx, replyToMessageId),
     ).catch((replyErr) => console.error("[pipeline] Failed to send error reply:", replyErr));
     return;
@@ -102,7 +102,7 @@ export async function runPipeline(
 
   // Acknowledge receipt
   await ctx.reply(
-    "On it — about 30 seconds.",
+    "On it. Give me 30 seconds.",
     replyOpts(ctx, replyToMessageId),
   ).catch((replyErr) => {
     // If we can't even acknowledge, log but keep going — the pipeline will still try to deliver a verdict
@@ -111,7 +111,7 @@ export async function runPipeline(
 
   // 45s progress ping — reassures user they're not forgotten on slow videos
   const progressTimer = setTimeout(() => {
-    ctx.reply("Still working on it — shouldn't be much longer.", replyOpts(ctx, replyToMessageId))
+    ctx.reply("Still working. Shouldn't be long.", replyOpts(ctx, replyToMessageId))
       .catch((err) => console.error("[pipeline] Failed to send progress ping:", err));
   }, 45_000);
   if (typeof progressTimer.unref === "function") progressTimer.unref();
@@ -166,19 +166,19 @@ export async function runPipeline(
     if (errCode === "NO_CONTENT") {
       userMessage = rawMessage;
     } else if (errCode === "PIPELINE_TIMEOUT") {
-      userMessage = "This one's taking longer than usual — we refunded it. Try again in a moment.";
+      userMessage = "Took longer than usual. Refunded. Try again in a sec.";
     } else if (errCode === "VIDEO_TOO_LONG") {
-      userMessage = "Too long — I max out at 10 minutes. Try a shorter clip.";
+      userMessage = "Too long. I cap at 10 minutes. Try a shorter clip.";
     } else if (errCode === "SCRAPE_MISMATCH" || errCode === "APIFY_NO_MATCH") {
-      userMessage = "Couldn't reliably fetch that link — it might be private, deleted, or rate-limited. Try again in a minute.";
+      userMessage = "Couldn't reliably get that link. Might be private, deleted, or rate-limited. Try again in a minute.";
     } else if (rawMessage.includes("Both yt-dlp and") || rawMessage.includes("SCRAPE_FAILED")) {
-      userMessage = "Couldn't access this one. Might be private, expired, or rate-limited. Try again in a minute.";
+      userMessage = "Couldn't access this one. Might be private or rate-limited. Try again in a minute.";
     } else if (rawMessage.includes("Failed to download") || rawMessage.includes("DOWNLOAD_FAILED")) {
-      userMessage = "Couldn't download this video. Try again in a minute.";
+      userMessage = "Couldn't download the video. Try again in a minute.";
     } else if (rawMessage.includes("Network") || rawMessage.includes("timeout")) {
-      userMessage = "Network issue — couldn't reach the platform. Try again in a moment.";
+      userMessage = "Network issue. Couldn't reach the platform. Try again in a sec.";
     } else {
-      userMessage = "Something went wrong analyzing this link.";
+      userMessage = "Something broke analyzing this. Try again in a sec.";
     }
 
     // DB write is best-effort — don't let it swallow the user reply
@@ -188,7 +188,7 @@ export async function runPipeline(
     }).catch((dbErr) => console.error("[pipeline] Failed to record failure in DB:", dbErr));
 
     await ctx.reply(
-      `Couldn't analyze that one — your analysis has been refunded.\n\n${userMessage}`,
+      `Couldn't get that one. Credit's back.\n\n${userMessage}`,
       replyOpts(ctx, replyToMessageId),
     ).catch((replyErr) => console.error("[pipeline] Failed to send error reply:", replyErr));
   } finally {

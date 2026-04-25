@@ -88,7 +88,7 @@ export default function EmptyState({ isFiltered, onClearFilters }: Props) {
       </div>
 
       {/* Note */}
-      <p style={{ fontSize: 11, color: "#c4bdb5", marginTop: 20, textAlign: "center" }}>Your first 50 analyses are free.</p>
+      <p style={{ fontSize: 11, color: "#c4bdb5", marginTop: 20, textAlign: "center" }}>First 50 are on me. Plenty to find your one thing.</p>
     </div>
   );
 }

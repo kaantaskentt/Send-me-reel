@@ -40,8 +40,8 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
   }
 
   await ctx.reply(
-    "Welcome to <b>ContextDrop</b>.\n\n" +
-      "I help with the AI / tech / business stuff people post — the videos and articles you save and never come back to.\n\n" +
+    "Hey. <b>ContextDrop</b> here.\n\n" +
+      "I help with the AI / tech / business stuff you save and never come back to.\n\n" +
       "Where are you with AI right now? Pick the closest one.",
     { parse_mode: "HTML", reply_markup: keyboard },
   );

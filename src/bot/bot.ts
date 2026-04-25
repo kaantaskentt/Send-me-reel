@@ -103,7 +103,7 @@ export function createBot(): Bot<MyContext> {
     } catch (err) {
       console.error("[bot] setaside callback failed:", err);
       await ctx.answerCallbackQuery({
-        text: "Something didn't work. Try again from the dashboard.",
+        text: "Didn't work. Try again from the dashboard.",
         show_alert: true,
       });
     }
