@@ -1,17 +1,55 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import type { Analysis, AnalysisFeedResponse, UserProfile } from "@/lib/types";
-import AnalysisCard from "./AnalysisCard";
+import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
+import { getAnalysisState } from "@/lib/types";
+import { parseVerdict } from "@/lib/verdict-parser";
 import ProfileSidebar from "./ProfileSidebar";
-import StatsBar from "./StatsBar";
-import FilterBar from "./FilterBar";
 import SearchBar from "./SearchBar";
 import EmptyState from "./EmptyState";
 import PasteLinkInput from "./PasteLinkInput";
+import WeekHero from "./WeekHero";
+import AnalysisPile from "./AnalysisPile";
+
+// Phase 3 — platform-only filter. The intent filter (Learn/Apply) is retired
+// in favour of the user-action axis (saved/tried/set_aside) at the pile level.
+function PlatformFilter({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const options = [
+    { value: "all", label: "All" },
+    { value: "instagram", label: "Instagram" },
+    { value: "tiktok", label: "TikTok" },
+    { value: "x", label: "X" },
+    { value: "linkedin", label: "LinkedIn" },
+    { value: "youtube", label: "YouTube" },
+    { value: "article", label: "Article" },
+  ];
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          style={{
+            padding: "5px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: value === o.value ? "#1c1917" : "#a8a29e",
+            background: value === o.value ? "#fff" : "transparent",
+            border: `1px solid ${value === o.value ? "#e7e2d9" : "transparent"}`,
+            borderRadius: 100,
+            cursor: "pointer",
+            fontFamily: "'DM Sans', sans-serif",
+            transition: "all 0.15s",
+          }}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function CardSkeleton() {
   return (
@@ -37,8 +75,11 @@ export default function Dashboard() {
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [openId, setOpenId] = useState<string | null>(expandId);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // expandId still routes to the matching pile/card via the openCardId inside
+  // AnalysisPile when the user navigates to /dashboard?expand=<id>. Phase 3
+  // doesn't deep-link the hero — anything in the hero is already maximally visible.
+  void expandId;
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -49,11 +90,10 @@ export default function Dashboard() {
     }
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
-  const [intent, setIntent] = useState("all");
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
 
-  const isFiltered = intent !== "all" || platform !== "all" || search !== "";
+  const isFiltered = platform !== "all" || search !== "";
 
   useEffect(() => {
     fetch("/api/user").then((r) => r.json()).then(setProfile).catch(console.error);
@@ -61,8 +101,7 @@ export default function Dashboard() {
 
   const fetchAnalyses = useCallback(async (pageNum: number, append = false) => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(pageNum), limit: "20" });
-    if (intent !== "all") params.set("intent", intent);
+    const params = new URLSearchParams({ page: String(pageNum), limit: "50" });
     if (platform !== "all") params.set("platform", platform);
     if (search) params.set("search", search);
     const res = await fetch(`/api/analyses?${params}`);
@@ -71,25 +110,65 @@ export default function Dashboard() {
     setTotal(data.total);
     setHasMore(data.hasMore);
     setLoading(false);
-  }, [intent, platform, search]);
+  }, [platform, search]);
 
   useEffect(() => {
     setPage(1);
-    setOpenId(null);
     fetchAnalyses(1);
   }, [fetchAnalyses]);
 
   const loadMore = () => { const next = page + 1; setPage(next); fetchAnalyses(next, true); };
-  const handleToggle = (id: string) => setOpenId((prev) => (prev === id ? null : id));
   const handleDeleted = (id: string) => {
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
     setTotal((t) => t - 1);
-    if (openId === id) setOpenId(null);
   };
-  const clearFilters = () => { setIntent("all"); setPlatform("all"); setSearch(""); };
+  const clearFilters = () => { setPlatform("all"); setSearch(""); };
 
-  const learnCount = analyses.filter((a) => a.verdict_intent === "learn").length;
-  const applyCount = analyses.filter((a) => a.verdict_intent === "apply").length;
+  // Phase 3 — local optimistic state changes. When a user toggles tried/set-aside,
+  // the parent updates the analysis in-place so it re-buckets visually.
+  const handleStateChanged = useCallback((id: string, state: AnalysisState) => {
+    const now = new Date().toISOString();
+    setAnalyses((prev) => prev.map((a) => {
+      if (a.id !== id) return a;
+      return {
+        ...a,
+        tried_at: state === "tried" ? now : null,
+        set_aside_at: state === "set_aside" ? now : null,
+      };
+    }));
+  }, []);
+
+  // Phase 3 — bucket by state and pick the hero.
+  // Hero priority: most recent saved-not-decided analysis from the last 7
+  // days that has a 🌱 action line. Falls back to most recent saved-not-decided.
+  // Heuristic intentionally rough — tunes against tried-it data in Phase 6+.
+  const { hero, savedRest, tried, setAside } = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const buckets = { saved: [] as Analysis[], tried: [] as Analysis[], setAside: [] as Analysis[] };
+    for (const a of analyses) {
+      const s = getAnalysisState(a);
+      if (s === "tried") buckets.tried.push(a);
+      else if (s === "set_aside") buckets.setAside.push(a);
+      else buckets.saved.push(a);
+    }
+    // Hero pick — newest-first iteration; first match wins.
+    let pick: Analysis | null = null;
+    let fallback: Analysis | null = null;
+    for (const a of buckets.saved) {
+      const created = new Date(a.created_at).getTime();
+      if (created < sevenDaysAgo) continue;
+      if (!fallback) fallback = a;
+      if (!a.verdict) continue;
+      const parsed = parseVerdict(a.verdict);
+      if (parsed.action && !parsed.noHomework) {
+        pick = a;
+        break;
+      }
+    }
+    const heroPick = pick ?? fallback;
+    const rest = heroPick ? buckets.saved.filter((a) => a.id !== heroPick.id) : buckets.saved;
+    return { hero: heroPick, savedRest: rest, tried: buckets.tried, setAside: buckets.setAside };
+  }, [analyses]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
@@ -147,41 +226,73 @@ export default function Dashboard() {
         </aside>
 
         <main style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 720 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} />
-            <StatsBar total={total} learnCount={learnCount} applyCount={applyCount} />
-            <SearchBar value={search} onChange={setSearch} />
-            <FilterBar intent={intent} onIntentChange={setIntent} platform={platform} onPlatformChange={setPlatform} />
+
+            {/* Phase 3 hero — "this week's one thing". Replaces the old StatsBar
+                + intent filter + flat feed at the top. The user lands and sees
+                ONE thing. (transformation-plan §8) */}
+            {hero && (
+              <WeekHero analysis={hero} onStateChanged={handleStateChanged} />
+            )}
+
+            {/* Search + platform filter — kept because finding a specific saved
+                link by platform is a real use, not a judgement axis. */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <SearchBar value={search} onChange={setSearch} />
+              <PlatformFilter value={platform} onChange={setPlatform} />
+            </div>
 
             {search && !loading && (
-              <p style={{ fontSize: 12, color: "#a8a29e" }}>{total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;</p>
+              <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>
+                {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
+              </p>
             )}
 
             {loading && analyses.length === 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3,4].map((i) => <CardSkeleton key={i} />)}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3].map((i) => <CardSkeleton key={i} />)}</div>
             ) : analyses.length === 0 ? (
               <EmptyState isFiltered={isFiltered} onClearFilters={clearFilters} />
             ) : (
-              <motion.div layout style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <AnimatePresence initial={false}>
-                  {analyses.map((a, i) => (
-                    <motion.div key={a.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, duration: 0.2 }}>
-                      <AnalysisCard analysis={a} isOpen={openId === a.id} onToggle={() => handleToggle(a.id)} notionConnected={!!profile?.user.notion_access_token} isPremium={!!profile?.user.premium} premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean })?.premium_tabs_unlocked} onDeleted={handleDeleted} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {/* Three piles, all collapsed by default. Counts visible but
+                    never styled as notification badges. (transformation-plan §8) */}
+                <AnalysisPile
+                  title="Saved, not yet decided"
+                  analyses={savedRest}
+                  profile={profile}
+                  premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
+                  onDeleted={handleDeleted}
+                  onStateChanged={handleStateChanged}
+                />
+                <AnalysisPile
+                  title="Tried"
+                  subtitle="things you actually tried"
+                  analyses={tried}
+                  profile={profile}
+                  premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
+                  onDeleted={handleDeleted}
+                  onStateChanged={handleStateChanged}
+                />
+                <AnalysisPile
+                  title="Set aside"
+                  subtitle="watched, no homework"
+                  analyses={setAside}
+                  profile={profile}
+                  premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
+                  onDeleted={handleDeleted}
+                  onStateChanged={handleStateChanged}
+                />
+
                 {hasMore && (
-                  <div style={{ paddingTop: 8 }}>
+                  <div style={{ paddingTop: 12 }}>
                     <button onClick={loadMore} disabled={loading}
                       style={{ width: "100%", padding: 12, fontSize: 13, fontWeight: 600, color: "#a8a29e", background: "#fff", border: "1px solid #e7e2d9", borderRadius: 12, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>
-                      {loading ? "Loading…" : "Load more"}
+                      {loading ? "Loading…" : "Load older"}
                     </button>
                   </div>
                 )}
-                {loading && analyses.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3].map((i) => <CardSkeleton key={`sk-${i}`} />)}</div>
-                )}
-              </motion.div>
+              </div>
             )}
           </div>
         </main>
