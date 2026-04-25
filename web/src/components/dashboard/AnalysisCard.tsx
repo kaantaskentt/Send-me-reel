@@ -204,6 +204,15 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   const [taskAdded, setTaskAdded] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
 
+  // Apr 25 redesign — three-phase transition for tried/set_aside clicks.
+  // 'idle': normal card. 'transforming': show in-place attestation (sage tint,
+  // description fades, action box becomes a "what you did" message). After
+  // ~3 seconds we notify the parent (which re-buckets the card to its new
+  // pile). This gives the user a clear felt moment of completion instead of
+  // the previous silent slide.
+  const [transitionPhase, setTransitionPhase] = useState<"idle" | "transforming">("idle");
+  const [showOverflow, setShowOverflow] = useState(false);
+
   const addActionAsTask = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (addingTask || taskAdded || !parsed?.action) return;
@@ -221,14 +230,17 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
     setAddingTask(false);
   };
 
-  // Phase 2: state transitions. Optimistic — flips local state immediately,
-  // tells the parent so the analysis re-buckets, reverts if the server rejects.
-  // Phase 5: when target=tried and Notion is connected, the server auto-pushes.
-  // We surface a one-time ack so existing Notion users learn the new behaviour.
+  // Apr 25 redesign — three-phase setState. Optimistic state flip → server
+  // confirms → in-place transformation runs for 3 seconds → THEN we notify
+  // the parent (triggering the pile re-bucket). The 3-second window gives
+  // the user a clear felt completion before the card visually leaves.
+  // Reverting (e.g. tried → saved) skips the transformation and bucket-moves
+  // immediately.
   const setState = async (target: AnalysisState) => {
     if (stateBusy || target === localState) return;
     setStateBusy(true);
     const previous = localState;
+    const isCommit = target !== "saved"; // tried OR set_aside is a "commit"
     setLocalState(target);
     try {
       const res = await fetch(`/api/analyses/${analysis.id}/state`, {
@@ -238,7 +250,18 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
       });
       if (!res.ok) throw new Error("state update failed");
       const data = await res.json().catch(() => ({}));
-      onStateChanged?.(analysis.id, target);
+
+      if (isCommit) {
+        // Show the transformation in place, then re-bucket after 3 seconds.
+        setTransitionPhase("transforming");
+        setTimeout(() => {
+          setTransitionPhase("idle");
+          onStateChanged?.(analysis.id, target);
+        }, 3000);
+      } else {
+        // Reverting to "saved" — just re-bucket immediately.
+        onStateChanged?.(analysis.id, target);
+      }
 
       if (data.notion_auto_pushed) {
         try {
@@ -255,6 +278,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
       }
     } catch {
       setLocalState(previous);
+      setTransitionPhase("idle");
     }
     setStateBusy(false);
   };
@@ -352,74 +376,187 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
             <div style={{ padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ height: 1, background: "#f0ebe4" }} />
 
-              {/* New-format verdicts: render description + action separately so the
-                  action gets its own visual weight + an inline "+ Add as task" button.
-                  Legacy verdicts: render body as-is for back-compat. */}
+              {/* Apr 25 redesign — editorial three-zone composition:
+                  (1) DESCRIPTION — the read. Instrument Serif, generous breath.
+                  (2) ACTION ZONE — sage gradient mesh + grain, the thing-to-try.
+                  (3) STATE BUTTONS — primary commit + secondary set-aside.
+
+                  When transitioning, the action zone replaces itself with an
+                  attestation block (sage-tinted, "what you did" voice) for ~3
+                  seconds before the parent re-buckets the card. */}
+
               {parsed?.isNewFormat && parsed.description ? (
                 <>
-                  <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-                      What it is
-                    </div>
-                    <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.description}</p>
+                  {/* (1) Description — Instrument Serif, magazine-feel */}
+                  <div style={{
+                    padding: "8px 4px 4px",
+                    opacity: transitionPhase === "transforming" ? 0.55 : 1,
+                    transition: "opacity 0.6s ease",
+                  }}>
+                    <p style={{
+                      fontSize: 15.5,
+                      color: "#1c1917",
+                      lineHeight: 1.55,
+                      margin: 0,
+                      fontFamily: "'Instrument Serif', Georgia, serif",
+                      letterSpacing: -0.1,
+                      fontWeight: 400,
+                    }}>
+                      {parsed.description}
+                    </p>
+                    {parsed.deeper && (
+                      <details style={{ marginTop: 10 }}>
+                        <summary style={{ fontSize: 11, fontWeight: 500, color: "#a8a29e", cursor: "pointer", listStyle: "none" }}>
+                          + a layer deeper
+                        </summary>
+                        <p style={{ fontSize: 13, color: "#57534e", lineHeight: 1.6, margin: "6px 0 0 0", fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: "italic" }}>
+                          {parsed.deeper}
+                        </p>
+                      </details>
+                    )}
                   </div>
 
-                  {parsed.action && (
-                    <div style={{ background: "#f7fcf8", border: "1px solid #d6f0db", borderRadius: 12, padding: "14px 16px" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 5 }}>
-                          <span>🌱</span><span>Try this once</span>
+                  {/* (2) Action zone — sage gradient + grain. Transforms during the
+                      3-second post-commit window into a "what you did" attestation. */}
+                  {parsed.action && transitionPhase === "idle" && (
+                    <div style={{
+                      position: "relative",
+                      background: "linear-gradient(135deg, #f7fcf8 0%, #f0fdf4 50%, #ecfdf5 100%)",
+                      border: "1px solid #d6f0db",
+                      borderRadius: 14,
+                      padding: "16px 18px",
+                      overflow: "hidden",
+                    }}>
+                      {/* paper-grain overlay — inline SVG noise at low opacity */}
+                      <div aria-hidden style={{
+                        position: "absolute", inset: 0, opacity: 0.04, pointerEvents: "none",
+                        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' /></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+                      }} />
+                      <div style={{ position: "relative" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: 0.6, display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                          <span style={{ fontSize: 13 }}>🌱</span><span>Try this once</span>
                         </div>
-                        <button
-                          onClick={addActionAsTask}
-                          disabled={addingTask || taskAdded}
-                          style={{
-                            padding: "4px 10px",
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: taskAdded ? "#15803d" : "#6B8E6F",
-                            background: taskAdded ? "#f0fdf4" : "transparent",
-                            border: `1px solid ${taskAdded ? "#bbf7d0" : "#d6f0db"}`,
-                            borderRadius: 100,
-                            cursor: addingTask || taskAdded ? "default" : "pointer",
-                            fontFamily: "'DM Sans', sans-serif",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {taskAdded ? "✓ Added" : addingTask ? "Adding…" : "+ Add as task"}
-                        </button>
+                        <p style={{ fontSize: 16, color: "#0f1d12", lineHeight: 1.55, margin: 0, fontFamily: "'Instrument Serif', Georgia, serif", fontWeight: 400, letterSpacing: -0.1 }}>
+                          {parsed.action}
+                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                          <button
+                            onClick={addActionAsTask}
+                            disabled={addingTask || taskAdded}
+                            style={{
+                              padding: "6px 14px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: taskAdded ? "#15803d" : "#15803d",
+                              background: taskAdded ? "#fff" : "rgba(255,255,255,0.8)",
+                              border: `1px solid ${taskAdded ? "#bbf7d0" : "#bbf7d0"}`,
+                              borderRadius: 100,
+                              cursor: addingTask || taskAdded ? "default" : "pointer",
+                              fontFamily: "'DM Sans', sans-serif",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {taskAdded ? "✓ Added to tasks" : addingTask ? "Adding…" : "+ Add to tasks"}
+                          </button>
+                          <a
+                            href={analysis.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: "#15803d",
+                              textDecoration: "none",
+                              opacity: 0.75,
+                            }}
+                          >
+                            View source ↗
+                          </a>
+                          {taskAdded && (
+                            <a
+                              href="/tasks"
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                marginLeft: "auto",
+                                fontSize: 12,
+                                color: "#6B8E6F",
+                                textDecoration: "none",
+                                fontWeight: 600,
+                              }}
+                            >
+                              View all tasks →
+                            </a>
+                          )}
+                        </div>
                       </div>
-                      <p style={{ fontSize: 14, color: "#1c1917", lineHeight: 1.5, margin: 0, fontFamily: "'Instrument Serif', Georgia, serif" }}>{parsed.action}</p>
-                      {taskAdded && (
-                        <a
-                          href="/tasks"
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            display: "inline-block",
-                            marginTop: 8,
-                            fontSize: 11,
-                            color: "#6B8E6F",
-                            textDecoration: "none",
-                            fontWeight: 600,
-                          }}
-                        >
-                          View all tasks →
-                        </a>
-                      )}
                     </div>
                   )}
 
-                  {/* No-homework verdicts: render no inline box. The absence of a
-                      green 🌱 action box is the signal. The button row + state
-                      badge handle visual state. Matcha emoji was confusing. */}
-
-                  {parsed.deeper && (
-                    <details style={{ background: "#fff", border: "1px solid #f0ebe4", borderRadius: 12, padding: "10px 14px" }}>
-                      <summary style={{ fontSize: 11, fontWeight: 600, color: "#a8a29e", cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
-                        <span>🪜</span><span>If you want to go further</span>
-                      </summary>
-                      <p style={{ fontSize: 13, color: "#57534e", lineHeight: 1.6, margin: "8px 0 0 0" }}>{parsed.deeper}</p>
-                    </details>
+                  {/* (2-alt) Transformation attestation — replaces action zone for
+                      ~3 seconds after a commit click. The user sees a felt moment
+                      of completion before the card re-buckets. */}
+                  {transitionPhase === "transforming" && (
+                    <motion.div
+                      key="attestation"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                      style={{
+                        position: "relative",
+                        background: localState === "tried"
+                          ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 60%, #a7f3d0 100%)"
+                          : "linear-gradient(135deg, #faf8f5 0%, #f0ebe4 50%, #ddd6c8 100%)",
+                        border: localState === "tried" ? "1px solid #6ee7b7" : "1px solid #d4cec4",
+                        borderRadius: 14,
+                        padding: "20px 22px",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div aria-hidden style={{
+                        position: "absolute", inset: 0, opacity: 0.05, pointerEvents: "none",
+                        backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' /></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")`,
+                      }} />
+                      <div style={{ position: "relative" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: localState === "tried" ? "#065f46" : "#57534e", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 10 }}>
+                          {localState === "tried" ? "What you did" : "Set aside"}
+                        </div>
+                        {parsed.action && localState === "tried" && (
+                          <p style={{ fontSize: 16, color: "#064e3b", lineHeight: 1.55, margin: 0, fontFamily: "'Instrument Serif', Georgia, serif", fontWeight: 400 }}>
+                            {parsed.action}
+                          </p>
+                        )}
+                        {localState === "set_aside" && (
+                          <p style={{ fontSize: 16, color: "#3f3f3f", lineHeight: 1.55, margin: 0, fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: "italic", fontWeight: 400 }}>
+                            No homework. Just a watch.
+                          </p>
+                        )}
+                        <p style={{
+                          fontSize: 12.5,
+                          color: localState === "tried" ? "#065f46" : "#78716c",
+                          lineHeight: 1.5,
+                          margin: "12px 0 0 0",
+                          fontFamily: "'Instrument Serif', Georgia, serif",
+                          fontStyle: "italic",
+                          opacity: 0.85,
+                        }}>
+                          {localState === "tried" ? (
+                            <>
+                              Saved to your archive.{" "}
+                              <a
+                                href="/tasks"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ color: "inherit", textDecoration: "underline", fontStyle: "normal", fontWeight: 500 }}
+                              >
+                                view
+                              </a>
+                            </>
+                          ) : (
+                            <>You&apos;re allowed to just have watched it.</>
+                          )}
+                        </p>
+                      </div>
+                    </motion.div>
                   )}
                 </>
               ) : (
@@ -430,48 +567,45 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 )
               )}
 
-              {/* Phase 2 state controls — neutral, equal weight. Both states are valid. */}
-              <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={() => setState(localState === "tried" ? "saved" : "tried")}
-                  disabled={stateBusy}
-                  style={{
-                    flex: 1, padding: "10px 14px", fontSize: 13, fontWeight: 600,
-                    fontFamily: "'DM Sans', sans-serif",
-                    color: localState === "tried" ? "#15803d" : "#57534e",
-                    background: localState === "tried" ? "#f0fdf4" : "#fafaf9",
-                    border: `1px solid ${localState === "tried" ? "#bbf7d0" : "#e7e2d9"}`,
-                    borderRadius: 12, cursor: stateBusy ? "wait" : "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {localState === "tried" ? "✓ Tried it" : "I tried it"}
-                </button>
-                <button
-                  onClick={() => setState(localState === "set_aside" ? "saved" : "set_aside")}
-                  disabled={stateBusy}
-                  style={{
-                    flex: 1, padding: "10px 14px", fontSize: 13, fontWeight: 600,
-                    fontFamily: "'DM Sans', sans-serif",
-                    color: localState === "set_aside" ? "#44403c" : "#57534e",
-                    background: localState === "set_aside" ? "#faf8f5" : "#fafaf9",
-                    border: `1px solid ${localState === "set_aside" ? "#d4cec4" : "#e7e2d9"}`,
-                    borderRadius: 12, cursor: stateBusy ? "wait" : "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {localState === "set_aside" ? "✓ Set aside" : "Just watched it"}
-                </button>
-              </div>
-              {localState === "tried" && (
-                <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center", margin: 0, fontStyle: "italic" }}>
-                  Good. That's the whole point.
-                </p>
-              )}
-              {localState === "set_aside" && (
-                <p style={{ fontSize: 11, color: "#a8a29e", textAlign: "center", margin: 0, fontStyle: "italic" }}>
-                  No homework today. You&apos;re allowed to just have watched it.
-                </p>
+              {/* (3) State buttons — primary "I tried it" sage; secondary "Just watched"
+                  ghost. Hidden during transformation phase to avoid double-clicks
+                  and to let the attestation breathe. */}
+              {transitionPhase === "idle" && (
+                <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 10, paddingTop: 4 }}>
+                  <button
+                    onClick={() => setState(localState === "tried" ? "saved" : "tried")}
+                    disabled={stateBusy}
+                    style={{
+                      flex: 1, padding: "12px 16px", fontSize: 14, fontWeight: 600,
+                      fontFamily: "'DM Sans', sans-serif",
+                      color: localState === "tried" ? "#fff" : "#fff",
+                      background: localState === "tried" ? "#15803d" : "#6B8E6F",
+                      border: "none",
+                      borderRadius: 100,
+                      cursor: stateBusy ? "wait" : "pointer",
+                      transition: "all 0.15s",
+                      boxShadow: "0 1px 2px rgba(28,25,23,0.06)",
+                    }}
+                  >
+                    {localState === "tried" ? "✓ Tried it" : "I tried it"}
+                  </button>
+                  <button
+                    onClick={() => setState(localState === "set_aside" ? "saved" : "set_aside")}
+                    disabled={stateBusy}
+                    style={{
+                      flex: 1, padding: "12px 16px", fontSize: 14, fontWeight: 500,
+                      fontFamily: "'DM Sans', sans-serif",
+                      color: "#57534e",
+                      background: "transparent",
+                      border: `1px solid ${localState === "set_aside" ? "#d4cec4" : "#e7e2d9"}`,
+                      borderRadius: 100,
+                      cursor: stateBusy ? "wait" : "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {localState === "set_aside" ? "✓ Set aside" : "Just watched"}
+                  </button>
+                </div>
               )}
 
               {/* Phase 5 — one-time inline ack after first Notion auto-push */}
@@ -515,10 +649,33 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                   the parser still extracts it for backward parsing, but we no longer
                   render it. The profile-bias shame trigger should never be visible. */}
 
+              {/* Apr 25 redesign — premium tabs + footer actions are gated behind
+                  a "⋯ More" toggle so they don't compete with the primary read /
+                  action / state-buttons hierarchy. Hidden during the transformation
+                  phase too. */}
+              {transitionPhase === "idle" && (premiumTabsUnlocked || true) && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowOverflow((v) => !v); }}
+                  style={{
+                    alignSelf: "center",
+                    padding: "4px 12px",
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: "#a8a29e",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                    marginTop: 2,
+                  }}
+                >
+                  {showOverflow ? "Hide options" : "⋯ More"}
+                </button>
+              )}
+
               {/* Phase 5 — Act / Chat / Sync tabs only show when the user has
-                   earned them (>= 3 tries OR previously used Deep Dive).
-                   Action unlocks depth. (transformation-plan §11) */}
-              {premiumTabsUnlocked && (
+                   earned them (>= 3 tries OR previously used Deep Dive). */}
+              {premiumTabsUnlocked && showOverflow && (
                 <div style={{ display: "flex", background: "#f5f1eb", borderRadius: 10, padding: 3 }}>
                   {([
                     { key: "act" as const, label: "✅ Act" },
@@ -543,8 +700,8 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 </div>
               )}
 
-              {/* ── Tab Content (only when premium tabs are unlocked) ── */}
-              {premiumTabsUnlocked && <div onClick={(e) => e.stopPropagation()} style={{ minHeight: 60 }}>
+              {/* ── Tab Content (only when premium tabs are unlocked + overflow open) ── */}
+              {premiumTabsUnlocked && showOverflow && <div onClick={(e) => e.stopPropagation()} style={{ minHeight: 60 }}>
 
                 {/* ACT tab — tasks */}
                 {activeTab === "act" && (
@@ -663,35 +820,37 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 )}
               </div>}
 
-              {/* ── Compact action links ── */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, paddingTop: 4 }}>
-                <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                  style={{ fontSize: 12, color: "#a8a29e", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, transition: "color 0.15s" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}>
-                  <ExternalLink style={{ width: 12, height: 12 }} /> View Post
-                </a>
-                <button onClick={handleShare}
-                  style={{ fontSize: 12, color: shareStatus === "copied" ? "#10b981" : "#a8a29e", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}>
-                  {shareStatus === "copied" ? <><Check style={{ width: 12, height: 12 }} /> Copied</> : <><Share2 style={{ width: 12, height: 12 }} /> Share</>}
-                </button>
-                <AnimatePresence mode="wait">
-                  {deleteState === "confirm" ? (
-                    <motion.div key="del-confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <button onClick={handleDeleteConfirm} style={{ fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>Confirm</button>
-                      <button onClick={cancelDelete} style={{ fontSize: 11, color: "#a8a29e", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
-                    </motion.div>
-                  ) : (
-                    <motion.button key="del-btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      onClick={handleDeleteClick}
-                      style={{ fontSize: 12, color: "#d6d3d1", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = "#d6d3d1"; }}>
-                      <Trash2 style={{ width: 12, height: 12 }} />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </div>
+              {/* ── Compact action links — only visible when overflow is open ── */}
+              {showOverflow && transitionPhase === "idle" && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, paddingTop: 4 }}>
+                  <a href={analysis.source_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                    style={{ fontSize: 12, color: "#a8a29e", textDecoration: "none", display: "flex", alignItems: "center", gap: 4, transition: "color 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}>
+                    <ExternalLink style={{ width: 12, height: 12 }} /> View source
+                  </a>
+                  <button onClick={handleShare}
+                    style={{ fontSize: 12, color: shareStatus === "copied" ? "#10b981" : "#a8a29e", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}>
+                    {shareStatus === "copied" ? <><Check style={{ width: 12, height: 12 }} /> Copied</> : <><Share2 style={{ width: 12, height: 12 }} /> Share</>}
+                  </button>
+                  <AnimatePresence mode="wait">
+                    {deleteState === "confirm" ? (
+                      <motion.div key="del-confirm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button onClick={handleDeleteConfirm} style={{ fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>Confirm</button>
+                        <button onClick={cancelDelete} style={{ fontSize: 11, color: "#a8a29e", background: "none", border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Cancel</button>
+                      </motion.div>
+                    ) : (
+                      <motion.button key="del-btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={handleDeleteClick}
+                        style={{ fontSize: 12, color: "#d6d3d1", background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "#d6d3d1"; }}>
+                        <Trash2 style={{ width: 12, height: 12 }} />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

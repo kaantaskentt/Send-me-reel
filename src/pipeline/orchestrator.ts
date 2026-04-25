@@ -474,11 +474,17 @@ async function sendVerdict(
   const from = ctx.from!;
   const telegramId = from.id;
 
-  // Phase 2 keyboard: two buttons, one row. Action axis only.
-  //   📍 Open dashboard — bridge to the action archive
-  //   Just watched it — explicit "no homework" tap, marks set_aside
-  // The Original URL is already in the message text and Telegram auto-links it.
-  // Save-to-Notion moves to auto-push on "I tried it" (Phase 5).
+  // Apr 25 redesign — both buttons are PASSIVE navigation.
+  //   📍 Open in dashboard — bridge to the action archive
+  //   🔗 View original — back-link to the source URL (let the user inspect)
+  //
+  // The previous "Just watched it" set-aside button was the wrong moment. The
+  // user just received the verdict; they can't have decided yet. State changes
+  // belong on the dashboard where the user has context.
+  //
+  // The action_setaside_* callback handler in bot.ts is kept as a no-op for
+  // back-compat (old Telegram messages still have the old button until they
+  // scroll out of view).
   const keyboard = new InlineKeyboard();
 
   if (config.jwtSecret) {
@@ -496,7 +502,7 @@ async function sendVerdict(
     keyboard.url("📍 Open in dashboard", `${config.appUrl}/auth?token=${token}`);
   }
 
-  keyboard.text("Just watched it", `action_setaside_${analysisId}_${telegramId}`);
+  keyboard.url("🔗 View original", sourceUrl);
 
   // Telegram render: strip the 🪜 "go further" block — that line lives on the
   // dashboard only. Storage already has the full verdict; we only trim at send.

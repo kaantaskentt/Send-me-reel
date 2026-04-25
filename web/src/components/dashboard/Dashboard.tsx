@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
@@ -11,42 +12,56 @@ import SearchBar from "./SearchBar";
 import EmptyState from "./EmptyState";
 import PasteLinkInput from "./PasteLinkInput";
 import WeekHero from "./WeekHero";
-import AnalysisPile from "./AnalysisPile";
+import AnalysisCard from "./AnalysisCard";
 
-// Phase 3 — platform-only filter. The intent filter (Learn/Apply) is retired
-// in favour of the user-action axis (saved/tried/set_aside) at the pile level.
-function PlatformFilter({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const options = [
-    { value: "all", label: "All" },
-    { value: "instagram", label: "Instagram" },
-    { value: "tiktok", label: "TikTok" },
-    { value: "x", label: "X" },
-    { value: "linkedin", label: "LinkedIn" },
-    { value: "youtube", label: "YouTube" },
-    { value: "article", label: "Article" },
-  ];
+// Apr 25 redesign — small filter-chip primitive, used for state + platform.
+// State filter is the primary axis; platform is secondary (one click further).
+function FilterChips({
+  value,
+  onChange,
+  options,
+  size = "md",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string; count?: number }[];
+  size?: "md" | "sm";
+}) {
+  const px = size === "sm" ? 10 : 12;
+  const fz = size === "sm" ? 11 : 12;
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          style={{
-            padding: "5px 12px",
-            fontSize: 12,
-            fontWeight: 600,
-            color: value === o.value ? "#1c1917" : "#a8a29e",
-            background: value === o.value ? "#fff" : "transparent",
-            border: `1px solid ${value === o.value ? "#e7e2d9" : "transparent"}`,
-            borderRadius: 100,
-            cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif",
-            transition: "all 0.15s",
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
+      {options.map((o) => {
+        const active = value === o.value;
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            style={{
+              padding: `5px ${px}px`,
+              fontSize: fz,
+              fontWeight: 600,
+              color: active ? "#1c1917" : "#a8a29e",
+              background: active ? "#fff" : "transparent",
+              border: `1px solid ${active ? "#e7e2d9" : "transparent"}`,
+              borderRadius: 100,
+              cursor: "pointer",
+              fontFamily: "'DM Sans', sans-serif",
+              transition: "all 0.15s",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            {o.label}
+            {typeof o.count === "number" && (
+              <span style={{ fontSize: 10, color: active ? "#a8a29e" : "#c4bdb5", fontWeight: 500 }}>
+                {o.count}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -76,10 +91,12 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // expandId still routes to the matching pile/card via the openCardId inside
-  // AnalysisPile when the user navigates to /dashboard?expand=<id>. Phase 3
-  // doesn't deep-link the hero — anything in the hero is already maximally visible.
-  void expandId;
+  // expandId — /dashboard?expand=<id> from Telegram links opens that card.
+  useEffect(() => {
+    if (expandId && analyses.some((a) => a.id === expandId)) {
+      setOpenCardId(expandId);
+    }
+  }, [expandId, analyses]);
 
   // Lock body scroll when mobile sidebar is open
   useEffect(() => {
@@ -92,8 +109,31 @@ export default function Dashboard() {
   }, [sidebarOpen]);
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
+  // Apr 25 redesign — single chronological feed with state filter chips
+  // replacing the three-pile structure. "All" by default = the user lands on
+  // their full feed, just as Kaan asked.
+  const [stateFilter, setStateFilter] = useState<"all" | AnalysisState>("all");
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
 
-  const isFiltered = platform !== "all" || search !== "";
+  // Hero card — dismissible with a localStorage flag. Once hidden, stays hidden
+  // across sessions until the user clicks "show this week's pick" in the chip row.
+  const [heroDismissed, setHeroDismissed] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const flag = typeof window !== "undefined" && localStorage.getItem("cd_hero_dismissed");
+      if (flag === "1") setHeroDismissed(true);
+    } catch { /* ignore */ }
+  }, []);
+  const dismissHero = () => {
+    setHeroDismissed(true);
+    try { localStorage.setItem("cd_hero_dismissed", "1"); } catch { /* ignore */ }
+  };
+  const restoreHero = () => {
+    setHeroDismissed(false);
+    try { localStorage.removeItem("cd_hero_dismissed"); } catch { /* ignore */ }
+  };
+
+  const isFiltered = platform !== "all" || search !== "" || stateFilter !== "all";
 
   useEffect(() => {
     fetch("/api/user").then((r) => r.json()).then(setProfile).catch(console.error);
@@ -122,7 +162,7 @@ export default function Dashboard() {
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
     setTotal((t) => t - 1);
   };
-  const clearFilters = () => { setPlatform("all"); setSearch(""); };
+  const clearFilters = () => { setPlatform("all"); setSearch(""); setStateFilter("all"); };
 
   // Phase 3 — local optimistic state changes. When a user toggles tried/set-aside,
   // the parent updates the analysis in-place so it re-buckets visually.
@@ -138,37 +178,44 @@ export default function Dashboard() {
     }));
   }, []);
 
-  // Phase 3 — bucket by state and pick the hero.
-  // Hero priority: most recent saved-not-decided analysis from the last 7
-  // days that has a 🌱 action line. Falls back to most recent saved-not-decided.
-  // Heuristic intentionally rough — tunes against tried-it data in Phase 6+.
-  const { hero, savedRest, tried, setAside } = useMemo(() => {
+  // Apr 25 redesign — pick the hero candidate (most recent saved-not-decided
+  // with an action line, last 7 days). Filter the main feed by stateFilter
+  // chip choice. Counts feed the chip badges.
+  const { hero, feed, counts } = useMemo(() => {
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const buckets = { saved: [] as Analysis[], tried: [] as Analysis[], setAside: [] as Analysis[] };
+    const c = { all: analyses.length, saved: 0, tried: 0, set_aside: 0 };
+    let heroPick: Analysis | null = null;
+    let heroFallback: Analysis | null = null;
+
     for (const a of analyses) {
       const s = getAnalysisState(a);
-      if (s === "tried") buckets.tried.push(a);
-      else if (s === "set_aside") buckets.setAside.push(a);
-      else buckets.saved.push(a);
-    }
-    // Hero pick — newest-first iteration; first match wins.
-    let pick: Analysis | null = null;
-    let fallback: Analysis | null = null;
-    for (const a of buckets.saved) {
-      const created = new Date(a.created_at).getTime();
-      if (created < sevenDaysAgo) continue;
-      if (!fallback) fallback = a;
-      if (!a.verdict) continue;
-      const parsed = parseVerdict(a.verdict);
-      if (parsed.action && !parsed.noHomework) {
-        pick = a;
-        break;
+      if (s === "tried") c.tried++;
+      else if (s === "set_aside") c.set_aside++;
+      else c.saved++;
+
+      // Hero pick: most recent saved-not-decided in last 7d with an action.
+      if (s === "saved") {
+        const created = new Date(a.created_at).getTime();
+        if (created >= sevenDaysAgo) {
+          if (!heroFallback) heroFallback = a;
+          if (!heroPick && a.verdict) {
+            const parsed = parseVerdict(a.verdict);
+            if (parsed.action && !parsed.noHomework) heroPick = a;
+          }
+        }
       }
     }
-    const heroPick = pick ?? fallback;
-    const rest = heroPick ? buckets.saved.filter((a) => a.id !== heroPick.id) : buckets.saved;
-    return { hero: heroPick, savedRest: rest, tried: buckets.tried, setAside: buckets.setAside };
-  }, [analyses]);
+
+    const heroAnalysis = heroPick ?? heroFallback;
+
+    // Feed = all analyses passing the active state filter, in chronological
+    // (newest-first) order — the API already returns in that order.
+    const filteredFeed = stateFilter === "all"
+      ? analyses
+      : analyses.filter((a) => getAnalysisState(a) === stateFilter);
+
+    return { hero: heroAnalysis, feed: filteredFeed, counts: c };
+  }, [analyses, stateFilter]);
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
@@ -229,18 +276,110 @@ export default function Dashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} />
 
-            {/* Phase 3 hero — "this week's one thing". Replaces the old StatsBar
-                + intent filter + flat feed at the top. The user lands and sees
-                ONE thing. (transformation-plan §8) */}
-            {hero && (
-              <WeekHero analysis={hero} onStateChanged={handleStateChanged} />
-            )}
+            {/* Apr 25 redesign — dismissible hero. The user said the
+                "this week's pick" placement felt weird and the feature
+                might not even matter. Compromise: keep it (it's the one
+                guided moment), but let them × it away. Once dismissed,
+                a tiny "show this week's pick" link appears in the chip
+                bar so it's restorable without being in the way. */}
+            <AnimatePresence initial={false} mode="wait">
+              {hero && !heroDismissed && (
+                <motion.div
+                  key={`hero-${hero.id}`}
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ position: "relative" }}
+                >
+                  <WeekHero analysis={hero} onStateChanged={handleStateChanged} />
+                  <button
+                    onClick={dismissHero}
+                    aria-label="Hide this week's pick"
+                    title="Hide"
+                    style={{
+                      position: "absolute",
+                      top: 12,
+                      right: 12,
+                      width: 28,
+                      height: 28,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "rgba(255,255,255,0.7)",
+                      border: "1px solid #e7e2d9",
+                      borderRadius: 100,
+                      cursor: "pointer",
+                      color: "#78716c",
+                      backdropFilter: "blur(6px)",
+                    }}
+                  >
+                    <X style={{ width: 14, height: 14 }} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Search + platform filter — kept because finding a specific saved
-                link by platform is a real use, not a judgement axis. */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {/* State filter — primary axis. "All" is the default so the
+                user lands on their feed, not a sub-pile. Counts feed the
+                chip badges but stay quiet (small, muted). */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 8,
+                }}
+              >
+                <FilterChips
+                  value={stateFilter}
+                  onChange={(v) => setStateFilter(v as "all" | AnalysisState)}
+                  options={[
+                    { value: "all", label: "All", count: counts.all },
+                    { value: "saved", label: "Saved", count: counts.saved },
+                    { value: "tried", label: "Tried", count: counts.tried },
+                    { value: "set_aside", label: "Set aside", count: counts.set_aside },
+                  ]}
+                />
+                {hero && heroDismissed && (
+                  <button
+                    onClick={restoreHero}
+                    style={{
+                      fontSize: 11,
+                      color: "#a8a29e",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px 8px",
+                      fontFamily: "'DM Sans', sans-serif",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    show this week&apos;s pick
+                  </button>
+                )}
+              </div>
+
               <SearchBar value={search} onChange={setSearch} />
-              <PlatformFilter value={platform} onChange={setPlatform} />
+
+              {/* Platform filter — secondary axis. Only shown when there's
+                  enough variety to matter (>1 platform present). */}
+              <FilterChips
+                size="sm"
+                value={platform}
+                onChange={setPlatform}
+                options={[
+                  { value: "all", label: "All platforms" },
+                  { value: "instagram", label: "Instagram" },
+                  { value: "tiktok", label: "TikTok" },
+                  { value: "youtube", label: "YouTube" },
+                  { value: "twitter", label: "X" },
+                  { value: "linkedin", label: "LinkedIn" },
+                  { value: "article", label: "Article" },
+                ]}
+              />
             </div>
 
             {search && !loading && (
@@ -253,36 +392,52 @@ export default function Dashboard() {
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3].map((i) => <CardSkeleton key={i} />)}</div>
             ) : analyses.length === 0 ? (
               <EmptyState isFiltered={isFiltered} onClearFilters={clearFilters} />
+            ) : feed.length === 0 ? (
+              <div
+                style={{
+                  padding: "32px 20px",
+                  textAlign: "center",
+                  fontSize: 13,
+                  color: "#a8a29e",
+                  fontFamily: "'DM Sans', sans-serif",
+                  background: "#fff",
+                  border: "1px dashed #e7e2d9",
+                  borderRadius: 16,
+                }}
+              >
+                {stateFilter === "tried"
+                  ? "Nothing tried yet."
+                  : stateFilter === "set_aside"
+                  ? "Nothing set aside yet."
+                  : stateFilter === "saved"
+                  ? "No saved items here."
+                  : "No matches."}
+              </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {/* Three piles, all collapsed by default. Counts visible but
-                    never styled as notification badges. (transformation-plan §8) */}
-                <AnalysisPile
-                  title="Still saved"
-                  analyses={savedRest}
-                  profile={profile}
-                  premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
-                  onDeleted={handleDeleted}
-                  onStateChanged={handleStateChanged}
-                />
-                <AnalysisPile
-                  title="Tried"
-                  subtitle="things you actually tried"
-                  analyses={tried}
-                  profile={profile}
-                  premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
-                  onDeleted={handleDeleted}
-                  onStateChanged={handleStateChanged}
-                />
-                <AnalysisPile
-                  title="Set aside"
-                  subtitle="watched, no homework"
-                  analyses={setAside}
-                  profile={profile}
-                  premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
-                  onDeleted={handleDeleted}
-                  onStateChanged={handleStateChanged}
-                />
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <AnimatePresence initial={false}>
+                  {feed.map((a) => (
+                    <motion.div
+                      key={a.id}
+                      layout
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <AnalysisCard
+                        analysis={a}
+                        notionConnected={!!profile?.user.notion_access_token}
+                        isPremium={!!profile?.user.premium}
+                        premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
+                        isOpen={openCardId === a.id}
+                        onToggle={() => setOpenCardId((cur) => (cur === a.id ? null : a.id))}
+                        onDeleted={handleDeleted}
+                        onStateChanged={handleStateChanged}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
 
                 {hasMore && (
                   <div style={{ paddingTop: 12 }}>

@@ -13,7 +13,7 @@ import {
   handleReset,
   handleDashboard,
 } from "./commands.js";
-import { handleMessage, handleTryAnyway, handleTryAnywayDismiss } from "./messageHandler.js";
+import { handleMessage } from "./messageHandler.js";
 import * as analyses from "../db/analyses.js";
 import * as users from "../db/users.js";
 import * as notion from "../services/notion.js";
@@ -60,16 +60,8 @@ export function createBot(): Bot<MyContext> {
     await ctx.conversation.enter("notionSetup");
   });
 
-  // Phase 4 — "Try anyway" / "Save elsewhere" callbacks for the soft vertical filter.
-  // The dismiss pattern must match BEFORE the bare token pattern (more specific first).
-  bot.callbackQuery(/^tryanyway_dismiss_(.+)$/, async (ctx) => {
-    const token = (ctx.match as RegExpMatchArray)[1];
-    await handleTryAnywayDismiss(ctx, token);
-  });
-  bot.callbackQuery(/^tryanyway_(.+)$/, async (ctx) => {
-    const token = (ctx.match as RegExpMatchArray)[1];
-    await handleTryAnyway(ctx, token);
-  });
+  // Apr 25 — vertical filter removed. tryanyway_* callback registrations gone.
+  // Old in-flight Telegram messages with those buttons just won't get answered.
 
   // Phase 2 — "Just watched it" sets the analysis to set_aside in one tap.
   // Encodes the strategy at the interaction level: explicit permission to
