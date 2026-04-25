@@ -565,7 +565,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                       <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                         {(actionItems.insights as { text: string }[])?.length > 0 && (
                           <div>
-                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>💡 Insights</p>
+                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>💡 What stood out</p>
                             {(actionItems.insights as { text: string }[]).map((item, i) => (
                               <p key={i} style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: i > 0 ? "4px 0 0 0" : 0 }}>{item.text}</p>
                             ))}
@@ -573,7 +573,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                         )}
                         {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[])?.length > 0 && (
                           <div style={{ borderTop: "1px solid #e7e2d9", paddingTop: 10 }}>
-                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>🔧 Mentioned</p>
+                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 6px 0" }}>🔧 Tools they named</p>
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                               {(actionItems.resources as { name: string; description: string; link?: string; price?: string }[]).map((item, i) => (
                                 item.link ? (
@@ -588,14 +588,11 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                             </div>
                           </div>
                         )}
-                        {(actionItems.for_you as { text: string }[])?.length > 0 && (
-                          <div style={{ borderTop: "1px solid #e7e2d9", paddingTop: 10 }}>
-                            <p style={{ fontSize: 10, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, margin: "0 0 4px 0" }}>🎯 For you</p>
-                            {(actionItems.for_you as { text: string }[]).map((item, i) => (
-                              <p key={i} style={{ fontSize: 13, color: "#78716c", lineHeight: 1.65, margin: i > 0 ? "4px 0 0 0" : 0, fontStyle: "italic" }}>{item.text}</p>
-                            ))}
-                          </div>
-                        )}
+                        {/* 🎯 For you section deleted in this round. The Deep Dive
+                            prompt now always returns for_you: []. Legacy cached
+                            action_items with populated for_you data are silently
+                            dropped from render — same anti-bias treatment as the
+                            verdict's 🎯 line. */}
                         {(actionItems.try_this as { title: string; description: string }[])?.length > 0 && (
                           <div style={{ borderTop: "1px solid #e7e2d9", paddingTop: 10 }}>
                             {(actionItems.try_this as { title: string; description: string }[]).map((item, i) => (
@@ -613,7 +610,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     ) : (
                       <button onClick={handleActionItems} disabled={actionItemsLoading}
                         style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "11px 16px", borderRadius: 10, background: actionItemsLoading ? "#fefce8" : "linear-gradient(135deg, #fef9c3, #fef08a)", border: "1px solid #fde047", color: "#a16207", fontSize: 13, fontWeight: 700, cursor: actionItemsLoading ? "wait" : "pointer", fontFamily: "'DM Sans', sans-serif" }}>
-                        {actionItemsLoading ? <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating...</> : <>⚡ Generate deep dive</>}
+                        {actionItemsLoading ? <><Loader2 style={{ width: 14, height: 14 }} className="animate-spin" /> Generating...</> : <>⚡ Look closer</>}
                       </button>
                     )}
 

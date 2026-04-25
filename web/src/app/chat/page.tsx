@@ -354,7 +354,7 @@ function ChatContent() {
               {parseTitle(selectedAnalysis?.verdict || null)}
             </p>
             <p style={{ fontSize: 12, color: "#a8a29e", margin: "0 0 24px 0" }}>
-              Ask anything about this content
+              Ask anything about this.
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", maxWidth: 380 }}>
@@ -473,7 +473,7 @@ function ChatContent() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about this content..."
+              placeholder="Ask anything about this."
               disabled={isLoading}
               style={{
                 flex: 1, padding: "12px 16px", fontSize: 14, border: "1px solid #e7e2d9",
