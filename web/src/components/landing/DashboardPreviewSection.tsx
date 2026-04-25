@@ -185,8 +185,8 @@ export default function DashboardPreviewSection() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <div className="inline-block text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full" style={{ color: "#F97316", background: "#fff7ed", border: "1px solid #fed7aa" }}>The Dashboard</div>
-          <h2 className="font-black mb-4" style={{ fontSize: "clamp(2rem, 3.5vw, 3rem)", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1.1 }}>Your content library.<br /><span style={{ color: "#F97316" }}>Finally actionable.</span></h2>
-          <p className="text-base max-w-md mx-auto" style={{ color: "#78716c", lineHeight: 1.7 }}>Everything you&apos;ve analysed lives in one clean dashboard — searchable, filterable, and connected to your tasks and tools.</p>
+          <h2 className="font-black mb-4" style={{ fontSize: "clamp(2rem, 3.5vw, 3rem)", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1.1 }}>One thing this week.<br /><span style={{ color: "#F97316" }}>The rest can wait.</span></h2>
+          <p className="text-base max-w-md mx-auto" style={{ color: "#78716c", lineHeight: 1.7 }}>The dashboard surfaces the single most actionable save from your week. Everything else stays quiet in three small piles you open when you want to.</p>
         </div>
 
         {/* Mobile */}

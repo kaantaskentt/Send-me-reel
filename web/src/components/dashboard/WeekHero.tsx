@@ -51,6 +51,25 @@ export default function WeekHero({ analysis, onStateChanged }: Props) {
     setBusy(false);
   };
 
+  // Phase 5+: one-click "Add as task" on the 🌱 line
+  const [taskAdded, setTaskAdded] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
+  const addActionAsTask = async () => {
+    if (addingTask || taskAdded || !action) return;
+    setAddingTask(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/todos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: action.slice(0, 200) }),
+      });
+      if (res.ok) setTaskAdded(true);
+    } catch {
+      // ignore
+    }
+    setAddingTask(false);
+  };
+
   let domain = "";
   try { domain = new URL(analysis.source_url).hostname.replace(/^www\./, ""); } catch { /* ignore */ }
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
@@ -100,8 +119,28 @@ export default function WeekHero({ analysis, onStateChanged }: Props) {
           padding: "16px 18px",
           marginBottom: 18,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: "#15803d", marginBottom: 6 }}>
-            🌱 Try this once
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase", color: "#15803d" }}>
+              🌱 Try this once
+            </div>
+            <button
+              onClick={addActionAsTask}
+              disabled={addingTask || taskAdded}
+              style={{
+                padding: "5px 12px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: taskAdded ? "#15803d" : "#15803d",
+                background: taskAdded ? "#fff" : "#fff",
+                border: `1px solid ${taskAdded ? "#bbf7d0" : "#bbf7d0"}`,
+                borderRadius: 100,
+                cursor: addingTask || taskAdded ? "default" : "pointer",
+                fontFamily: "'DM Sans', sans-serif",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {taskAdded ? "✓ Added" : addingTask ? "Adding…" : "+ Add as task"}
+            </button>
           </div>
           <p style={{
             fontSize: 16,
@@ -113,6 +152,21 @@ export default function WeekHero({ analysis, onStateChanged }: Props) {
           }}>
             {action}
           </p>
+          {taskAdded && (
+            <a
+              href="/tasks"
+              style={{
+                display: "inline-block",
+                marginTop: 10,
+                fontSize: 12,
+                color: "#15803d",
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              View all tasks →
+            </a>
+          )}
         </div>
       )}
 

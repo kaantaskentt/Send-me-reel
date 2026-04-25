@@ -3,42 +3,50 @@ import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
 
-const ACTION_ITEMS_PROMPT = `You're the user's sharp friend who already gave them the short version. They tapped "Deep Dive" — they want the real stuff. Go deeper than the verdict. Pull from the full transcript and visuals, not just what was summarized.
+const ACTION_ITEMS_PROMPT = `You went deeper. The user already saw the short verdict. They tapped "Deep Dive" because they want the substance — what was IN the content beyond the two-sentence summary. Pull from the full transcript and visuals.
 
-Your voice: direct, confident, like a teammate who's got their back. Not a consultant writing a report. A person who watched the same thing and is telling them what actually matters.
+You don't know who the reader is. Don't filter through their profession. Don't assume what they're building. Don't write "for you" lines that personalize through a CV. The deep dive deepens the CONTENT, not the reader's identity.
 
-If the content was mid, say what little was worth pulling and move on. Don't inflate 2 takeaways into 4 to look thorough. If the creator is selling something, flag it — "he's pitching a course, but the free stuff he shows is enough."
+If the content was thin, say so — return small arrays or empty arrays. Two real insights beat four padded ones. If the creator is selling something, flag it plainly: "he's pitching a course, but the free stuff he shows is enough."
 
 SECTIONS:
 
 1. KEY INSIGHTS (1-3 items)
-Things the verdict didn't cover. Surprising details, contrarian takes, specific numbers, nuanced points. Each should feel like "oh I missed that." If there's only 1 real insight, just give 1 — don't pad.
+Things the verdict didn't cover. Surprising details, contrarian takes, specific numbers, nuanced points. Each should feel like "oh I missed that." If there's only 1 real insight, give 1 — don't pad.
 
 2. TOOLS & RESOURCES (0-5 items)
 Every specific tool, product, framework, repo, book, person, or link ACTUALLY MENTIONED in the content. Include:
 - Name (exact as mentioned)
-- What it does (one line)
-- Link if mentioned (ONLY if explicitly stated in transcript/caption — never guess URLs)
-- Price if mentioned (free/paid/open source)
-Nothing mentioned? Empty array. NEVER invent resources that weren't in the source material.
+- What it does (one line, factual — no adjectives)
+- Link ONLY if explicitly stated in transcript/caption — never guess URLs
+- Price ONLY if mentioned (free / paid / open source)
+Nothing real to list? Empty array. NEVER invent resources.
 
-3. FOR YOU (1-2 items)
-This is the most important section. Connect to what the user is ACTUALLY building. You have their profile — use it.
-- Reference their project BY NAME, their role, their specific focus areas
-- BAD: "This is relevant to your work"
-- BAD: "Consider how this applies to your field"
-- BAD: "Could be useful for your projects"
-- GOOD: "You're building [their actual project] — the [specific technique] at [timestamp] would solve [specific problem they'd have]"
-- GOOD: "Skip the framework talk. The pricing breakdown is what matters for [their actual cost structure]"
-No real connection? Say exactly: "Nothing here connects to [their project name] right now." Never force it.
-
-4. TRY THIS WEEK (0-2 items)
-A specific, concrete action they can take in under 30 minutes. Write it like you're texting them.
+3. TRY THIS (0-3 items)
+Concrete actions a reader could take in under 30 minutes. Texted-not-emailed voice.
 - Start with a verb: "Open", "Install", "Run", "Create", "Sign up for"
-- Reference a specific tool, command, or step FROM the content — not generic advice
-- BAD: "Learn how to install a local model on your Mac"
-- GOOD: "Run 'ollama pull llama3' in terminal — takes 2 minutes, then test it with 'ollama run llama3'"
-- If content is thin or nothing is actionable, return an empty array. An empty array is better than vague homework.
+- Reference a specific tool, command, repo, or step FROM the content — not generic advice
+- BAD: "Learn how to install a local model"
+- GOOD: "Run 'ollama pull llama3' in terminal — 2 minutes, then test with 'ollama run llama3'"
+- BAD: "Apply this to your workflow"
+- GOOD: "Clone github.com/eliranturia/vibeyard, install via npm, click any element on a test page"
+- Content has no concrete action? Empty array. Empty array is better than vague homework.
+
+NO "FOR YOU" SECTION:
+The old version of this had a "for_you" section that referenced the reader's profession ("you're building VoiceForge", "this maps to your Claude Code work"). That section is RETIRED. The deep dive does NOT personalize through profile.
+- Don't write "consider how this applies to your work"
+- Don't write "this is relevant if you care about X"
+- Don't reference specific projects or tools the reader uses
+- The for_you array in the response must always be EMPTY — return [] for it. The schema is preserved for back-compat but the section is gone.
+
+VOICE:
+- Direct. Confident. Concrete. Like a teammate who watched the same thing.
+- Not a consultant writing a report.
+- No filler ("It's worth noting that..." / "Importantly...").
+- Numbers, names, exact phrases — preserve specifics from the source.
+
+BANNED WORDS — never use these:
+"actionable", "key takeaway", "pro tip", "deep dive", "leverage", "optimize", "unlock", "supercharge", "powerful", "robust", "incredible", "valuable insights", "great content", "highly relevant", "I recommend", "10x", "game-changer", "Worth your time", "Skim it", "Skip", "stay ahead", "fall behind", "keep up", "level up", "ecosystem", "streamline"
 
 ANTI-HALLUCINATION:
 - Only cite tools, prices, links, and steps that appear in the transcript, caption, or visual summary
@@ -49,7 +57,7 @@ Return as JSON:
 {
   "insights": [{"text": "..."}],
   "resources": [{"name": "...", "description": "...", "link": "...", "price": "..."}],
-  "for_you": [{"text": "..."}],
+  "for_you": [],
   "try_this": [{"title": "...", "description": "..."}]
 }
 
@@ -83,31 +91,16 @@ export async function POST(
     return NextResponse.json({ action_items: analysis.action_items, cached: true });
   }
 
-  // Get user context for personalization
-  const { data: context } = await db
-    .from("user_contexts")
-    .select("role, goal, content_preferences, extended_context")
-    .eq("user_id", session.sub)
-    .single();
-
-  // Build the prompt
+  // Phase 5+ — Deep Dive is profile-blind. Same architectural fix as Pass 1
+  // of the verdict pipeline: removing user_contexts from the prompt removes
+  // the "Application for You (Kaan)" / "you're building VoiceForge" fluff.
+  // The reader earned this surface through 3+ tries; that doesn't mean the
+  // model should re-personalize through a CV.
   const parts: string[] = [];
 
-  if (context) {
-    parts.push("--- USER PROFILE ---");
-    parts.push(`Role: ${context.role}`);
-    parts.push(`Focus: ${context.goal}`);
-    if (context.content_preferences) {
-      parts.push(`Priorities: ${context.content_preferences}`);
-    }
-    if (context.extended_context) {
-      parts.push(`Extended profile: ${context.extended_context.slice(0, 500)}`);
-    }
-  }
-
-  parts.push("\n--- CONTENT ANALYSIS ---");
+  parts.push("--- CONTENT ANALYSIS ---");
   parts.push(`Platform: ${analysis.platform}`);
-  if (analysis.verdict) parts.push(`Verdict (already shown to user): ${analysis.verdict}`);
+  if (analysis.verdict) parts.push(`Short verdict (already shown to user): ${analysis.verdict}`);
   if (analysis.caption) parts.push(`Caption: ${analysis.caption}`);
   if (analysis.transcript) parts.push(`Full transcript: ${analysis.transcript.slice(0, 3000)}`);
   if (analysis.visual_summary) parts.push(`Visual summary: ${analysis.visual_summary.slice(0, 1000)}`);
@@ -116,7 +109,7 @@ export async function POST(
   if (meta?.authorUsername) parts.push(`Creator: @${meta.authorUsername}`);
   if (meta?.authorName) parts.push(`Creator name: ${meta.authorName}`);
 
-  parts.push("\nGo deeper than the verdict. Extract the four sections for this user.");
+  parts.push("\nGo deeper than the verdict. Pull from the full transcript and visuals — extract the three sections (insights, resources, try_this) PLUS the empty for_you array.");
 
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) {

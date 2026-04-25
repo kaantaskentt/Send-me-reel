@@ -10,7 +10,10 @@ import { useEffect, useState } from "react";
 const HERO_VIDEO_URL =
   "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/hero_loop_5e8e7a1f.mp4";
 
-const ROTATING_WORDS = ["understood.", "decoded.", "actionable."];
+// PROPOSED — open for tweaking. The old rotation ("understood / decoded / actionable")
+// sold the retired ⭐ rating model. New rotation tells the new story: every save
+// resolves into one of three calm states. Tweak the words live in /web dev.
+const ROTATING_WORDS = ["tried.", "shelved.", "smaller."];
 
 const GRID_IMAGES = [
   "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/RZMhPDNnbZpx_ab1add6e.jpg",
@@ -82,7 +85,7 @@ export default function HeroSection() {
         {/* Badge — glassmorphism */}
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.65)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(254,215,170,0.6)", color: "#f97316", fontSize: 13, fontWeight: 600, padding: "7px 18px", borderRadius: 100, marginBottom: "2rem", boxShadow: "0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.5)", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", ...fade(0) }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#f97316", display: "inline-block", animation: "pulse-dot 2s infinite" }} />
-          10 free analyses · No signup
+          50 free analyses · No card needed
         </div>
 
         {/* Rotating headline — gradient text */}
@@ -104,8 +107,8 @@ export default function HeroSection() {
         </h1>
 
         {/* Subline — tighter */}
-        <p style={{ fontSize: "clamp(15px, 1.8vw, 17px)", color: "#78716c", maxWidth: 440, margin: "0 auto 2.5rem", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", fontWeight: 400, ...fade(0.2) }}>
-          Send a link. Get back what it says, what's actionable, and whether it's worth your time.
+        <p style={{ fontSize: "clamp(15px, 1.8vw, 17px)", color: "#78716c", maxWidth: 480, margin: "0 auto 2.5rem", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", fontWeight: 400, ...fade(0.2) }}>
+          Built for people who feel behind on AI. Send any AI / tech / business link — I&apos;ll send back the one small thing you could actually try with it.
         </p>
 
         {/* CTAs */}
@@ -180,60 +183,84 @@ export default function HeroSection() {
           {/* RIGHT: 3 stacked output cards */}
           <div style={{ flex: "1 1 0", minWidth: 0, maxWidth: 400, display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
 
-            {/* Card 1 — Instagram, expanded with task */}
-            <div style={{ background: "white", borderRadius: 14, border: "1px solid #e7e2d9", padding: "13px 15px", boxShadow: "0 8px 28px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Card 1 — Instagram. The hero state: real action surfaced, user tried it. */}
+            <div style={{ background: "white", borderRadius: 16, border: "1px solid #e7e2d9", padding: "18px 20px", boxShadow: "0 12px 32px rgba(28,25,23,0.06), 0 2px 8px rgba(28,25,23,0.03)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <div style={{ width: 18, height: 18, borderRadius: 5, background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="12" r="4.5"/><circle cx="17.5" cy="6.5" r="1" /><rect x="2" y="2" width="20" height="20" rx="5" fill="none" stroke="white" strokeWidth="1.5"/></svg>
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase", letterSpacing: "0.08em" }}>Instagram</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase", letterSpacing: "0.1em" }}>Instagram</span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "2px 7px", borderRadius: 20, fontFamily: "'DM Sans', sans-serif" }}>Worth your time</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: "#15803d", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "3px 9px", borderRadius: 20, fontFamily: "'DM Sans', sans-serif", letterSpacing: 0.2 }}>Tried</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#1c1917", lineHeight: 1.3, marginBottom: 5, fontFamily: "'DM Sans', sans-serif" }}>Claude agent managers — one agent runs the rest</div>
-              <div style={{ fontSize: 10.5, color: "#57534e", lineHeight: 1.55, fontStyle: "italic", marginBottom: 8, fontFamily: "'DM Sans', sans-serif" }}>This is the one. Orchestrator pattern cuts prompt complexity in half. The GitHub repo he flashes at 2:14 is the real takeaway — fork it before you do anything else.</div>
-              <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
-                {["claude ai", "tools", "dev"].map(t => <span key={t} style={{ fontSize: 9, color: "#78716c", background: "#f5f3f0", border: "1px solid #e7e2d9", borderRadius: 20, padding: "2px 7px", fontFamily: "'DM Sans', sans-serif" }}>{t}</span>)}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>What it is</div>
+                <div style={{ fontSize: 12, color: "#44403c", lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>
+                  Vibeyard, an open-source live-browser for Claude Code, lets you click any element and edit it instantly.
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 5, marginBottom: 7 }}>
-                <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#16a34a", fontSize: 9, fontWeight: 700, padding: "4px 9px", borderRadius: 5, fontFamily: "'DM Sans', sans-serif" }}>✅ Added to tasks</div>
-                <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", color: "#ea580c", fontSize: 9, fontWeight: 700, padding: "4px 9px", borderRadius: 5, fontFamily: "'DM Sans', sans-serif" }}>⚡ Deep Dive</div>
+              <div style={{ background: "#f7fcf8", border: "1px solid #d6f0db", borderRadius: 12, padding: "12px 14px", marginBottom: 12 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span>🌱</span><span>Try this once</span>
+                </div>
+                <div style={{ fontSize: 14, color: "#1c1917", lineHeight: 1.45, fontFamily: "'Instrument Serif', Georgia, serif", letterSpacing: -0.1 }}>Install Vibeyard from its GitHub page, open a webpage, and click one element to edit it.</div>
               </div>
-              <div style={{ background: "#fafaf8", border: "1px solid #e7e2d9", borderLeft: "2px solid #f97316", borderRadius: 5, padding: "5px 9px", display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, border: "1.5px solid #d4cfc9", flexShrink: 0 }} />
-                <span style={{ fontSize: 9.5, color: "#1c1917", fontFamily: "'DM Sans', sans-serif" }}>Set up agent manager pattern this week</span>
+              <div style={{ display: "flex", gap: 7 }}>
+                <div style={{ flex: 1, background: "#15803d", color: "#fff", fontSize: 10.5, fontWeight: 600, padding: "8px 10px", borderRadius: 100, textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>✓ Tried it</div>
+                <div style={{ flex: 1, background: "#fff", border: "1px solid #e7e2d9", color: "#78716c", fontSize: 10.5, fontWeight: 600, padding: "8px 10px", borderRadius: 100, textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>Just watched it</div>
               </div>
             </div>
 
-            {/* Card 2 — LinkedIn, compact */}
-            <div style={{ background: "white", borderRadius: 14, border: "1px solid #e7e2d9", padding: "13px 15px", boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Card 2 — LinkedIn. The no-homework state: honest 🍵 (set aside). */}
+            <div style={{ background: "white", borderRadius: 16, border: "1px solid #e7e2d9", padding: "18px 20px", boxShadow: "0 6px 20px rgba(28,25,23,0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <div style={{ width: 18, height: 18, borderRadius: 5, background: "#0a66c2", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase", letterSpacing: "0.08em" }}>LinkedIn</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase", letterSpacing: "0.1em" }}>LinkedIn</span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#d97706", background: "#fffbeb", border: "1px solid #fde68a", padding: "2px 7px", borderRadius: 20, fontFamily: "'DM Sans', sans-serif" }}>Skim it</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: "#78716c", background: "#faf8f5", border: "1px solid #e7e2d9", padding: "3px 9px", borderRadius: 20, fontFamily: "'DM Sans', sans-serif", letterSpacing: 0.2 }}>Set aside</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#1c1917", lineHeight: 1.3, marginBottom: 5, fontFamily: "'DM Sans', sans-serif" }}>Why most SaaS pricing pages fail</div>
-              <div style={{ fontSize: 10.5, color: "#57534e", lineHeight: 1.55, fontStyle: "italic", fontFamily: "'DM Sans', sans-serif" }}>Mid. He&apos;s rehashing a blog post from 2024. The one stat about anchoring is worth 30 seconds. Skip the rest.</div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>What it is</div>
+                <div style={{ fontSize: 12, color: "#44403c", lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>
+                  Kimi K2.6 — an open-source coding update by the Kimi project. The post lists benchmark numbers, no demo or repo linked.
+                </div>
+              </div>
+              <div style={{ background: "#faf8f5", border: "1px solid #ece5db", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>🍵</span>
+                <div>
+                  <div style={{ fontSize: 13, color: "#44403c", lineHeight: 1.4, fontFamily: "'Instrument Serif', Georgia, serif", letterSpacing: -0.1 }}>Just a watch.</div>
+                  <div style={{ fontSize: 11, color: "#a8a29e", lineHeight: 1.4, fontFamily: "'DM Sans', sans-serif", marginTop: 1 }}>No homework today.</div>
+                </div>
+              </div>
             </div>
 
-            {/* Card 3 — X/Twitter, compact */}
-            <div style={{ background: "white", borderRadius: 14, border: "1px solid #e7e2d9", padding: "13px 15px", boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 7 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Card 3 — X/Twitter. Fresh save with action: the entry-point state. */}
+            <div style={{ background: "white", borderRadius: 16, border: "1px solid #e7e2d9", padding: "18px 20px", boxShadow: "0 6px 20px rgba(28,25,23,0.04)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <div style={{ width: 18, height: 18, borderRadius: 5, background: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase", letterSpacing: "0.08em" }}>X / Twitter</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", fontFamily: "'DM Sans', sans-serif", textTransform: "uppercase", letterSpacing: "0.1em" }}>X / Twitter</span>
                 </div>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#16a34a", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "2px 7px", borderRadius: 20, fontFamily: "'DM Sans', sans-serif" }}>Worth your time</span>
+                <span style={{ fontSize: 9, fontWeight: 500, color: "#c4bdb5", fontFamily: "'DM Sans', sans-serif" }}>2d ago</span>
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#1c1917", lineHeight: 1.3, marginBottom: 5, fontFamily: "'DM Sans', sans-serif" }}>The Cursor AI workflow that 10x&apos;d my output</div>
-              <div style={{ fontSize: 10.5, color: "#57534e", lineHeight: 1.55, fontStyle: "italic", fontFamily: "'DM Sans', sans-serif" }}>Solid. Tab completion + inline chat = 3x faster code reviews. This is your lane — the workflow maps directly to what you&apos;re building.</div>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6, fontFamily: "'DM Sans', sans-serif" }}>What it is</div>
+                <div style={{ fontSize: 12, color: "#44403c", lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>
+                  Pappers MCP connector for Claude Desktop, Claude Code, and n8n. Free guide with ready-to-use prompts and trial credits.
+                </div>
+              </div>
+              <div style={{ background: "#f7fcf8", border: "1px solid #d6f0db", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5, fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", gap: 5 }}>
+                  <span>🌱</span><span>Try this once</span>
+                </div>
+                <div style={{ fontSize: 14, color: "#1c1917", lineHeight: 1.45, fontFamily: "'Instrument Serif', Georgia, serif", letterSpacing: -0.1 }}>Try the free Pappers MCP trial — connect it to Claude Desktop and pull one company&apos;s data.</div>
+              </div>
             </div>
 
             <p style={{ textAlign: "center", fontSize: 10.5, color: "#b8b0a8", marginTop: "0.25rem", fontFamily: "'JetBrains Mono', monospace" }}>

@@ -3,35 +3,43 @@ import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
 
-const CHAT_SYSTEM_PROMPT = `You're the user's sharp friend who has watched this content end-to-end. You know the transcript, what was on screen, the creator's caption, and how it all fits together. You also know the user — their role, what they're building, what they care about.
+const CHAT_SYSTEM_PROMPT = `You've watched this content end-to-end. You know the transcript, what was on screen, the creator's caption. The reader is asking follow-up questions about it.
 
-This is a conversation, not a report. Talk naturally. Reference what was actually said or shown in the content. When the user asks "how would I use this?", answer in terms of THEIR specific project and goals, not generically.
+You don't know who the reader is. Don't assume their profession or what they're building. Don't filter answers through a CV. The old version of this prompt told you to "answer in terms of THEIR specific project" — that's gone. Same anti-bias rule as the verdict pipeline. Talk about the content, not about them.
+
+This is a conversation, not a report. Tight answers. Two or three short paragraphs at most for substantive questions, one paragraph for simple ones. No "Here's what I'll do" preambles, no "Let me know if you want..." closers. Just the answer.
 
 Guidelines:
 - Be specific — quote or paraphrase actual content when relevant
-- Keep responses concise but don't force artificial brevity — say what needs saying
 - Reference earlier parts of the conversation when it adds context
-- If the answer isn't in the content, say so and give your honest take — clearly distinguish between "this was in the content" and "this is my take"
-- If they seem stuck, suggest a follow-up angle they might not have considered
-- If they ask something implementable, give the exact first step, command, or URL
+- If the answer isn't in the content, say so plainly: "wasn't covered in the content" — then give your honest take if you have one, clearly distinguishing "this was in the content" from "my read on it"
+- If they ask something implementable, give the exact first step, command, or URL from the source
 - Never invent links, prices, or features that weren't in the source material
-- No "Great question!" openers — just answer
+- No "Great question!" openers
+- No "Application for you" / "you're building X" / "this maps to your work" personalization
+- Don't propose follow-up questions unless they explicitly seem stuck
 
 ## Actions you can take
 
-You can perform real actions for the user. When the user asks you to add a task, save to Notion, or similar — confirm what you'll do, then include an action tag at the END of your message (after your text). The user will see a button to confirm.
+You can perform real actions for the user. When the user asks you to add a task or save to Notion, confirm tersely (one short sentence) what you'll do, then include the action tag at the END.
 
 Available actions:
 - Add a task: [ACTION:add_task:Task title here]
 - Save to Notion: [ACTION:save_notion]
 
 Rules for actions:
-- Only include an action tag when the user explicitly asks you to do something ("add this to my tasks", "save to notion", "remind me to...", etc.)
+- Only include an action tag when the user explicitly asks you to do something ("add this", "save to notion", "remind me to...")
 - Never include action tags in normal conversation
-- Always explain what you're about to do BEFORE the tag
+- Confirmation should be ONE short sentence — not "Here's what I'll do: First... Second..."
+  GOOD: "Adding a task: Test Kimi K2.6 with a Python prime-filter prompt."
+  BAD: "Here's what I'll do: First, I'll add a task for you to test Kimi K2.6's coding capabilities. Second, here's a one-line prompt..."
+- Always explain what you're about to do BEFORE the tag, but in one short sentence
 - One action per message maximum
 - Keep task titles concise and actionable (under 80 chars)
-- If the user says something vague like "I should do that", ask them to clarify before adding`;
+- If the user says something vague like "I should do that", ask them to clarify before adding
+
+BANNED WORDS — never use these:
+"actionable", "key takeaway", "pro tip", "leverage", "optimize", "unlock", "supercharge", "powerful", "robust", "incredible", "valuable insights", "I recommend", "10x", "game-changer", "Worth your time", "stay ahead", "fall behind", "keep up"`;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -49,15 +57,20 @@ export async function POST(
 
   const db = getSupabase();
 
-  // Premium check
-  const { data: user } = await db
-    .from("users")
-    .select("premium")
-    .eq("id", session.sub)
-    .single();
-
-  if (!user?.premium) {
-    return NextResponse.json({ error: "Premium required" }, { status: 403 });
+  // Phase 5+ — premium check is now action-earned (3+ tries OR has_used_premium)
+  // OR paid premium. We compute it server-side. The Stripe-only gate was wrong:
+  // users who unlocked the chat tab via 3+ tries would 403 here.
+  const [userRes, triedRes, premiumUseRes] = await Promise.all([
+    db.from("users").select("premium").eq("id", session.sub).single(),
+    db.from("analyses").select("id", { count: "exact", head: true })
+      .eq("user_id", session.sub).not("tried_at", "is", null),
+    db.from("analyses").select("id", { count: "exact", head: true })
+      .eq("user_id", session.sub).not("action_items", "is", null),
+  ]);
+  const isPaidPremium = !!userRes.data?.premium;
+  const earnedDepth = (triedRes.count ?? 0) >= 3 || (premiumUseRes.count ?? 0) > 0;
+  if (!isPaidPremium && !earnedDepth) {
+    return NextResponse.json({ error: "Earn the chat by trying 3 things first." }, { status: 403 });
   }
 
   const { messages } = (await request.json()) as { messages: ChatMessage[] };
@@ -79,23 +92,11 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Fetch user context
-  const { data: context } = await db
-    .from("user_contexts")
-    .select("role, goal, content_preferences, extended_context")
-    .eq("user_id", session.sub)
-    .single();
+  // Phase 5+ — chat is profile-blind. Removing user_contexts from the prompt
+  // removes the "Here's what I'll do, First..." / "Application for you" fluff.
 
   // Build system context
   const contextParts: string[] = [];
-
-  if (context) {
-    contextParts.push("--- USER PROFILE ---");
-    contextParts.push(`Role: ${context.role}`);
-    contextParts.push(`Focus: ${context.goal}`);
-    if (context.content_preferences) contextParts.push(`Interests: ${context.content_preferences}`);
-    if (context.extended_context) contextParts.push(`Background: ${context.extended_context.slice(0, 500)}`);
-  }
 
   contextParts.push("\n--- CONTENT BEING DISCUSSED ---");
   contextParts.push(`Platform: ${analysis.platform}`);

@@ -198,6 +198,29 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
   // localStorage so we don't need a server-side flag — purely cosmetic.
   const [showNotionAck, setShowNotionAck] = useState(false);
 
+  // Phase 5+: "+ Add as task" affordance on the 🌱 action line.
+  // Closes the biggest UX gap — the user reads an action and now has a
+  // one-click path to capture it into their tracked task list.
+  const [taskAdded, setTaskAdded] = useState(false);
+  const [addingTask, setAddingTask] = useState(false);
+
+  const addActionAsTask = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (addingTask || taskAdded || !parsed?.action) return;
+    setAddingTask(true);
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/todos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: parsed.action.slice(0, 200) }),
+      });
+      if (res.ok) setTaskAdded(true);
+    } catch {
+      // ignore
+    }
+    setAddingTask(false);
+  };
+
   // Phase 2: state transitions. Optimistic — flips local state immediately,
   // tells the parent so the analysis re-buckets, reverts if the server rejects.
   // Phase 5: when target=tried and Notion is connected, the server auto-pushes.
@@ -329,10 +352,88 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
             <div style={{ padding: "0 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ height: 1, background: "#f0ebe4" }} />
 
-              {parsed?.body && (
-                <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
-                  <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
-                </div>
+              {/* New-format verdicts: render description + action separately so the
+                  action gets its own visual weight + an inline "+ Add as task" button.
+                  Legacy verdicts: render body as-is for back-compat. */}
+              {parsed?.isNewFormat && parsed.description ? (
+                <>
+                  <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
+                      What it is
+                    </div>
+                    <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0 }}>{parsed.description}</p>
+                  </div>
+
+                  {parsed.action && (
+                    <div style={{ background: "#f7fcf8", border: "1px solid #d6f0db", borderRadius: 12, padding: "14px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 5 }}>
+                          <span>🌱</span><span>Try this once</span>
+                        </div>
+                        <button
+                          onClick={addActionAsTask}
+                          disabled={addingTask || taskAdded}
+                          style={{
+                            padding: "4px 10px",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: taskAdded ? "#15803d" : "#6B8E6F",
+                            background: taskAdded ? "#f0fdf4" : "transparent",
+                            border: `1px solid ${taskAdded ? "#bbf7d0" : "#d6f0db"}`,
+                            borderRadius: 100,
+                            cursor: addingTask || taskAdded ? "default" : "pointer",
+                            fontFamily: "'DM Sans', sans-serif",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {taskAdded ? "✓ Added" : addingTask ? "Adding…" : "+ Add as task"}
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 14, color: "#1c1917", lineHeight: 1.5, margin: 0, fontFamily: "'Instrument Serif', Georgia, serif" }}>{parsed.action}</p>
+                      {taskAdded && (
+                        <a
+                          href="/tasks"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: "inline-block",
+                            marginTop: 8,
+                            fontSize: 11,
+                            color: "#6B8E6F",
+                            textDecoration: "none",
+                            fontWeight: 600,
+                          }}
+                        >
+                          View all tasks →
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {parsed.noHomework && (
+                    <div style={{ background: "#faf8f5", border: "1px solid #ece5db", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ fontSize: 16 }}>🍵</span>
+                      <div>
+                        <div style={{ fontSize: 13, color: "#44403c", lineHeight: 1.4, fontFamily: "'Instrument Serif', Georgia, serif" }}>Just a watch.</div>
+                        <div style={{ fontSize: 11, color: "#a8a29e", lineHeight: 1.4, marginTop: 1 }}>No homework today.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {parsed.deeper && (
+                    <details style={{ background: "#fff", border: "1px solid #f0ebe4", borderRadius: 12, padding: "10px 14px" }}>
+                      <summary style={{ fontSize: 11, fontWeight: 600, color: "#a8a29e", cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>🪜</span><span>If you want to go further</span>
+                      </summary>
+                      <p style={{ fontSize: 13, color: "#57534e", lineHeight: 1.6, margin: "8px 0 0 0" }}>{parsed.deeper}</p>
+                    </details>
+                  )}
+                </>
+              ) : (
+                parsed?.body && (
+                  <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, padding: "14px 16px" }}>
+                    <p style={{ fontSize: 13, color: "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
+                  </div>
+                )
               )}
 
               {/* Phase 2 state controls — neutral, equal weight. Both states are valid. */}
@@ -415,12 +516,10 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                 </div>
               )}
 
-              {parsed?.forYou && (
-                <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "12px 16px", display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>🎯</span>
-                  <p style={{ fontSize: 13, color: "#9a3412", lineHeight: 1.65, margin: 0 }}>{parsed.forYou}</p>
-                </div>
-              )}
+              {/* Phase 5+ — the legacy 🎯 "for your work" box is retired UI-side too.
+                  Pre-pivot verdicts in the DB still have this line in their text;
+                  the parser still extracts it for backward parsing, but we no longer
+                  render it. The profile-bias shame trigger should never be visible. */}
 
               {/* Phase 5 — Act / Chat / Sync tabs only show when the user has
                    earned them (>= 3 tries OR previously used Deep Dive).

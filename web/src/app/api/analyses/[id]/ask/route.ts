@@ -3,19 +3,23 @@ import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
 
-const ASK_PROMPT = `You're the user's sharp friend. They already got the breakdown and the deep dive. Now they're asking a follow-up — answer like you're in a conversation, not writing a report.
+const ASK_PROMPT = `You're answering a follow-up question about a specific piece of content the reader saved. You already showed them the short verdict and (if they tapped Deep Dive) the deeper breakdown.
 
-You know this user — their role, what they're building, what they care about. Tailor your answer to their specific context. If they ask "how would I use this?", answer in terms of THEIR project, not generically.
+You don't know who the reader is. Don't assume their profession or what they're building. Don't filter your answer through a CV — answer about the content, not about them. The old version of this prompt told you to "tailor to their project" — that's gone. Same anti-bias rule as the verdict pipeline.
 
-Pull from the actual transcript/content. If they ask how to do something, give the first concrete step — not a strategy overview. If the answer isn't in the content, say "wasn't covered in the content" and give your honest take if you have one — but clearly distinguish between "this was in the content" and "this is my take."
+Pull from the actual transcript / caption / visual. If they ask how to do something, give the first concrete step — not a strategy overview. If the answer isn't in the content, say so plainly: "wasn't covered in the content" and give your honest take if you have one — but distinguish between "this was in the content" and "my read on it."
 
 Rules:
 - Be specific — reference what was actually said or shown
 - Under 200 words. Tighter is better.
 - No "Great question!" — just answer it
-- If they ask something implementable, give the exact command, URL, or first step
-- Reference their project/role when connecting advice to their work
-- Never invent links, prices, or features that weren't in the source material`;
+- If they ask something implementable, give the exact command, URL, or first step from the source
+- Never invent links, prices, or features that weren't in the source material
+- Don't reference "your project" or "your work" — you don't know what those are
+- No "Application for you" sections, no personalization-by-role
+
+BANNED WORDS — never use these:
+"actionable", "key takeaway", "pro tip", "leverage", "optimize", "unlock", "supercharge", "powerful", "robust", "incredible", "valuable insights", "I recommend", "10x", "game-changer", "Worth your time", "stay ahead", "fall behind", "keep up"`;
 
 export async function POST(
   request: NextRequest,
@@ -26,16 +30,21 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if user is premium
+  // Phase 5+ — earned-depth gate: 3+ tried-it OR previously used premium feature
+  // OR paid premium. Same as the chat route. The old paid-only gate broke for
+  // users who earned access through action.
   const db = getSupabase();
-  const { data: user } = await db
-    .from("users")
-    .select("premium")
-    .eq("id", session.sub)
-    .single();
-
-  if (!user?.premium) {
-    return NextResponse.json({ error: "Premium required" }, { status: 403 });
+  const [userRes, triedRes, premiumUseRes] = await Promise.all([
+    db.from("users").select("premium").eq("id", session.sub).single(),
+    db.from("analyses").select("id", { count: "exact", head: true })
+      .eq("user_id", session.sub).not("tried_at", "is", null),
+    db.from("analyses").select("id", { count: "exact", head: true })
+      .eq("user_id", session.sub).not("action_items", "is", null),
+  ]);
+  const isPaidPremium = !!userRes.data?.premium;
+  const earnedDepth = (triedRes.count ?? 0) >= 3 || (premiumUseRes.count ?? 0) > 0;
+  if (!isPaidPremium && !earnedDepth) {
+    return NextResponse.json({ error: "Earn this by trying 3 things first." }, { status: 403 });
   }
 
   const { question } = await request.json();
@@ -57,29 +66,11 @@ export async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Get user context
-  const { data: context } = await db
-    .from("user_contexts")
-    .select("role, goal, content_preferences, extended_context")
-    .eq("user_id", session.sub)
-    .single();
-
-  // Build context for the AI
+  // Phase 5+ — Ask is profile-blind. Removing user_contexts from the prompt
+  // removes the "Application for you (Kaan): blueprint for VoiceForge..." fluff.
   const parts: string[] = [];
 
-  if (context) {
-    parts.push("--- USER PROFILE ---");
-    parts.push(`Role: ${context.role}`);
-    parts.push(`Focus: ${context.goal}`);
-    if (context.content_preferences) {
-      parts.push(`Priorities: ${context.content_preferences}`);
-    }
-    if (context.extended_context) {
-      parts.push(`Extended profile: ${context.extended_context.slice(0, 500)}`);
-    }
-  }
-
-  parts.push("\n--- CONTENT ---");
+  parts.push("--- CONTENT ---");
   parts.push(`Platform: ${analysis.platform}`);
   if (analysis.verdict) parts.push(`Verdict: ${analysis.verdict}`);
   if (analysis.transcript) parts.push(`Transcript: ${analysis.transcript.slice(0, 3000)}`);
