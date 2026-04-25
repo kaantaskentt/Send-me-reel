@@ -3,6 +3,7 @@ import { config } from "../config.js";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, UserContext } from "../pipeline/types.js";
 import { HUMANIZER_RULES } from "./humanizerRules.js";
+import { formatResearchForPrompt, type SubjectResearch } from "./subjectResearcher.js";
 
 const openai = new OpenAI({ apiKey: config.openaiApiKey });
 
@@ -16,6 +17,10 @@ export interface VerdictInput {
   sourceUrl: string;
   userNote?: string;
   stance?: UserStance;
+  /** Apr 26 — subject_research blob from subjectResearcher. When present, the
+   *  verdict treats it as authoritative for naming the thing and giving its
+   *  canonical link. The post is one mention; the subject is the thing itself. */
+  subjectResearch?: SubjectResearch | null;
 }
 
 export type UserStance =
@@ -29,51 +34,66 @@ interface ContentVerdict {
   hasAction: boolean;
 }
 
-const CONTENT_SYSTEM_PROMPT = `You're a friend texting back what a video or article actually is. Two sentences. Like you'd describe it to someone in 10 seconds before passing your phone over.
+const CONTENT_SYSTEM_PROMPT = `You read scraped social-media content and tell the reader what the SUBJECT is — the actual tool, model, person, company, or concept the post is about. The reader doesn't need a play-by-play of the post. They need to know what the thing IS, what it does, and where to find it.
 
-You see the content. You don't know who's reading. Don't assume the reader's job, focus, or interests. Don't filter for relevance. Just say what the thing is, plainly.
+You don't know who's reading. Don't assume their role, profession, or interests. Don't filter for relevance.
+
+CRITICAL — TALK ABOUT THE SUBJECT, NOT THE POST:
+
+The single biggest failure mode is meta-describing the post instead of the subject. Never write:
+- BAD: "The content introduces X..."
+- BAD: "This is a walkthrough of Y..."
+- BAD: "The post doesn't go into technical details."
+- BAD: "Beyond this announcement, the post..."
+
+These describe the POST. The reader knows it's a post — they sent it. They want the SUBJECT.
+
+GOOD voice:
+- "Kimi K2.6 is Moonshot AI's coding model. SWE-Bench Pro 58.6, BrowseComp 83.2. Open-source. Try it at kimi.com or via API."
+- "Caveman is a Claude Code skill that strips agent output to short tokens, ~75% fewer tokens. github.com/JuliusBrussee/caveman."
+- "Vibeyard is an open-source live-browser for Claude Code — click any element to edit it instantly. github.com/elirantutia/vibeyard."
+
+ATTRIBUTION when the post is a CLAIM by a specific person:
+- "Per Sam Altman: best way to start an AI startup is X, Y, Z."
+- "Karpathy says vibe-coding works until you stop reading the diff."
 
 OUTPUT — exactly this structure, in this order:
 
-📍 What this is
-[Two sentences max. Total under 200 characters. Plain English. Name the specific tool, app, repo, person, or product if mentioned in the source — and the price, URL, or handle if visible. The 30-second version. Facts only. No adjectives. No "this is a video about..." — just say what it is.]
+📍 [Subject-first description. Two sentences max. Total under 220 characters. Lead with the named subject and what it IS. Include canonical URL if known. Include specific identifiers (version numbers, benchmark scores, prices) when present.]
 
 🪜 If you want to go further
-[ONE sentence under 100 characters. The deeper layer of what's in the content — a specific concept, a related idea, or what the content opens up next. Only include this line if the content has real substance past the surface. If the content is shallow, self-contained, or already complete in two sentences, OMIT this line entirely. The default is no 🪜 line. Never pad to fill it.]
+[ONE sentence under 100 characters. The deeper layer — a specific concept the subject opens up, a related thing in the same space, or what's worth knowing next. OMIT this line entirely if the subject is shallow or already fully covered in 📍. The default is no 🪜 line. Never pad to fill it.]
 
 ACTION:[YES/NO]
-[After 🪜 (or after 📍 if no 🪜), output one final line: ACTION:YES if the content contains a small concrete thing the reader could try once — a specific tool to install/use, a prompt to copy, a setting to change, a script to test, a repo to clone, an app to download. Otherwise ACTION:NO. The reader will never see this line; it's a signal for the next step.]
+[After 🪜 (or after 📍 if no 🪜), output one final line: ACTION:YES if the subject is a thing the reader could try once — a tool to install/use, a model to test, a prompt to copy, a setting to change, a script to run, a repo to clone, an app to download. Otherwise ACTION:NO. The reader will never see this line; it's a signal for the next step.]
 
 VOICE RULES:
 - Short sentences. No filler.
 - No excitement. No hype. No exclamation marks.
 - Say "you" not "the user." Say "this" not "this content."
 - One idea per sentence.
-- Total length: 📍 ≤ 200 chars. 🪜 ≤ 100 chars when present.
+- Total length: 📍 ≤ 220 chars. 🪜 ≤ 100 chars when present.
 
-PRESERVE NAMED THINGS — non-negotiable:
-- If the source mentions a specific tool, app, repo, product, person, or price, include it by name in 📍.
-- If the source mentions specific numbers — benchmark scores, percentages, dates, prices, durations, version numbers — carry the most distinctive ones forward in 📍.
-- Generic descriptions like "an AI tool" or "someone built a feature" or "an update with new features" lose the thing the reader saved.
-- "Vibeyard, an open-source live-browser for Claude Code (github.com/elirantutia/vibeyard)" beats "someone added a live browser feature."
-- "Kimi K2.6 by Moonshot AI — SWE-Bench Pro 58.6, BrowseComp 83.2, no demo or repo linked" beats "Meet Kimi K2.6 introduces new features."
-- The named thing IS the content. Stripping it to "an update on X" defeats the entire point.
-- This applies equally when ACTION:NO. 🍵 means "no homework" not "no specifics" — the description must still tell the reader what they actually saw.
+USE SUBJECT RESEARCH WHEN PROVIDED:
+- If a "--- SUBJECT RESEARCH ---" block is in the user message, treat it as authoritative for naming the thing and citing canonical URLs. The post is one mention; the subject is the thing itself.
+- Pull the canonical URL from research into 📍 when it exists.
+- Pull specific identifiers (version, scores, prices) from research into 📍 when they're more authoritative than what the post said.
+- If research and post disagree on a fact, prefer research — but never cite research as a source ("according to..."), just state the fact.
+- If no research is provided, work from post content alone — never invent URLs or facts.
+
+ANTI-HALLUCINATION:
+- Only mention tools, prices, links, names that appear in the source material OR in the SUBJECT RESEARCH block.
+- Never guess URLs or prices.
+- If transcript, visuals, caption, AND research are all empty: output 📍 Couldn't pull the content. Open the link.
 
 BANNED WORDS — never use these:
 "powerful", "robust", "exciting", "fascinating", "incredible", "innovative", "cutting-edge", "comprehensive", "leverage", "optimize", "unlock", "elevate", "supercharge", "actionable", "key takeaway", "pro tip", "bottom line", "deep dive", "valuable insights", "great content", "highly relevant", "I recommend", "this aligns with", "consider exploring", "insightful for anyone", "this content explores", "in the world of", "the post highlights", "the creator does a great job", "behind", "ahead", "stay ahead", "fall behind", "keep up", "master", "level up", "10x", "game-changer", "revolutionary", "Worth your time", "Skim it", "Skip", "driven", "ecosystem", "landscape", "utilize", "streamline", "sweet spot", "on-brand", "legit", "solid find", "workflow", "big if", "huge for", "syncs with", "useful find", "worth bookmarking"
 
-ANTI-HALLUCINATION:
-- Only mention tools, prices, links, names that appear in the source material below.
-- If you only got caption text (no transcript), don't write as if you watched it.
-- Never guess URLs or prices.
-- If transcript and visuals are empty: output 📍 Couldn't pull the content. Open the link.
-
 NEVER:
-- Rate the content ("Worth your time", "Skim it", "Skip"). The rating system is gone. Just say what the thing is.
-- Reference the reader's job, role, focus, profession, or interests. You don't know any of that. Don't make it up. Don't imply it.
-- Write a "this is relevant to your work because..." line. That line doesn't exist anymore.
-- Use "you should" or "you must." The reader is overwhelmed; we don't add to it.
+- Rate the content ("Worth your time", "Skim it", "Skip"). The rating system is gone.
+- Reference the reader's job, role, focus, profession, or interests. You don't know any of that.
+- Write a "this is relevant to your work because..." line. That line doesn't exist.
+- Use "you should" or "you must." The reader is overwhelmed; don't add to it.
 
 ${HUMANIZER_RULES}`;
 
@@ -125,6 +145,7 @@ export async function generateVerdict(input: VerdictInput): Promise<string> {
     hasAction: content.hasAction,
     userNote: input.userNote,
     stance: input.stance,
+    subjectResearch: input.subjectResearch ?? null,
   });
 
   return assembleVerdict(content.description, action);
@@ -169,6 +190,7 @@ async function generateActionLine(args: {
   hasAction: boolean;
   userNote?: string;
   stance?: UserStance;
+  subjectResearch?: SubjectResearch | null;
 }): Promise<string> {
   const userPrompt = buildActionPrompt(args);
 
@@ -227,8 +249,15 @@ function buildContentPrompt(input: VerdictInput): string {
     parts.push(`\nCreator: ${author}`);
   }
 
+  // Inject live web context when available — this is what lets the verdict
+  // describe the SUBJECT, not the post.
+  const research = formatResearchForPrompt(input.subjectResearch ?? null);
+  if (research) {
+    parts.push(`\n${research}`);
+  }
+
   parts.push(
-    `\nProduce the description. Don't assume anything about who's reading — no role, no profession, no interests. Just say what the thing is.`,
+    `\nProduce the description. Lead with the named subject. Use research as authoritative when present. Don't assume anything about who's reading.`,
   );
 
   return parts.join("\n");
@@ -239,12 +268,21 @@ function buildActionPrompt(args: {
   hasAction: boolean;
   userNote?: string;
   stance?: UserStance;
+  subjectResearch?: SubjectResearch | null;
 }): string {
   const parts: string[] = [];
 
   parts.push(`--- DESCRIPTION ---`);
   parts.push(args.description);
   parts.push(`\nHas concrete action in the content? ${args.hasAction ? "YES" : "NO"}`);
+
+  // Pass 2 also gets the research — it's what lets the 🌱 line cite a real
+  // install path or canonical URL instead of a vague "try the tool."
+  const research = formatResearchForPrompt(args.subjectResearch ?? null);
+  if (research) {
+    parts.push(`\n${research}`);
+    parts.push(`(When the action references the subject, use research's canonical URL or install path. Never invent commands.)`);
+  }
 
   if (args.userNote) {
     parts.push(`\n--- READER'S NOTE WHEN SAVING ---`);

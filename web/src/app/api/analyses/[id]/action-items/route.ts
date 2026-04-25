@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
 import { HUMANIZER_RULES } from "@/lib/humanizer-rules";
+import { formatSubjectResearchForPrompt, type SubjectResearch } from "@/lib/subject-research";
 
 const ACTION_ITEMS_PROMPT = `The reader tapped "Look closer." They already saw the short verdict. They want the substance — what the topic ACTUALLY IS, where to try it, and what to do with it.
 
@@ -115,7 +116,7 @@ export async function POST(
 
   const { data: analysis } = await db
     .from("analyses")
-    .select("id, verdict, transcript, visual_summary, caption, metadata, platform, action_items, user_id")
+    .select("id, verdict, transcript, visual_summary, caption, metadata, platform, action_items, user_id, subject_research")
     .eq("id", id)
     .eq("user_id", session.sub)
     .single();
@@ -129,11 +130,6 @@ export async function POST(
     return NextResponse.json({ action_items: analysis.action_items, cached: true });
   }
 
-  // Phase 5+ — Deep Dive is profile-blind. Same architectural fix as Pass 1
-  // of the verdict pipeline: removing user_contexts from the prompt removes
-  // the "Application for You (Kaan)" / "you're building VoiceForge" fluff.
-  // The reader earned this surface through 3+ tries; that doesn't mean the
-  // model should re-personalize through a CV.
   const parts: string[] = [];
 
   parts.push("--- CONTENT ANALYSIS ---");
@@ -147,7 +143,12 @@ export async function POST(
   if (meta?.authorUsername) parts.push(`Creator: @${meta.authorUsername}`);
   if (meta?.authorName) parts.push(`Creator name: ${meta.authorName}`);
 
-  parts.push("\nGo deeper than the verdict. Pull from the full transcript and visuals — extract the three sections (insights, resources, try_this) PLUS the empty for_you array.");
+  // Apr 26 — Deep Dive sees the same web research the verdict was grounded in.
+  // The model can also fire web_search when it needs more.
+  const research = formatSubjectResearchForPrompt(analysis.subject_research as SubjectResearch | null);
+  if (research) parts.push(`\n${research}`);
+
+  parts.push("\nGo deeper than the verdict. Pull from the transcript, visuals, and subject research. Use web_search ONLY if a specific link, current price, or live status would meaningfully improve insights/resources/try_this. Output the three sections (insights, resources, try_this) plus an empty for_you array.");
 
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) {
@@ -157,16 +158,17 @@ export async function POST(
   const openai = new OpenAI({ apiKey: openaiKey });
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: "gpt-4.1",
-      max_tokens: 1000,
-      messages: [
+      tools: [{ type: "web_search" }],
+      max_output_tokens: 1500,
+      input: [
         { role: "system", content: ACTION_ITEMS_PROMPT },
         { role: "user", content: parts.join("\n") },
       ],
     });
 
-    const text = response.choices[0]?.message?.content?.trim();
+    const text = response.output_text?.trim();
     if (!text) {
       return NextResponse.json({ error: "AI returned empty response" }, { status: 500 });
     }

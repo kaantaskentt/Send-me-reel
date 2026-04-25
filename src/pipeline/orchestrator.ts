@@ -13,6 +13,8 @@ import * as frameExtractor from "../services/frameExtractor.js";
 import * as visualAnalyzer from "../services/visualAnalyzer.js";
 import * as verdictGenerator from "../services/verdictGenerator.js";
 import * as qualityGate from "../services/qualityGate.js";
+import { extractSubject } from "../services/subjectExtractor.js";
+import { researchSubject, type SubjectResearch } from "../services/subjectResearcher.js";
 import { InlineKeyboard } from "grammy";
 import { SignJWT } from "jose";
 import { config } from "../config.js";
@@ -308,6 +310,20 @@ export async function executeVideoPipeline(
     users.getStance(userId),
   ]);
 
+  // Apr 26 — agentic understanding layer. Identify the named subject of the
+  // post (Kimi, Vibeyard, Sam Altman…) and look it up on the web BEFORE
+  // generating the verdict. This is what lets the verdict say what the
+  // SUBJECT is, not just what was IN the post. Skips silently if no clear
+  // subject (extractor returns null) or the search fails.
+  const subjectResearch = await enrichSubject({
+    transcript,
+    visualSummary,
+    caption: scraped.caption,
+    metadata: scraped.metadata,
+    platform,
+    sourceUrl: url,
+  });
+
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
     transcript,
@@ -319,6 +335,7 @@ export async function executeVideoPipeline(
     sourceUrl: url,
     userNote,
     stance: stance ?? undefined,
+    subjectResearch,
   });
 
   await analyses.updateResult(analysisId, {
@@ -329,6 +346,7 @@ export async function executeVideoPipeline(
     metadata: userNote ? { ...scraped.metadata, userNote } : scraped.metadata,
     verdict,
     status: "done",
+    subjectResearch: subjectResearch as Record<string, unknown> | null,
   });
 
   return verdict;
@@ -366,6 +384,18 @@ export async function executeArticlePipeline(
     users.getStance(userId),
   ]);
 
+  // Apr 26 — same agentic understanding step for articles. The subject of
+  // an article ("Show HN: Caveman", "Kimi K2.6 release post") is just as
+  // worth grounding as a video.
+  const subjectResearch = await enrichSubject({
+    transcript: null,
+    visualSummary: "",
+    caption: article.text.slice(0, 3000),
+    metadata: { title: article.title, ...article.metadata },
+    platform: "article",
+    sourceUrl: url,
+  });
+
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
     transcript: null,
@@ -377,6 +407,7 @@ export async function executeArticlePipeline(
     sourceUrl: url,
     userNote,
     stance: stance ?? undefined,
+    subjectResearch,
   });
 
   await analyses.updateResult(analysisId, {
@@ -385,6 +416,7 @@ export async function executeArticlePipeline(
     metadata: userNote ? { ...article.metadata, userNote } : article.metadata,
     verdict,
     status: "done",
+    subjectResearch: subjectResearch as Record<string, unknown> | null,
   });
 
   return verdict;
@@ -512,4 +544,30 @@ async function sendVerdict(
     reply_markup: keyboard,
     ...replyOpts(ctx, replyToMessageId),
   });
+}
+
+/**
+ * Apr 26 — agentic understanding step. Identify the named subject of the
+ * post (one cheap LLM call) and look it up on the web (one Responses API
+ * call with web_search tool). Returns null silently on no-subject or any
+ * failure — the pipeline continues with post-only context. Cost: ~$0.001
+ * for the extractor; ~$0.025 for the search WHEN it fires (skipped for
+ * generic content with no clear named subject).
+ */
+async function enrichSubject(input: {
+  transcript: string | null;
+  visualSummary: string;
+  caption: string;
+  metadata: Record<string, unknown>;
+  platform: string;
+  sourceUrl: string;
+}): Promise<SubjectResearch | null> {
+  try {
+    const subject = await extractSubject(input);
+    if (!subject) return null;
+    return await researchSubject(subject);
+  } catch (err) {
+    console.error("[pipeline] subject enrichment failed (continuing):", err instanceof Error ? err.message : err);
+    return null;
+  }
 }

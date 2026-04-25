@@ -16,6 +16,13 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  /** Apr 26 — tool-use lifecycle for streamed assistant messages.
+   *  "searching" = web_search in progress; "done" = search completed (we keep
+   *  the badge visible briefly after for context). undefined for non-streaming
+   *  messages. */
+  toolState?: "searching" | "done";
+  /** True while tokens are still arriving for this message. */
+  streaming?: boolean;
 }
 
 interface ParsedAction {
@@ -31,6 +38,54 @@ function parseAction(content: string): { text: string; action: ParsedAction | nu
     text: content.replace(match[0], "").trim(),
     action: { type: match[1] as ParsedAction["type"], payload: match[2], raw: match[0] },
   };
+}
+
+// Apr 26 — SSE event parsing for the streamed chat endpoint.
+type SseEvent = { event: string; data: unknown };
+function parseSseBlock(block: string): SseEvent | null {
+  const lines = block.split("\n");
+  let event = "message";
+  let dataRaw = "";
+  for (const line of lines) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataRaw += line.slice(5).trim();
+  }
+  if (!dataRaw) return null;
+  try {
+    return { event, data: JSON.parse(dataRaw) };
+  } catch {
+    return null;
+  }
+}
+function handleSseEvent(
+  ev: SseEvent,
+  ctx: {
+    appendAssistantText: (delta: string) => void;
+    patchAssistant: (patch: Partial<Message>) => void;
+  },
+) {
+  switch (ev.event) {
+    case "text_delta": {
+      const delta = (ev.data as { delta?: string })?.delta;
+      if (typeof delta === "string") ctx.appendAssistantText(delta);
+      return;
+    }
+    case "tool_start":
+    case "tool_searching":
+      ctx.patchAssistant({ toolState: "searching" });
+      return;
+    case "tool_done":
+      ctx.patchAssistant({ toolState: "done" });
+      return;
+    case "done":
+      ctx.patchAssistant({ streaming: false });
+      return;
+    case "error": {
+      const msg = (ev.data as { message?: string })?.message ?? "Something broke.";
+      ctx.patchAssistant({ content: msg, streaming: false, toolState: undefined });
+      return;
+    }
+  }
 }
 
 const PLATFORM_ICONS: Record<string, { color: string; label: string }> = {
@@ -134,40 +189,89 @@ function ChatContent() {
     if (!text.trim() || !selectedId || isLoading) return;
 
     const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text.trim() };
+    const assistantId = crypto.randomUUID();
     const currentMsgs = chatHistory[selectedId] || [];
-    const newMessages = [...currentMsgs, userMsg];
+    const newMessages: Message[] = [
+      ...currentMsgs,
+      userMsg,
+      { id: assistantId, role: "assistant", content: "", streaming: true },
+    ];
     setChatHistory((prev) => ({ ...prev, [selectedId]: newMessages }));
     setInput("");
     setIsLoading(true);
+
+    // Helpers to mutate just the streaming assistant message
+    const patchAssistant = (patch: Partial<Message>) => {
+      setChatHistory((prev) => {
+        const cur = prev[selectedId] || [];
+        return {
+          ...prev,
+          [selectedId]: cur.map((m) => (m.id === assistantId ? { ...m, ...patch } : m)),
+        };
+      });
+    };
+    const appendAssistantText = (delta: string) => {
+      setChatHistory((prev) => {
+        const cur = prev[selectedId] || [];
+        return {
+          ...prev,
+          [selectedId]: cur.map((m) =>
+            m.id === assistantId ? { ...m, content: m.content + delta } : m,
+          ),
+        };
+      });
+    };
 
     try {
       const res = await fetch(`/api/analyses/${selectedId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+          // Send the conversation WITHOUT the empty assistant placeholder
+          messages: [...currentMsgs, userMsg].map((m) => ({ role: m.role, content: m.content })),
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        setChatHistory((prev) => ({ ...prev, [selectedId]: [...newMessages, {
-          id: crypto.randomUUID(), role: "assistant" as const,
-          content: err.error === "Premium required"
-            ? "This feature requires Premium. Upgrade at /pricing to chat with your analyses."
-            : "Something went wrong. Try again.",
-        }] }));
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+        patchAssistant({
+          content:
+            err.error?.includes("Premium")
+              ? "This feature requires Premium. Upgrade at /pricing to chat with your analyses."
+              : err.error || "Something went wrong. Try again.",
+          streaming: false,
+          toolState: undefined,
+        });
         return;
       }
 
-      const data = await res.json();
-      setChatHistory((prev) => ({ ...prev, [selectedId]: [...newMessages, {
-        id: crypto.randomUUID(), role: "assistant" as const, content: data.message,
-      }] }));
+      // SSE consumer — parse `event:` / `data:` blocks separated by blank lines
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Drain complete events from the buffer
+        let nl = buffer.indexOf("\n\n");
+        while (nl !== -1) {
+          const block = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 2);
+          const ev = parseSseBlock(block);
+          if (ev) handleSseEvent(ev, { appendAssistantText, patchAssistant });
+          nl = buffer.indexOf("\n\n");
+        }
+      }
+      patchAssistant({ streaming: false });
     } catch {
-      setChatHistory((prev) => ({ ...prev, [selectedId]: [...newMessages, {
-        id: crypto.randomUUID(), role: "assistant" as const, content: "Network error. Please try again.",
-      }] }));
+      patchAssistant({
+        content: "Network error. Please try again.",
+        streaming: false,
+        toolState: undefined,
+      });
     } finally {
       setIsLoading(false);
       inputRef.current?.focus();
@@ -406,19 +510,63 @@ function ChatContent() {
                     </div>
                   )}
                   <div style={{ maxWidth: msg.role === "user" ? "75%" : "calc(100% - 38px)" }}>
-                    <div style={{
-                      padding: "12px 16px",
-                      borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                      background: msg.role === "user" ? "#f97316" : "#fff",
-                      color: msg.role === "user" ? "#fff" : "#44403c",
-                      border: msg.role === "assistant" ? "1px solid #e7e2d9" : "none",
-                      fontSize: 14,
-                      lineHeight: 1.65,
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                    }}>
-                      {displayText}
-                    </div>
+                    {msg.role === "assistant" && msg.toolState && (
+                      <div style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginBottom: 8,
+                        padding: "5px 10px",
+                        background: msg.toolState === "searching" ? "#fff7ed" : "#f0fdf4",
+                        border: `1px solid ${msg.toolState === "searching" ? "#fed7aa" : "#bbf7d0"}`,
+                        borderRadius: 100,
+                        fontSize: 11,
+                        color: msg.toolState === "searching" ? "#9a3412" : "#15803d",
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}>
+                        {msg.toolState === "searching" ? (
+                          <>
+                            <motion.span
+                              animate={{ opacity: [0.4, 1, 0.4] }}
+                              transition={{ duration: 1.2, repeat: Infinity }}
+                              style={{ display: "inline-block" }}
+                            >
+                              🔍
+                            </motion.span>
+                            <span>looking it up on the web</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>✓</span>
+                            <span>web checked</span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {(displayText || msg.streaming) && (
+                      <div style={{
+                        padding: "12px 16px",
+                        borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                        background: msg.role === "user" ? "#f97316" : "#fff",
+                        color: msg.role === "user" ? "#fff" : "#44403c",
+                        border: msg.role === "assistant" ? "1px solid #e7e2d9" : "none",
+                        fontSize: 14,
+                        lineHeight: 1.65,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}>
+                        {displayText}
+                        {msg.streaming && !displayText && (
+                          <motion.span
+                            animate={{ opacity: [0.3, 1, 0.3] }}
+                            transition={{ duration: 1.2, repeat: Infinity }}
+                            style={{ display: "inline-block", color: "#c4bdb5" }}
+                          >
+                            …
+                          </motion.span>
+                        )}
+                      </div>
+                    )}
                     {parsed?.action && selectedId && (
                       <ActionButton action={parsed.action} analysisId={selectedId} />
                     )}
@@ -427,35 +575,7 @@ function ChatContent() {
               );
             })}
 
-            {/* Typing indicator */}
-            {isLoading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{ display: "flex", alignItems: "center", gap: 10 }}
-              >
-                <div style={{
-                  width: 28, height: 28, borderRadius: 8, background: "#f97316",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                }}>
-                  <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                    <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div style={{ padding: "12px 16px", background: "#fff", border: "1px solid #e7e2d9", borderRadius: "16px 16px 16px 4px" }}>
-                  <motion.div
-                    animate={{ opacity: [0.3, 1, 0.3] }}
-                    transition={{ duration: 1.2, repeat: Infinity }}
-                    style={{ display: "flex", gap: 4 }}
-                  >
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#c4bdb5" }} />
-                    ))}
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-
+            {/* Streaming feedback now lives inside the assistant message bubble (Apr 26) */}
             <div ref={messagesEndRef} />
           </div>
         )}
