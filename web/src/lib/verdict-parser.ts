@@ -1,10 +1,94 @@
-import type { ParsedVerdict } from "./types";
+import type { ParsedVerdict, WorthSignal } from "./types";
+
+const NEW_FORMAT_RE = /^[\u{1F4CD}\u{1F331}\u{1F375}\u{1FA9C}]/u;
+// 📍 = U+1F4CD, 🌱 = U+1F331, 🍵 = U+1F375, 🪜 = U+1FA9C
 
 export function parseVerdict(raw: string): ParsedVerdict {
-  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 
+  const isNewFormat = lines.some((l) => NEW_FORMAT_RE.test(l));
+
+  if (isNewFormat) return parseNewFormat(raw, lines);
+  return parseLegacyFormat(raw, lines);
+}
+
+function parseNewFormat(raw: string, lines: string[]): ParsedVerdict {
+  const descriptionLines: string[] = [];
+  const deeperLines: string[] = [];
+  const actionLines: string[] = [];
+  let noHomework = false;
+  let mode: "description" | "deeper" | "action" | null = null;
+
+  for (const line of lines) {
+    if (line.startsWith("📍")) {
+      mode = "description";
+      const rest = line.replace("📍", "").trim();
+      // Skip the section header "What this is" — we don't surface it
+      if (rest && !/^what this is\??$/i.test(rest)) descriptionLines.push(rest);
+    } else if (line.startsWith("🪜")) {
+      mode = "deeper";
+      const rest = line.replace("🪜", "").trim();
+      if (rest && !/^if you want to go further\??$/i.test(rest)) deeperLines.push(rest);
+    } else if (line.startsWith("🌱")) {
+      mode = "action";
+      const rest = line.replace("🌱", "").trim();
+      if (rest && !/^try this once\??$/i.test(rest)) actionLines.push(rest);
+    } else if (line.startsWith("🍵")) {
+      mode = null;
+      noHomework = true;
+      // Anything after the 🍵 marker on the same line is ignored — the marker
+      // itself is the message
+    } else if (mode === "description") {
+      descriptionLines.push(line);
+    } else if (mode === "deeper") {
+      deeperLines.push(line);
+    } else if (mode === "action") {
+      actionLines.push(line);
+    }
+  }
+
+  const description = descriptionLines.join(" ").trim();
+  const action = actionLines.join(" ").trim() || undefined;
+  const deeper = deeperLines.join(" ").trim() || undefined;
+
+  // Body for the existing dashboard renderer: keep the raw verdict (with markers)
+  // so the pre-wrap render shows everything until Phase 3 redesigns the card.
+  // We strip the literal section headers so it reads cleanly.
+  const cleanedBody = raw
+    .replace(/^📍\s*what this is\??\s*\n?/im, "📍 ")
+    .replace(/^🪜\s*if you want to go further\??\s*\n?/im, "🪜 ")
+    .replace(/^🌱\s*try this once\??\s*\n?/im, "🌱 ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  // Title for the back-compat header: take the first sentence of the description,
+  // truncated to 60 chars. This keeps the existing card header from showing
+  // "Untitled" but stays low-key.
+  const firstSentence = description.split(/[.!?]/)[0]?.trim() ?? "";
+  const title = firstSentence ? firstSentence.slice(0, 60) : "Untitled";
+
+  return {
+    title,
+    body: cleanedBody,
+    // forYou is intentionally undefined — the 🎯 box is retired in the new format
+    forYou: undefined,
+    // worthSignal is intentionally null — the rating axis is retired
+    worthSignal: null,
+    raw,
+    isNewFormat: true,
+    description: description || undefined,
+    action,
+    noHomework,
+    deeper,
+  };
+}
+
+function parseLegacyFormat(raw: string, lines: string[]): ParsedVerdict {
   let title = "";
-  let worthSignal: import("./types").WorthSignal = null;
+  let worthSignal: WorthSignal = null;
   const summaryLines: string[] = [];
   const forYouLines: string[] = [];
   let pastTitle = false;
@@ -38,7 +122,6 @@ export function parseVerdict(raw: string): ParsedVerdict {
     }
   }
 
-  // Backward compat: if no 🎯 section (old format), everything is body
   const body = summaryLines.join("\n\n");
   let forYou: string | undefined = forYouLines.join(" ") || undefined;
 
@@ -53,5 +136,6 @@ export function parseVerdict(raw: string): ParsedVerdict {
     forYou,
     worthSignal,
     raw,
+    isNewFormat: false,
   };
 }

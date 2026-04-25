@@ -491,7 +491,11 @@ async function sendVerdict(
     .url("🔗 Original", sourceUrl)
     .text("📒 Save to Notion", `action_notion_${analysisId}_${telegramId}`);
 
-  await ctx.reply(verdict, {
+  // Telegram render: strip the 🪜 "go further" block — that line lives on the
+  // dashboard only. Storage already has the full verdict; we only trim at send.
+  const telegramVerdict = verdictGenerator.renderForTelegram(verdict);
+
+  await ctx.reply(telegramVerdict, {
     reply_markup: keyboard,
     ...replyOpts(ctx, replyToMessageId),
   });

@@ -66,6 +66,13 @@ export interface ParsedVerdict {
   forYou?: string;
   worthSignal?: WorthSignal;
   raw: string;
+
+  // New-format fields (📍 / 🌱 / 🍵 / 🪜). All undefined for legacy verdicts.
+  isNewFormat?: boolean;
+  description?: string; // 📍 paragraph (the 2-sentence "what this is")
+  action?: string;      // 🌱 line content (the small thing to try)
+  noHomework?: boolean; // true if the verdict resolved to 🍵 Just a watch
+  deeper?: string;      // 🪜 line content (the optional next layer)
 }
 
 export interface UserProfile {
