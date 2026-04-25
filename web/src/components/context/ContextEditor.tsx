@@ -3,120 +3,111 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-interface ContextData {
-  role: string;
-  goal: string;
-  content_preferences?: string;
-  extended_context: string | null;
+type Stance =
+  | "curious_not_started"
+  | "watching_not_doing"
+  | "tried_gave_up"
+  | "using_want_more";
+
+interface UserData {
+  first_name: string | null;
+  stance: Stance | null;
+  intention: string | null;
+  pattern_to_stop: string | null;
 }
 
-const AI_PROMPT = `Hey — you know me well from our past conversations. I'm setting up a profile on a tool called ContextDrop, which breaks down videos and articles I send it based on who I am and what I care about.
+const STANCE_LABELS: Record<Stance, string> = {
+  curious_not_started: "🌱 Curious, haven't really started",
+  watching_not_doing: "🪞 Watching, not yet doing",
+  tried_gave_up: "🌀 Tried, got overwhelmed, gave up",
+  using_want_more: "🛠 Using a bit, want to use more on purpose",
+};
 
-Use everything you already know about me from our chat history — my work, my interests, the projects I've talked about, the tools I use, what I'm building, what I'm curious about, the kind of content that actually clicks for me — and write me a profile in the format below.
+// Phase 4 reflection helper — replaces the old Role/Focus/Tools profile prompt.
+// Anchored to strategy.md §5 + transformation-plan §17. Produces stance +
+// one small commitment + one thing to stop. No professional identity.
+const REFLECTION_PROMPT = `I'm setting up an account on ContextDrop, a tool that helps me actually try things from the AI content I save instead of just watching reels. They asked me to think about three things, and I want your help being honest with myself.
 
-Don't ask me questions. Just write it. Go on what you remember.
+Based on our recent conversations, help me answer these. Don't make me sound more advanced than I am. If I'm overwhelmed, say that. If I've been all-talk-no-action, say that.
 
-Output format (fill in based on what you know about me):
+1. Where am I with AI right now? Pick the closest:
+   🌱 curious but I haven't really started
+   🪞 I keep watching stuff but never actually try anything
+   🌀 I tried, got overwhelmed, kind of gave up
+   🛠 I use it a bit, but want to use it more on purpose
 
----
-Role: [my actual role + the world I work in, in 1-2 sentences. Include seniority if you know it.]
-Focus: [what I'm currently building, working on, or learning right now]
-Audience: [who my work serves — clients, users, my team, myself]
-Interests: [the topics, fields, and ideas I'm actually drawn to — be specific to me, not generic categories]
-Tools: [the tools, platforms, and AI models I actually use day-to-day]
-Learning priorities: [what I'm actively trying to get better at]
-Content that clicks for me: [the kinds of content that actually help me — case studies, tool walkthroughs, opinion pieces, frameworks, etc.]
-Style preferences: [how I like information delivered — concise vs detailed, technical vs accessible, examples vs theory]
----
+2. ONE small commitment for the next two weeks. Not a goal. A specific thing I'd actually do. (e.g. "use Claude to draft one work email a day" — not "get good at AI")
 
-Be factual and specific. Skip filler words like "passionate" or "innovative." If you don't actually know something about me, leave that line as [unknown — I'll fill in] rather than guessing.
+3. ONE thing I want to STOP doing. The pattern I'm tired of. (e.g. "stop saving AI agent reels I'll never come back to")
 
-If this is a fresh chat with no memory of me at all, say so honestly and produce the format above with [bracketed placeholders] I can fill in myself.`;
+Keep all three answers under 25 words each. No corporate language. No "leverage" or "synergize" or "actionable." Talk like I'd talk.`;
 
 export default function ContextEditor() {
   const router = useRouter();
-  const [context, setContext] = useState<ContextData | null>(null);
-  const [extendedContext, setExtendedContext] = useState("");
-  const [role, setRole] = useState("");
-  const [goal, setGoal] = useState("");
-  const [preferences, setPreferences] = useState("");
+  const [initial, setInitial] = useState<UserData | null>(null);
+  const [displayName, setDisplayName] = useState("");
+  const [stance, setStance] = useState<Stance | null>(null);
+  const [intention, setIntention] = useState("");
+  const [patternToStop, setPatternToStop] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [showHelper, setShowHelper] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [showAiHelper, setShowAiHelper] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
-    fetch("/api/context")
+    fetch("/api/user")
       .then((r) => r.json())
       .then((data) => {
-        if (data.context) {
-          setContext(data.context);
-          setRole(data.context.role || "");
-          setGoal(data.context.goal || "");
-          setPreferences(data.context.content_preferences || "");
-          setExtendedContext(data.context.extended_context || "");
+        const u = data.user;
+        if (u) {
+          const ud: UserData = {
+            first_name: u.first_name ?? null,
+            stance: (u.stance as Stance | null) ?? null,
+            intention: u.intention ?? null,
+            pattern_to_stop: u.pattern_to_stop ?? null,
+          };
+          setInitial(ud);
+          setDisplayName(ud.first_name ?? "");
+          setStance(ud.stance);
+          setIntention(ud.intention ?? "");
+          setPatternToStop(ud.pattern_to_stop ?? "");
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const copyPrompt = async () => {
-    await navigator.clipboard.writeText(AI_PROMPT);
+  const copyHelper = async () => {
+    await navigator.clipboard.writeText(REFLECTION_PROMPT);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSave = async () => {
+  const save = async () => {
     setSaving(true);
-    setSaved(false);
-
-    const res = await fetch("/api/context", {
-      method: "PUT",
+    setSavedFlash(false);
+    const res = await fetch("/api/user", {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        role,
-        goal,
-        content_preferences: preferences,
-        extended_context: extendedContext || null,
+        display_name: displayName,
+        stance: stance ?? null,
+        intention,
+        pattern_to_stop: patternToStop,
       }),
     });
-
     setSaving(false);
-
     if (res.ok) {
-      setSaved(true);
-      // Update local context so the preview refreshes
-      setContext({
-        role,
-        goal,
-        content_preferences: preferences,
-        extended_context: extendedContext || null,
+      setSavedFlash(true);
+      setTimeout(() => setSavedFlash(false), 2500);
+      // Refresh local "initial" so dirty-checks reset
+      setInitial({
+        first_name: displayName.trim() || null,
+        stance,
+        intention: intention.trim() || null,
+        pattern_to_stop: patternToStop.trim() || null,
       });
-      if (!context) {
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 1500);
-      }
-    }
-  };
-
-  const handleClear = async () => {
-    setClearing(true);
-    const res = await fetch("/api/context", { method: "DELETE" });
-    setClearing(false);
-
-    if (res.ok) {
-      setContext(null);
-      setRole("");
-      setGoal("");
-      setPreferences("");
-      setExtendedContext("");
-      setShowClearConfirm(false);
-      setSaved(false);
     }
   };
 
@@ -129,6 +120,21 @@ export default function ContextEditor() {
     );
   }
 
+  const card: React.CSSProperties = {
+    background: "#fff",
+    border: "1px solid #e7e2d9",
+    borderRadius: 14,
+    padding: 18,
+  };
+  const label: React.CSSProperties = {
+    display: "block",
+    fontSize: 12,
+    fontWeight: 600,
+    color: "#78716c",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 10,
+  };
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "11px 14px",
@@ -141,10 +147,15 @@ export default function ContextEditor() {
     boxSizing: "border-box",
     background: "#faf8f5",
   };
-
+  const textareaStyle: React.CSSProperties = {
+    ...inputStyle,
+    resize: "vertical",
+    minHeight: 64,
+    lineHeight: 1.55,
+  };
   const handleFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = "#f97316";
-    e.target.style.boxShadow = "0 0 0 3px rgba(249,115,22,0.1)";
+    e.target.style.borderColor = "#6B8E6F";
+    e.target.style.boxShadow = "0 0 0 3px rgba(107,142,111,0.15)";
   };
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = "#e7e2d9";
@@ -153,7 +164,6 @@ export default function ContextEditor() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Header */}
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,248,245,0.88)", backdropFilter: "blur(16px)", borderBottom: "1px solid #e7e2d9" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 20px", height: 56, maxWidth: 720, margin: "0 auto" }}>
           <a href="/dashboard" style={{ color: "#78716c", textDecoration: "none", display: "flex", alignItems: "center", padding: 4 }}>
@@ -164,154 +174,179 @@ export default function ContextEditor() {
           <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" }}>
             Context<span style={{ color: "#f97316" }}>Drop</span>
           </span>
-          <span style={{ fontSize: 13, color: "#a8a29e", marginLeft: 4 }}>/ Your Profile</span>
+          <span style={{ fontSize: 13, color: "#a8a29e", marginLeft: 4 }}>/ Where you are</span>
         </div>
       </header>
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "32px 20px" }}>
-        {/* Hero */}
         <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: "#1c1917", margin: "0 0 8px 0" }}>
-            {context ? "Edit your profile" : "Make it personal"}
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1c1917", margin: "0 0 8px 0", letterSpacing: "-0.02em" }}>
+            Where you are with AI
           </h1>
-          <p style={{ fontSize: 14, color: "#78716c", lineHeight: 1.6, margin: 0, maxWidth: 520 }}>
-            The more ContextDrop knows about you, the better your breakdowns get.
-            Two people can send the same link and get completely different insights.
+          <p style={{ fontSize: 14, color: "#78716c", lineHeight: 1.65, margin: 0, maxWidth: 540 }}>
+            Three small things you can keep updated. They help me calibrate the action line for the stuff you save — gentler when you&apos;re just starting, more direct when you&apos;re ready. None of them is required.
           </p>
         </div>
 
-        {/* Profile Form */}
-        <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 18, padding: 24, marginBottom: 24, boxShadow: "0 2px 12px rgba(0,0,0,0.04)" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>Role</label>
-              <input
-                type="text"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder="e.g. AI Engineer, Product Manager, CS Student..."
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>Current Focus</label>
-              <input
-                type="text"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-                placeholder="e.g. Building an AI-powered SaaS, Learning React..."
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>
-                Interests & topics <span style={{ color: "#a8a29e", fontWeight: 400 }}>· optional</span>
-              </label>
-              <input
-                type="text"
-                value={preferences}
-                onChange={(e) => setPreferences(e.target.value)}
-                placeholder="e.g. AI research, philosophy, no-code tools, startup culture..."
-                style={inputStyle}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-            </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 }}>
+          {/* Display name */}
+          <div style={card}>
+            <span style={label}>Display name</span>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="What I should call you"
+              style={inputStyle}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+            />
+            <p style={{ fontSize: 12, color: "#a8a29e", margin: "8px 0 0 0", lineHeight: 1.5 }}>
+              Pulled from Telegram by default. Edit if it picked up a nickname or typo.
+            </p>
+          </div>
 
-            {/* More about you — prominent textarea */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 4 }}>
-                More about you <span style={{ color: "#a8a29e", fontWeight: 400 }}>· optional</span>
-              </label>
-              <p style={{ fontSize: 12, color: "#a8a29e", margin: "0 0 8px 0", lineHeight: 1.5 }}>
-                Bio, LinkedIn summary, or a description of what you do. The more detail here, the more personal your breakdowns get.
-              </p>
-              <textarea
-                value={extendedContext}
-                onChange={(e) => setExtendedContext(e.target.value)}
-                placeholder="Tell me about yourself — what you're building, what tools you use, what kind of content actually helps you..."
-                rows={6}
-                style={{ ...inputStyle, resize: "vertical" }}
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-              />
-              {/* AI helper toggle */}
-              <button
-                onClick={() => setShowAiHelper(!showAiHelper)}
-                style={{
-                  marginTop: 8,
-                  padding: "4px 0",
-                  background: "none",
-                  border: "none",
-                  fontSize: 12,
-                  color: "#f97316",
-                  cursor: "pointer",
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontWeight: 500,
-                }}
-              >
-                {showAiHelper ? "Hide AI helper" : "Get it from ChatGPT / Claude →"}
-              </button>
-
-              {/* Collapsible AI prompt helper */}
-              {showAiHelper && (
-                <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 14, padding: 16, marginTop: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-                    <p style={{ fontSize: 12, color: "#78716c", margin: 0 }}>
-                      Copy this prompt, paste it into ChatGPT or Claude, then paste the result in the box above.
-                    </p>
-                    <button
-                      onClick={copyPrompt}
-                      style={{
-                        flexShrink: 0,
-                        padding: "6px 14px",
-                        background: copied ? "#f0fdf4" : "#fff7ed",
-                        border: `1px solid ${copied ? "#bbf7d0" : "#fed7aa"}`,
-                        borderRadius: 100,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: copied ? "#16a34a" : "#f97316",
-                        cursor: "pointer",
-                        fontFamily: "'DM Sans', sans-serif",
-                      }}
-                    >
-                      {copied ? "Copied" : "Copy Prompt"}
-                    </button>
-                  </div>
-                  <pre style={{ fontSize: 11, color: "#a8a29e", background: "#fff", border: "1px solid #f0ebe4", borderRadius: 10, padding: 12, overflow: "auto", whiteSpace: "pre-wrap", maxHeight: 100, margin: 0 }}>
-                    {AI_PROMPT}
-                  </pre>
-                </div>
-              )}
+          {/* Stance */}
+          <div style={card}>
+            <span style={label}>Where you are with AI</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(Object.keys(STANCE_LABELS) as Stance[]).map((s) => {
+                const active = stance === s;
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setStance(active ? null : s)}
+                    style={{
+                      padding: "12px 14px",
+                      fontSize: 14,
+                      fontWeight: 500,
+                      textAlign: "left",
+                      color: active ? "#1c1917" : "#57534e",
+                      background: active ? "#f0fdf4" : "#fafaf9",
+                      border: `1px solid ${active ? "#bbf7d0" : "#e7e2d9"}`,
+                      borderRadius: 12,
+                      cursor: "pointer",
+                      fontFamily: "'DM Sans', sans-serif",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {STANCE_LABELS[s]}
+                  </button>
+                );
+              })}
             </div>
+            <p style={{ fontSize: 12, color: "#a8a29e", margin: "10px 0 0 0", lineHeight: 1.5 }}>
+              Used only to calibrate tone. Never shown to you in verdicts.
+            </p>
+          </div>
+
+          {/* Intention */}
+          <div style={card}>
+            <span style={label}>
+              Your two-week intention <span style={{ color: "#a8a29e", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>· optional</span>
+            </span>
+            <textarea
+              value={intention}
+              onChange={(e) => setIntention(e.target.value)}
+              placeholder='e.g. "Use Claude to draft one work email a day."'
+              rows={2}
+              maxLength={280}
+              style={textareaStyle}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+            />
+            <p style={{ fontSize: 12, color: "#a8a29e", margin: "8px 0 0 0", lineHeight: 1.5 }}>
+              One small commitment. Not a goal. A specific thing you&apos;d actually do.
+            </p>
+          </div>
+
+          {/* Pattern to stop */}
+          <div style={card}>
+            <span style={label}>
+              The pattern you&apos;re stepping away from <span style={{ color: "#a8a29e", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>· optional</span>
+            </span>
+            <textarea
+              value={patternToStop}
+              onChange={(e) => setPatternToStop(e.target.value)}
+              placeholder='e.g. "Saving AI agent reels I&apos;ll never come back to."'
+              rows={2}
+              maxLength={280}
+              style={textareaStyle}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+            />
+            <p style={{ fontSize: 12, color: "#a8a29e", margin: "8px 0 0 0", lineHeight: 1.5 }}>
+              One thing you want to stop doing. Helps me notice when a save matches the pattern.
+            </p>
+          </div>
+
+          {/* Reflection helper */}
+          <div style={card}>
+            <button
+              onClick={() => setShowHelper(!showHelper)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#6B8E6F",
+                cursor: "pointer",
+                fontFamily: "'DM Sans', sans-serif",
+              }}
+            >
+              {showHelper ? "Hide reflection helper" : "Need help thinking about these? →"}
+            </button>
+            {showHelper && (
+              <div style={{ marginTop: 14 }}>
+                <p style={{ fontSize: 13, color: "#57534e", margin: "0 0 12px 0", lineHeight: 1.6 }}>
+                  Paste this into Claude or ChatGPT — it&apos;ll talk you through the three answers in your own voice.
+                </p>
+                <button
+                  onClick={copyHelper}
+                  style={{
+                    padding: "7px 16px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: copied ? "#15803d" : "#6B8E6F",
+                    background: copied ? "#f0fdf4" : "#fafaf9",
+                    border: `1px solid ${copied ? "#bbf7d0" : "#e7e2d9"}`,
+                    borderRadius: 100,
+                    cursor: "pointer",
+                    fontFamily: "'DM Sans', sans-serif",
+                    marginBottom: 12,
+                  }}
+                >
+                  {copied ? "Copied" : "Copy reflection prompt"}
+                </button>
+                <pre style={{ fontSize: 11, color: "#78716c", background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 10, padding: 12, overflow: "auto", whiteSpace: "pre-wrap", maxHeight: 220, margin: 0, lineHeight: 1.55 }}>
+                  {REFLECTION_PROMPT}
+                </pre>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Save + Skip + Clear */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <button
-            onClick={handleSave}
-            disabled={saving || !role || !goal}
+            onClick={save}
+            disabled={saving}
             style={{
               padding: "13px 32px",
-              background: saving || !role || !goal ? "#e7e2d9" : "#f97316",
-              color: saving || !role || !goal ? "#a8a29e" : "#fff",
+              background: saving ? "#e7e2d9" : "#6B8E6F",
+              color: saving ? "#a8a29e" : "#fff",
               fontWeight: 700,
               fontSize: 15,
               borderRadius: 100,
               border: "none",
-              cursor: saving || !role || !goal ? "not-allowed" : "pointer",
+              cursor: saving ? "not-allowed" : "pointer",
               fontFamily: "'DM Sans', sans-serif",
               transition: "all 0.15s",
             }}
           >
-            {saving ? "Saving..." : context ? "Save Profile" : "Save & Continue"}
+            {saving ? "Saving…" : "Save"}
           </button>
-          {!context && (
+          {!initial && (
             <button
               onClick={() => router.push("/dashboard")}
               style={{
@@ -329,85 +364,12 @@ export default function ContextEditor() {
               Skip for now
             </button>
           )}
-          {saved && (
-            <span style={{ fontSize: 14, color: "#16a34a", fontWeight: 600 }}>
-              {context ? "Profile saved." : "Saved — taking you to your dashboard..."}
+          {savedFlash && (
+            <span style={{ fontSize: 14, color: "#15803d", fontWeight: 600 }}>
+              Saved.
             </span>
           )}
         </div>
-
-        {/* Clear profile option (only for returning users) */}
-        {context && (
-          <div style={{ marginTop: 16 }}>
-            {!showClearConfirm ? (
-              <button
-                onClick={() => setShowClearConfirm(true)}
-                style={{
-                  padding: 0,
-                  background: "none",
-                  border: "none",
-                  fontSize: 13,
-                  color: "#dc2626",
-                  cursor: "pointer",
-                  fontFamily: "'DM Sans', sans-serif",
-                  opacity: 0.7,
-                }}
-              >
-                Clear profile
-              </button>
-            ) : (
-              <div style={{
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: 14,
-                padding: 16,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}>
-                <p style={{ fontSize: 13, color: "#991b1b", margin: 0 }}>
-                  This will clear your role, focus, interests, and deep profile. You can set them again anytime.
-                </p>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  <button
-                    onClick={() => setShowClearConfirm(false)}
-                    style={{
-                      padding: "6px 14px",
-                      background: "#fff",
-                      border: "1px solid #e7e2d9",
-                      borderRadius: 100,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#78716c",
-                      cursor: "pointer",
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleClear}
-                    disabled={clearing}
-                    style={{
-                      padding: "6px 14px",
-                      background: "#dc2626",
-                      border: "none",
-                      borderRadius: 100,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#fff",
-                      cursor: clearing ? "not-allowed" : "pointer",
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    {clearing ? "Clearing..." : "Clear"}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
       </main>
     </div>
   );
