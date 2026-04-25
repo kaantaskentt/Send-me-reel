@@ -409,15 +409,9 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     </div>
                   )}
 
-                  {parsed.noHomework && (
-                    <div style={{ background: "#faf8f5", border: "1px solid #ece5db", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 16 }}>🍵</span>
-                      <div>
-                        <div style={{ fontSize: 13, color: "#44403c", lineHeight: 1.4, fontFamily: "'Instrument Serif', Georgia, serif" }}>Just a watch.</div>
-                        <div style={{ fontSize: 11, color: "#a8a29e", lineHeight: 1.4, marginTop: 1 }}>No homework today.</div>
-                      </div>
-                    </div>
-                  )}
+                  {/* No-homework verdicts: render no inline box. The absence of a
+                      green 🌱 action box is the signal. The button row + state
+                      badge handle visual state. Matcha emoji was confusing. */}
 
                   {parsed.deeper && (
                     <details style={{ background: "#fff", border: "1px solid #f0ebe4", borderRadius: 12, padding: "10px 14px" }}>
@@ -466,7 +460,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                     transition: "all 0.15s",
                   }}
                 >
-                  {localState === "set_aside" ? "🍵 Set aside" : "🍵 Just watched it"}
+                  {localState === "set_aside" ? "✓ Set aside" : "Just watched it"}
                 </button>
               </div>
               {localState === "tried" && (

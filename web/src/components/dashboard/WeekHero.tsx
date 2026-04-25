@@ -170,23 +170,8 @@ export default function WeekHero({ analysis, onStateChanged }: Props) {
         </div>
       )}
 
-      {(noHomework || (!action && parsed)) && (
-        <div style={{
-          background: "#faf8f5",
-          border: "1px solid #e7e2d9",
-          borderRadius: 14,
-          padding: "14px 18px",
-          marginBottom: 18,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-        }}>
-          <span style={{ fontSize: 18 }}>🍵</span>
-          <span style={{ fontSize: 14, color: "#57534e", lineHeight: 1.5 }}>
-            Just a watch. No homework today.
-          </span>
-        </div>
-      )}
+      {/* No-homework verdicts: no inline box. The absence of a green action
+          box says "nothing to try" — the state buttons below handle the rest. */}
 
       <div style={{
         fontSize: 12,
@@ -242,7 +227,7 @@ export default function WeekHero({ analysis, onStateChanged }: Props) {
             transition: "all 0.15s",
           }}
         >
-          {localState === "set_aside" ? "🍵 Set aside" : "🍵 Just watched it"}
+          {localState === "set_aside" ? "✓ Set aside" : "Just watched it"}
         </button>
       </div>
     </motion.div>

@@ -476,7 +476,7 @@ async function sendVerdict(
 
   // Phase 2 keyboard: two buttons, one row. Action axis only.
   //   📍 Open dashboard — bridge to the action archive
-  //   🍵 Just watched it — explicit "no homework" tap, marks set_aside
+  //   Just watched it — explicit "no homework" tap, marks set_aside
   // The Original URL is already in the message text and Telegram auto-links it.
   // Save-to-Notion moves to auto-push on "I tried it" (Phase 5).
   const keyboard = new InlineKeyboard();
@@ -496,7 +496,7 @@ async function sendVerdict(
     keyboard.url("📍 Open in dashboard", `${config.appUrl}/auth?token=${token}`);
   }
 
-  keyboard.text("🍵 Just watched it", `action_setaside_${analysisId}_${telegramId}`);
+  keyboard.text("Just watched it", `action_setaside_${analysisId}_${telegramId}`);
 
   // Telegram render: strip the 🪜 "go further" block — that line lives on the
   // dashboard only. Storage already has the full verdict; we only trim at send.

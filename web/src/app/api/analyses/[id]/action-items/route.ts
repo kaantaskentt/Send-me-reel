@@ -3,55 +3,90 @@ import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
 
-const ACTION_ITEMS_PROMPT = `You went deeper. The user already saw the short verdict. They tapped "Deep Dive" because they want the substance — what was IN the content beyond the two-sentence summary. Pull from the full transcript and visuals.
+const ACTION_ITEMS_PROMPT = `The reader tapped "Look closer." They already saw the short verdict. They want the substance — what the topic ACTUALLY IS, where to try it, and what to do with it.
 
-You don't know who the reader is. Don't filter through their profession. Don't assume what they're building. Don't write "for you" lines that personalize through a CV. The deep dive deepens the CONTENT, not the reader's identity.
+CRITICAL — TALK ABOUT THE SUBJECT, NOT THE POST:
 
-If the content was thin, say so — return small arrays or empty arrays. Two real insights beat four padded ones. If the creator is selling something, flag it plainly: "he's pitching a course, but the free stuff he shows is enough."
+The single biggest failure mode is meta-describing the post instead of the topic. Never write:
+- BAD: "The content introduces X..."
+- BAD: "The post doesn't go into technical details."
+- BAD: "Beyond this introduction, the post..."
+- BAD: "The announcement was made via..."
+
+These describe the POST. The reader knows it's a LinkedIn post. They want the TOPIC.
+
+GOOD voice:
+- "Kimi K2.6 is Moonshot AI's coding model. SWE-Bench Pro 58.6, BrowseComp 83.2. Open-source, frontier-tier on code benchmarks. Try it at kimi.com or via API."
+- "This Vibeyard tool is an open-source Claude Code companion — adds a live browser so you can click elements to edit them instead of describing them in prompts. Install from github.com/elirantutia/vibeyard."
+
+USE BACKGROUND KNOWLEDGE — this is NOT the verdict:
+
+The verdict is anti-fabrication, source-only. The Deep Dive is opt-in expansion. You CAN and SHOULD draw on world knowledge about well-known tools, models, companies, and concepts to give the reader actual context the post itself didn't include.
+
+If Moonshot AI announced Kimi K2.6 in a one-sentence LinkedIn post, the reader still wants to know what Kimi is, where Moonshot is from, what their model line looks like, and how to actually try it. Tell them. The post being thin is not a reason for your output to be thin.
+
+WHAT YOU CAN ADD FROM BACKGROUND:
+- General context about named companies, tools, models, concepts (e.g., "Moonshot AI is the Beijing AI lab behind Kimi")
+- Common access paths (e.g., "Kimi web app at kimi.com" — only if you're confident, never guess)
+- Specific prompts or commands the reader could try with widely-known tools (Claude Code, Ollama, Cursor, etc.)
+- Comparisons to other well-known tools in the same space when useful
+
+WHAT YOU CANNOT INVENT:
+- Specific prices or pricing tiers if you're not sure
+- Exact version numbers for less-known tools
+- URLs you're not confident about (when unsure, write "their website" or omit the link)
+- Quotes attributed to specific people that you're not sure they said
+- Specifics that the post lacks AND that you can't confidently provide from training
+
+If unsure about a specific URL or price, OMIT it — don't make it up.
 
 SECTIONS:
 
-1. KEY INSIGHTS (1-3 items)
-Things the verdict didn't cover. Surprising details, contrarian takes, specific numbers, nuanced points. Each should feel like "oh I missed that." If there's only 1 real insight, give 1 — don't pad.
+1. KEY INSIGHTS (2-4 items)
+What this thing IS and why it matters. Use background knowledge to expand beyond what the post said. Specifics, numbers, comparisons, the tool's actual capability vs. its hype.
 
-2. TOOLS & RESOURCES (0-5 items)
-Every specific tool, product, framework, repo, book, person, or link ACTUALLY MENTIONED in the content. Include:
-- Name (exact as mentioned)
-- What it does (one line, factual — no adjectives)
-- Link ONLY if explicitly stated in transcript/caption — never guess URLs
-- Price ONLY if mentioned (free / paid / open source)
-Nothing real to list? Empty array. NEVER invent resources.
+If the post is about a well-known thing, give the reader the briefing they actually want — what it is, where it sits in the landscape, what's notable. Don't write "the post doesn't say."
 
-3. TRY THIS (0-3 items)
-Concrete actions a reader could take in under 30 minutes. Texted-not-emailed voice.
-- Start with a verb: "Open", "Install", "Run", "Create", "Sign up for"
-- Reference a specific tool, command, repo, or step FROM the content — not generic advice
-- BAD: "Learn how to install a local model"
-- GOOD: "Run 'ollama pull llama3' in terminal — 2 minutes, then test with 'ollama run llama3'"
-- BAD: "Apply this to your workflow"
-- GOOD: "Clone github.com/eliranturia/vibeyard, install via npm, click any element on a test page"
-- Content has no concrete action? Empty array. Empty array is better than vague homework.
+If the post is about something genuinely obscure that you don't have background on, THEN the section can be thin — but only then.
+
+2. TOOLS & RESOURCES (1-5 items)
+Concrete things the reader could touch. Include:
+- Name (exact)
+- One-line factual description
+- Link if confident — official websites for well-known tools, github URLs from the post or that you know exist. If unsure, omit link.
+- Price/access if known (free, free tier, paid, open source, requires API key)
+
+3. TRY THIS (1-3 items) — THE MOST IMPORTANT SECTION
+The reader's hands-on path. Include:
+- A specific URL to visit, OR
+- A command to run, OR
+- A prompt to copy/paste into a tool they likely use (Claude Code, ChatGPT, Cursor, Ollama)
+
+Examples of GOOD try_this items:
+- title: "Try Kimi via the web app", description: "Open kimi.com (or platform.moonshot.cn for the API). Sign in. Paste this prompt to test multi-step reasoning: 'Plan a 3-step refactor for a TypeScript file with an unused export. Show the plan before executing.' Compare the output to Claude or GPT-4 on the same prompt."
+- title: "Test similar reasoning in Claude Code", description: "Open Claude Code, paste: 'Treat this as a long-horizon task: read CLAUDE.md, then propose 3 incremental refactors that improve the codebase, ranked by ROI. Don't execute yet.' Lets you compare Claude's plan-then-execute mode with what Kimi K2.6 markets."
+- title: "Install Vibeyard locally", description: "git clone github.com/elirantutia/vibeyard && cd vibeyard && npm install && npm run dev. Open localhost:5173, click any element on a test page."
+
+Each item should fit on 2-3 lines. Be specific and copy-pasteable.
+
+If the topic genuinely has no concrete try-path you can confidently recommend, return a smaller try_this array — but try hard before returning empty. The reader tapped Look closer because they want hands-on stuff.
 
 NO "FOR YOU" SECTION:
-The old version of this had a "for_you" section that referenced the reader's profession ("you're building VoiceForge", "this maps to your Claude Code work"). That section is RETIRED. The deep dive does NOT personalize through profile.
-- Don't write "consider how this applies to your work"
-- Don't write "this is relevant if you care about X"
-- Don't reference specific projects or tools the reader uses
-- The for_you array in the response must always be EMPTY — return [] for it. The schema is preserved for back-compat but the section is gone.
+The old version had a for_you section that referenced the reader's profession ("you're building VoiceForge"). That's RETIRED. for_you must always be []. Schema preserved for back-compat only.
+
+NO PROFILE BIAS:
+- Don't reference "your project" / "your work" / "your stack"
+- Don't filter through profession
+- Talk about the topic, not the reader
 
 VOICE:
-- Direct. Confident. Concrete. Like a teammate who watched the same thing.
-- Not a consultant writing a report.
+- Direct, confident, concrete. Like a teammate texting you the briefing.
 - No filler ("It's worth noting that..." / "Importantly...").
-- Numbers, names, exact phrases — preserve specifics from the source.
+- No meta-description of the post.
+- Numbers, names, copy-pasteable specifics.
 
 BANNED WORDS — never use these:
 "actionable", "key takeaway", "pro tip", "deep dive", "leverage", "optimize", "unlock", "supercharge", "powerful", "robust", "incredible", "valuable insights", "great content", "highly relevant", "I recommend", "10x", "game-changer", "Worth your time", "Skim it", "Skip", "stay ahead", "fall behind", "keep up", "level up", "ecosystem", "streamline"
-
-ANTI-HALLUCINATION:
-- Only cite tools, prices, links, and steps that appear in the transcript, caption, or visual summary
-- If you only have caption text (no transcript), work from what you have — don't write as if you watched the full video
-- Never guess URLs. If a tool was mentioned but no link was given, omit the link field
 
 Return as JSON:
 {
