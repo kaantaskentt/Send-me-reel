@@ -21,27 +21,45 @@ export interface ExtractorInput {
   metadata: Record<string, unknown>;
 }
 
-const EXTRACTOR_PROMPT = `You read scraped social-media content and identify what specific named thing the post is ABOUT.
+const EXTRACTOR_PROMPT = `You read scraped social-media content and identify the SPECIFIC named thing the post is ABOUT.
+
+THE GOLDEN RULE — prefer SPECIFIC over FAMOUS:
+
+When a post is structured as "FAMOUS_BRAND launched/released X" or "FAMOUS_PERSON on TOPIC", the subject is X / TOPIC — NOT the famous brand or person. The famous name is just the speaker or publisher.
+
+- "Anthropic launched the Claude Certified Architect program" → subject is "Claude Certified Architect", NOT "Anthropic"
+- "Elon Musk announces TerraFab chip factory" → subject is "TerraFab", NOT "Elon Musk"
+- "Sam Altman on founder clarity in 25 words" → subject is "Founder clarity in 25 words" (concept), NOT "Sam Altman"
+- "Vibeyard, an open-source live-browser for Claude Code" → subject is "Vibeyard", NOT "Claude Code"
+
+If the parent brand IS the subject (e.g. a news clip about Anthropic itself, a profile of Sam Altman, a company launch), then yes, the brand/person is the subject — but that's the exception, not the default.
 
 Output JSON with this exact shape:
 {
-  "name": string,                   // The exact name of the subject (e.g. "Kimi K2.6", "Vibeyard", "Sam Altman")
+  "name": string,
   "type": "tool"|"model"|"person"|"company"|"concept"|"repo",
-  "confidence": number,             // 0.0-1.0 — how sure you are this post is about a specific named subject
-  "suggestedUrls": string[]         // any explicit URLs from the post that point to the canonical thing (github, official site)
+  "confidence": number,
+  "suggestedUrls": string[]
 }
 
-If the post is generic motivational content, vague advice, or otherwise has no clear named subject, set confidence to 0 and name to "".
+When to return null (confidence 0, name ""):
+- The post is generic motivational content or vague advice with no named thing.
+- The post is news, event coverage, or a creative/visual piece (recipe, art, sport, athletic, music, ticket page) where any named brand or person is just BACKDROP — not the subject as a tool/product/concept.
+- Examples that should return null: a food show called "Square Sambos" (the post is the recipe, not Square the fintech), a warehouse-fire news clip mentioning Kimberly-Clark, a yo-yo trick video, a climbing video, a ticket-sale page.
 
 Examples:
-- Post says "Kimi K2.6 by Moonshot AI..." → { "name": "Kimi K2.6", "type": "model", "confidence": 0.95, "suggestedUrls": [] }
-- Post is a Caveman walkthrough mentioning github.com/JuliusBrussee/caveman → { "name": "Caveman", "type": "tool", "confidence": 0.9, "suggestedUrls": ["https://github.com/JuliusBrussee/caveman"] }
-- Post is Sam Altman talking about how to start an AI company → { "name": "Sam Altman", "type": "person", "confidence": 0.85, "suggestedUrls": [] }
-- Post is generic "5 productivity tips for founders" → { "name": "", "type": "concept", "confidence": 0.0, "suggestedUrls": [] }
+- "Kimi K2.6 by Moonshot AI, SWE-Bench Pro 58.6..." → { "name": "Kimi K2.6", "type": "model", "confidence": 0.95, "suggestedUrls": [] }
+- "Anthropic just launched the Claude Certified Architect program" → { "name": "Claude Certified Architect", "type": "concept", "confidence": 0.9, "suggestedUrls": [] }
+- "Caveman walkthrough, github.com/JuliusBrussee/caveman" → { "name": "Caveman", "type": "tool", "confidence": 0.9, "suggestedUrls": ["https://github.com/JuliusBrussee/caveman"] }
+- "Sam Altman: top founders explain their startups in under 25 words" → { "name": "Founder clarity in under 25 words", "type": "concept", "confidence": 0.7, "suggestedUrls": [] }
+- "Elon Musk announces TerraFab — $20B chip factory" → { "name": "TerraFab", "type": "concept", "confidence": 0.7, "suggestedUrls": [] }
+- Generic "5 productivity tips for founders" → { "name": "", "type": "concept", "confidence": 0.0, "suggestedUrls": [] }
+- News clip about a warehouse arson at Kimberly-Clark → { "name": "", "type": "concept", "confidence": 0.0, "suggestedUrls": [] }
+- Recipe video, art video, sports clip, ticket page → { "name": "", "type": "concept", "confidence": 0.0, "suggestedUrls": [] }
 
 Rules:
-- Pick the SUBJECT, not the source. A reel ABOUT Kimi → subject is Kimi, not the reel author.
-- If the post mentions multiple things, pick the one most central to the message.
+- Prefer the specific announcement / feature / program / model / topic over the parent brand or person.
+- If the post is news, event coverage, or creative content where any brand mention is incidental, return null.
 - Confidence ≥ 0.6 means "yes, web search this." Below means "skip enrichment."
 - Never invent URLs. Only include URLs that explicitly appear in the source text.
 - Output ONLY valid JSON. No markdown, no backticks, no explanation.`;
