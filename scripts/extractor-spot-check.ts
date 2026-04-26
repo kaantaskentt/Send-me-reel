@@ -57,6 +57,17 @@ const cases = [
     },
   },
   {
+    label: "✗ LIVE PRODUCTION INPUT — same Anthropic reel, real transcript+visual (should pick the program/certification, NOT 'AI Agent Manager' role)",
+    input: {
+      caption: "Harvard just leaked what the most in-demand AI job of 2026 is and Anthropic dropped a free program to get hired for it.\n\nComment \"CHIEF\" for the 5-step guide on how to land one\n\n#ai #claude #productivity",
+      transcript: "Harvard just released that every major company is hiring for this one job that didn't actually even exist six months ago. And Anthropic released an entire program certification course to get you hired for it. Let me show you. Welcome back to my channel.",
+      visualSummary: "The video promotes job opportunities related to an 'Anthropic Certification' by Land AI, showcasing tools and courses beneficial for prospective applicants. It includes frames emphasizing available positions like 'AI Agent Manager' and highlighting the importance of networking. Key information displayed includes course information.",
+      platform: "instagram",
+      sourceUrl: "https://www.instagram.com/reel/DXk3S2QjQNd/",
+      metadata: {},
+    },
+  },
+  {
     label: "✗ Sam Altman on founder clarity (should pick the topic, NOT Altman bio)",
     input: {
       caption: "Sam Altman: top founders always explain their startups in under 25 words.",

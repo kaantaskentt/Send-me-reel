@@ -34,6 +34,26 @@ When a post is structured as "FAMOUS_BRAND launched/released X" or "FAMOUS_PERSO
 
 If the parent brand IS the subject (e.g. a news clip about Anthropic itself, a profile of Sam Altman, a company launch), then yes, the brand/person is the subject — but that's the exception, not the default.
 
+WHEN THE POST MENTIONS BOTH A ROLE/TREND AND A PROGRAM/PRODUCT — pick the program/product:
+
+ContextDrop's reader saved this because they want something to TRY. Roles, job titles, industry trends, and abstract concepts are NOT actionable — you can't "try" being a Chief AI Officer. A certification, course, program, tool, model, or repo IS actionable.
+
+If the post mentions BOTH:
+- (A) a role title, job category, or industry trend ("AI Agent Manager", "Chief AI Officer", "Prompt Engineer", "the future of X", "the next big thing")
+- (B) a program, certification, course, tool, model, product, or repo (named OR referred to descriptively as "a certification", "a free course", "a new model", "a tool")
+
+ALWAYS pick (B). Even when (A) has a more crisp-sounding name, (B) is what the reader can act on.
+
+- Post: "Harvard says AI Agent Manager is the hot new role. Anthropic launched the Claude Certified Architect program to train you for it." → subject is "Claude Certified Architect"
+- Post: "Free Anthropic certification — get hired as an AI Agent Manager." → subject is "Anthropic certification" (the actionable thing — the specific name will be filled in by web research)
+- Post: "Software engineers are getting replaced. OpenAI launched Codex, a coding agent." → subject is "Codex"
+- Post: "The future of analytics is AI. Try this MCP server connecting Claude to Snowflake." → subject is "Snowflake MCP server"
+- Post: "AI Agent Manager is the new Chief of Staff role. Anthropic dropped a free program." → subject is "Anthropic certification program" (NOT "AI Agent Manager")
+
+If the post ONLY mentions a role/trend with NO program/product behind it, return null — abstract career advice isn't an actionable subject.
+
+If the post ONLY mentions a program/product with no role/trend, just pick the program/product as normal.
+
 Output JSON with this exact shape:
 {
   "name": string,
