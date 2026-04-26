@@ -1,15 +1,13 @@
 "use client";
 
 /*
- * HowItWorksSection — ContextDrop "Warm Signal" Design
- * Full-width 3-column layout with connecting dashed line
- * Step 3 has animated verdict preview that cycles through cards
- * 30 seconds · Instagram/TikTok/LinkedIn/X · Claude agent example
- * Ported from Manus's landing/ prototype
+ * HowItWorksSection — Manus "Warm Signal" port (Apr 26)
+ * 3-column with connecting dashed line. Step 3 has cycling verdict preview.
  */
 
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import type { RefObject } from "react";
 import { useEffect, useState } from "react";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const PLATFORMS = ["Instagram", "TikTok", "LinkedIn", "X", "YouTube"];
 
@@ -106,8 +104,8 @@ function AnimatedVerdictPreview() {
 }
 
 export default function HowItWorksSection() {
-  const headlineRef = useScrollAnimation(0.2) as React.RefObject<HTMLDivElement>;
-  const stepsRef = useScrollAnimation(0.15) as React.RefObject<HTMLDivElement>;
+  const headlineRef = useScrollAnimation(0.2) as RefObject<HTMLDivElement>;
+  const stepsRef = useScrollAnimation(0.15) as RefObject<HTMLDivElement>;
 
   return (
     <section
@@ -128,7 +126,7 @@ export default function HowItWorksSection() {
         {/* Headline */}
         <div
           ref={headlineRef}
-          className="fade-up"
+          className="cd-fade-up"
           style={{ textAlign: "center", marginBottom: "3.5rem" }}
         >
           <span
@@ -156,8 +154,7 @@ export default function HowItWorksSection() {
               marginBottom: "1rem",
             }}
           >
-            Three steps.{" "}
-            <span style={{ color: "#f97316" }}>30 seconds.</span>
+            Three steps. <span style={{ color: "#f97316" }}>30 seconds.</span>
           </h2>
           <p
             style={{
@@ -173,13 +170,8 @@ export default function HowItWorksSection() {
           </p>
         </div>
 
-        {/* Steps — 3-column grid with connecting line */}
-        <div
-          ref={stepsRef}
-          className="stagger-children"
-          style={{ position: "relative" }}
-        >
-          {/* Connecting dashed line (desktop only) */}
+        {/* Steps */}
+        <div ref={stepsRef} className="cd-stagger-children" style={{ position: "relative" }}>
           <div
             style={{
               position: "absolute",
@@ -213,66 +205,94 @@ export default function HowItWorksSection() {
                 zIndex: 1,
               }}
             >
-              <div
-                style={{
-                  width: 32, height: 32, borderRadius: 10,
-                  background: "#f97316", color: "white",
-                  fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-                  fontWeight: 800, fontSize: 14,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: "1.25rem",
-                }}
-              >
-                1
-              </div>
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#1c1917", marginBottom: 8, letterSpacing: "-0.02em" }}>
-                Send a link
-              </h3>
-              <p style={{ fontSize: 13.5, color: "#78716c", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", marginBottom: 16 }}>
+              <StepBadge n={1} />
+              <h3 style={stepTitle}>Send a link</h3>
+              <p style={stepBody}>
                 Drop any video or post URL into ContextDrop on Telegram or WhatsApp. No app to download. No account needed to start.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
                 {PLATFORMS.map((p) => (
-                  <span key={p} style={{ fontSize: 10, fontWeight: 600, padding: "3px 9px", borderRadius: 100, background: "#faf8f5", color: "#78716c", border: "1px solid #e7e2d9", fontFamily: "'DM Sans', sans-serif" }}>
+                  <span
+                    key={p}
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      padding: "3px 9px",
+                      borderRadius: 100,
+                      background: "#faf8f5",
+                      color: "#78716c",
+                      border: "1px solid #e7e2d9",
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
                     {p}
                   </span>
                 ))}
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "#0088cc", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}>Telegram</span>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 100, background: "#25D366", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}>WhatsApp</span>
+                <span style={chipStyle("#0088cc")}>Telegram</span>
+                <span style={chipStyle("#25D366")}>WhatsApp</span>
               </div>
             </div>
 
             {/* Step 2 */}
-            <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 18, padding: "1.75rem", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", position: "relative", zIndex: 1 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: "#f97316", color: "white", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem" }}>
-                2
-              </div>
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#1c1917", marginBottom: 8, letterSpacing: "-0.02em" }}>
-                AI analyses it
-              </h3>
-              <p style={{ fontSize: 13.5, color: "#78716c", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", marginBottom: 20 }}>
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #e7e2d9",
+                borderRadius: 18,
+                padding: "1.75rem",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              <StepBadge n={2} />
+              <h3 style={stepTitle}>AI analyses it</h3>
+              <p style={stepBody}>
                 ContextDrop watches the video, transcribes the audio, and surfaces every tool, framework, and idea mentioned — structured into a clean verdict.
               </p>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 8, padding: "7px 12px", fontFamily: "'JetBrains Mono', 'DM Mono', monospace", fontSize: 11, color: "#a8a29e" }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  background: "#faf8f5",
+                  border: "1px solid #e7e2d9",
+                  borderRadius: 8,
+                  padding: "7px 12px",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 11,
+                  color: "#a8a29e",
+                }}
+              >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 6v6l4 2" />
                 </svg>
                 ~30 seconds avg
               </div>
             </div>
 
-            {/* Step 3 — animated verdict preview */}
-            <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 18, padding: "1.75rem", boxShadow: "0 1px 4px rgba(0,0,0,0.05)", position: "relative", zIndex: 1 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: "#f97316", color: "white", fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 800, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "1.25rem" }}>
-                3
-              </div>
-              <h3 style={{ fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "#1c1917", marginBottom: 8, letterSpacing: "-0.02em" }}>
-                You get a verdict
-              </h3>
-              <p style={{ fontSize: 13.5, color: "#78716c", lineHeight: 1.7, fontFamily: "'DM Sans', sans-serif", marginBottom: 14 }}>
-                A structured breakdown — what it is, what&apos;s inside, why it matters to you. Tap <strong style={{ color: "#f97316" }}>Learn</strong>, <strong style={{ color: "#16a34a" }}>Apply</strong>, or <strong style={{ color: "#78716c" }}>Skip</strong>. Your feed stays clean.
+            {/* Step 3 */}
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #e7e2d9",
+                borderRadius: 18,
+                padding: "1.75rem",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+                position: "relative",
+                zIndex: 1,
+              }}
+            >
+              <StepBadge n={3} />
+              <h3 style={stepTitle}>You get a verdict</h3>
+              <p style={stepBody}>
+                A structured breakdown — what it is, what's inside, why it matters to you. Tap{" "}
+                <strong style={{ color: "#f97316" }}>Learn</strong>,{" "}
+                <strong style={{ color: "#16a34a" }}>Apply</strong>, or{" "}
+                <strong style={{ color: "#78716c" }}>Skip</strong>. Your feed stays clean.
               </p>
               <AnimatedVerdictPreview />
             </div>
@@ -285,15 +305,67 @@ export default function HowItWorksSection() {
             href="https://t.me/contextdrop2027bot"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-primary inline-flex"
+            className="cd-btn-primary inline-flex"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
             </svg>
-            Try it now — it&apos;s free
+            Try it now — it's free
           </a>
         </div>
       </div>
     </section>
   );
+}
+
+function StepBadge({ n }: { n: number }) {
+  return (
+    <div
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        background: "#f97316",
+        color: "white",
+        fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
+        fontWeight: 800,
+        fontSize: 14,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: "1.25rem",
+      }}
+    >
+      {n}
+    </div>
+  );
+}
+
+const stepTitle: React.CSSProperties = {
+  fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
+  fontWeight: 700,
+  fontSize: 17,
+  color: "#1c1917",
+  marginBottom: 8,
+  letterSpacing: "-0.02em",
+};
+
+const stepBody: React.CSSProperties = {
+  fontSize: 13.5,
+  color: "#78716c",
+  lineHeight: 1.7,
+  fontFamily: "'DM Sans', sans-serif",
+  marginBottom: 16,
+};
+
+function chipStyle(bg: string): React.CSSProperties {
+  return {
+    fontSize: 10,
+    fontWeight: 700,
+    padding: "3px 10px",
+    borderRadius: 100,
+    background: bg,
+    color: "#fff",
+    fontFamily: "'DM Sans', sans-serif",
+  };
 }

@@ -1,9 +1,14 @@
+/*
+ * Home — ContextDrop landing page (Manus "Warm Signal" port, Apr 26)
+ * Section order: NavBar → Hero → StatsBar → Problem → HowItWorks → Verdict → FinalCTA + Footer
+ */
+
 import NavBar from "@/components/landing/NavBar";
 import HeroSection from "@/components/landing/HeroSection";
 import StatsBar from "@/components/landing/StatsBar";
 import ProblemSection from "@/components/landing/ProblemSection";
-import DashboardPreviewSection from "@/components/landing/DashboardPreviewSection";
-import PricingSection from "@/components/landing/PricingSection";
+import HowItWorksSection from "@/components/landing/HowItWorksSection";
+import VerdictSection from "@/components/landing/VerdictSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
 export default function Home() {
@@ -13,8 +18,8 @@ export default function Home() {
       <HeroSection />
       <StatsBar />
       <ProblemSection />
-      <DashboardPreviewSection />
-      <PricingSection />
+      <HowItWorksSection />
+      <VerdictSection />
       <FinalCTASection />
     </div>
   );

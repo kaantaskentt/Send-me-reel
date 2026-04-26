@@ -1,20 +1,20 @@
 "use client";
 
 /*
- * StatsBar — ContextDrop "Warm Signal"
- * White strip with warm dividers, orange accent numbers
+ * StatsBar — Manus "Warm Signal" port (Apr 26)
+ * White strip with warm dividers, orange accent numbers + count-up.
  */
 
 import { useEffect, useRef, useState } from "react";
 
 const STATS = [
-  { value: 6100, suffix: "+", label: "Videos analyzed" },
+  { value: 12400, suffix: "+", label: "Videos analyzed" },
   { value: 2400, suffix: "+", label: "Creators & founders" },
-  { value: 1800, suffix: "+", label: "Tools discovered" },
-  { value: 28, suffix: "s", label: "Avg. analysis time" },
+  { value: 3800, suffix: "+", label: "Tools discovered" },
+  { value: 58, suffix: "s", label: "Avg. analysis time" },
 ];
 
-function useCountUp(target: number, duration = 1200, active: boolean) {
+function useCountUp(target: number, duration: number, active: boolean) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!active) return;
@@ -49,7 +49,7 @@ function StatItem({ value, suffix, label }: { value: number; suffix: string; lab
           observer.disconnect();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.5 },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -59,7 +59,11 @@ function StatItem({ value, suffix, label }: { value: number; suffix: string; lab
     <div ref={ref} className="text-center px-6 py-5">
       <div
         className="text-2xl sm:text-3xl text-[#1a1a1a] mb-0.5 tabular-nums"
-        style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 800, letterSpacing: "-0.02em" }}
+        style={{
+          fontFamily: "'DM Sans', sans-serif",
+          fontWeight: 800,
+          letterSpacing: "-0.02em",
+        }}
       >
         {count.toLocaleString()}
         <span style={{ color: "#F97316" }}>{suffix}</span>
@@ -76,12 +80,10 @@ function StatItem({ value, suffix, label }: { value: number; suffix: string; lab
 
 export default function StatsBar() {
   return (
-    <div
-      className="border-y"
-      style={{ borderColor: "#f0ede8", background: "white" }}
-    >
-      <div className="landing-container">
-        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x"
+    <div className="border-y" style={{ borderColor: "#f0ede8", background: "white" }}>
+      <div className="cd-container">
+        <div
+          className="grid grid-cols-2 sm:grid-cols-4 divide-x"
           style={{ borderColor: "#f0ede8" }}
         >
           {STATS.map((s) => (
