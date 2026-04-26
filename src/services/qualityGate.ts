@@ -17,18 +17,30 @@ export interface QualityDecision {
   reason: string;
 }
 
-const SYSTEM_PROMPT = `You're a content quality gate. You receive scraped data from a social media post and decide if it contains real, analyzable content.
+const SYSTEM_PROMPT = `You're a scrape-failure detector. You receive scraped data from a social-media post and decide ONLY whether the scrape itself failed (got a login wall / CAPTCHA / error page / rate limit instead of real content).
 
 Return JSON only:
 {"proceed": true/false, "strategy": "video"|"article"|"abort", "reason": "..."}
 
-Rules:
-- If transcript + visual summary have real content about a topic → proceed: true, strategy: "video"
-- If only caption has real content (image post, failed video extract) → proceed: true, strategy: "article"
-- If content is a login page, auth wall, error page, rate limit page, cookie consent, or CAPTCHA → proceed: false, strategy: "abort"
-- If all fields are empty or trivially short (<10 chars each) → proceed: false, strategy: "abort"
-- If content is clearly platform UI (navigation menus, footer links, app store prompts) not user content → proceed: false, strategy: "abort"
-- reason: one sentence explaining your decision, written for the end user (e.g. "Platform is blocking access — try again in a minute")`;
+DEFAULT IS PROCEED. The agentic verdict pipeline downstream can handle thin or sparse content fine — it does its own web research to fill gaps. Don't second-guess content quality. The only job here is to detect broken scrapes, not to judge content.
+
+ALWAYS proceed (return proceed: true, strategy: "video"):
+- Transcript or visuals have any real text — even just a sentence or two.
+- Caption has any topic-related text — even short.
+- ANY of the three fields has content the verdict pipeline could plausibly work with.
+- Default for anything ambiguous.
+
+ONLY abort (return proceed: false, strategy: "abort") if the scrape OBVIOUSLY captured a non-content page:
+- "Login to view this content" / "Sign in to continue" / "This account is private"
+- CAPTCHA / "Are you human?" / Cloudflare challenge text
+- Rate limit / "Too many requests" / "Try again later"
+- Cookie consent banner alone with no actual post text
+- Pure platform UI (nav menus, footer, "Download our app") with no user content
+- 404 / "Page not found" / "This post is no longer available"
+
+Choose strategy: "article" instead of abort when only the caption has content (image post, failed video extract) but the caption itself is real text.
+
+reason: one sentence written for the end user. Only matters when proceed is false.`;
 
 /**
  * Evaluate scraped content quality before generating a verdict.
@@ -41,13 +53,16 @@ export async function evaluateContent(input: QualityInput): Promise<QualityDecis
   const captionLen = input.caption?.trim().length || 0;
   const visualLen = input.visualSummary?.trim().length || 0;
 
-  if (transcriptLen > 100 && visualLen > 50) {
-    // Strong signal — both audio and visual have real content
-    console.log(`[gate] Fast path: transcript=${transcriptLen} visual=${visualLen} → proceed`);
-    return { proceed: true, strategy: "video", reason: "Strong content signal" };
+  // Loose fast-path: any one substantial signal is enough — the verdict
+  // pipeline now has its own web research and can fill gaps. Don't second-
+  // guess thin content. (Apr 26 — same philosophy as removing the vertical
+  // filter: stop blocking, let the downstream pipeline handle it.)
+  if (transcriptLen > 50 || visualLen > 50 || captionLen > 30) {
+    console.log(`[gate] Fast path: any-signal proceed (transcript=${transcriptLen} visual=${visualLen} caption=${captionLen})`);
+    return { proceed: true, strategy: "video", reason: "Has content" };
   }
 
-  // If everything is empty, fast abort — no need for AI
+  // If everything is genuinely empty, fast abort
   if (transcriptLen === 0 && captionLen === 0 && visualLen === 0) {
     console.log(`[gate] Fast path: all empty → abort`);
     return { proceed: false, strategy: "abort", reason: "No content extracted from this link." };
