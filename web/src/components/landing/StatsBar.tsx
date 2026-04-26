@@ -1,96 +1,128 @@
 "use client";
 
 /*
- * StatsBar — Manus "Warm Signal" port (Apr 26)
- * White strip with warm dividers, orange accent numbers + count-up.
+ * StatsBar — Manus "Dark Signal" port (Apr 26)
+ * Dark #111111 strip with 4 mono numbers + count-up.
  */
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 
 const STATS = [
-  { value: 12400, suffix: "+", label: "Videos analyzed" },
-  { value: 2400, suffix: "+", label: "Creators & founders" },
-  { value: 3800, suffix: "+", label: "Tools discovered" },
-  { value: 58, suffix: "s", label: "Avg. analysis time" },
+  { value: 2765, suffix: "+", label: "Videos analysed" },
+  { value: 1088, suffix: "+", label: "Creators using it" },
+  { value: 816, suffix: "+", label: "Tools discovered" },
+  { value: 12, suffix: "s", label: "Avg. analysis time" },
 ];
 
-function useCountUp(target: number, duration: number, active: boolean) {
+function useCountUp(target: number, duration: number, start: boolean) {
   const [count, setCount] = useState(0);
   useEffect(() => {
-    if (!active) return;
-    let start = 0;
-    const step = target / (duration / 16);
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [active, target, duration]);
+    if (!start) return;
+    let startTime: number;
+    const step = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [target, duration, start]);
   return count;
 }
 
-function StatItem({ value, suffix, label }: { value: number; suffix: string; label: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(false);
-  const count = useCountUp(value, 1200, active);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setActive(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
+function StatItem({
+  value,
+  suffix,
+  label,
+  delay,
+  start,
+}: {
+  value: number;
+  suffix: string;
+  label: string;
+  delay: number;
+  start: boolean;
+}) {
+  const count = useCountUp(value, 1600, start);
   return (
-    <div ref={ref} className="text-center px-6 py-5">
-      <div
-        className="text-2xl sm:text-3xl text-[#1a1a1a] mb-0.5 tabular-nums"
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center gap-1 px-6 py-5"
+    >
+      <span
         style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontWeight: 800,
+          fontFamily: "'JetBrains Mono', monospace",
+          fontWeight: 600,
+          fontSize: "clamp(1.4rem, 3vw, 1.9rem)",
+          color: "#FAFAFA",
           letterSpacing: "-0.02em",
         }}
       >
         {count.toLocaleString()}
-        <span style={{ color: "#F97316" }}>{suffix}</span>
-      </div>
-      <div
-        className="text-xs text-slate-400 uppercase tracking-widest"
-        style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 500 }}
+        {suffix}
+      </span>
+      <span
+        style={{
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 500,
+          fontSize: "11px",
+          color: "#71717A",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
       >
         {label}
-      </div>
-    </div>
+      </span>
+    </motion.div>
   );
 }
 
 export default function StatsBar() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.3 },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="border-y" style={{ borderColor: "#f0ede8", background: "white" }}>
+    <section
+      ref={ref}
+      style={{
+        background: "#111111",
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
       <div className="cd-container">
-        <div
-          className="grid grid-cols-2 sm:grid-cols-4 divide-x"
-          style={{ borderColor: "#f0ede8" }}
-        >
-          {STATS.map((s) => (
-            <StatItem key={s.label} {...s} />
+        <div className="grid grid-cols-2 sm:grid-cols-4">
+          {STATS.map((stat, i) => (
+            <div
+              key={i}
+              style={{
+                borderRight: i < STATS.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
+              }}
+            >
+              <StatItem
+                value={stat.value}
+                suffix={stat.suffix}
+                label={stat.label}
+                delay={i * 0.08}
+                start={visible}
+              />
+            </div>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

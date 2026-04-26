@@ -1,212 +1,1018 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
-import { IconSignal, IconBrain, IconLightning, IconCheck, IconDashboard, IconEye } from "./Icons";
+/*
+ * DashboardPreviewSection — Manus "Dark Signal" port (Apr 26)
+ *
+ * Phase 1: animated link-sent → typing → analysis card → TRY THIS ONCE → auto-add task → dashboard updates
+ * Phase 2: dashboard becomes interactive (sidebar tabs, expand cards, add tasks, chat)
+ */
 
-function BotButtons() {
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const FEED_ITEMS = [
+  {
+    id: "ig-1",
+    platform: "Instagram",
+    platformColor: "#E1306C",
+    title: "Kimi K2.6 — Moonshot AI's new coding model",
+    summary: "SWE-Bench Pro 58.6. Top-ranked on agentic coding benchmarks. Free tier available.",
+    action: "Try it at kimi.com — drop a bug and see if it catches what Cursor misses.",
+    tags: ["AI Tools", "Coding"],
+    time: "just now",
+    isNew: true,
+    searchQuery: "Kimi K2 coding model benchmark",
+  },
+  {
+    id: "li-1",
+    platform: "LinkedIn",
+    platformColor: "#0A66C2",
+    title: "How I cut my research time from 4 hours to 20 minutes",
+    summary:
+      "Stopped reading everything. Started routing links through AI that extracts only decision-relevant parts. The workflow is embarrassingly simple.",
+    action: "Pick 3 links you've been meaning to read. Send them to Mr Context. See what you actually needed to know.",
+    tags: ["Productivity", "AI Workflow"],
+    time: "1h ago",
+    isNew: false,
+    searchQuery: "AI research workflow productivity",
+  },
+  {
+    id: "x-1",
+    platform: "X",
+    platformColor: "#FAFAFA",
+    title: "Caveman — open-source AI output compressor",
+    summary: "Rewrites verbose AI coding agent outputs into terse English. ~75% token reduction.",
+    action: "github.com/JuliusBrussee/caveman — add to your Claude Code setup.",
+    tags: ["Open Source", "Dev Tools"],
+    time: "3h ago",
+    isNew: false,
+    searchQuery: "Caveman AI output compressor open source",
+  },
+];
+
+const PLATFORM_ICONS: Record<string, React.ReactNode> = {
+  Instagram: (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="#E1306C">
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+    </svg>
+  ),
+  LinkedIn: (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="#0A66C2">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+    </svg>
+  ),
+  X: (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="#A1A1AA">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.259 5.63L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+    </svg>
+  ),
+};
+
+function TypingDots() {
   return (
-    <>
-      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: "#2b3a4a", color: "#8ba4b8", fontSize: 9 }}><IconEye size={8} color="#8ba4b8" /> View</div>
-      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: "#2b3a4a", color: "#8ba4b8", fontSize: 9 }}><IconDashboard size={8} color="#8ba4b8" /> Dashboard</div>
-      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: "#2b3a4a", color: "#8ba4b8", fontSize: 9 }}>
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#8ba4b8" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> Notion
-      </div>
-    </>
-  );
-}
-
-const MR_CONTEXT_LOGO = "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/mr-context-logo-PGbrznR2gppkFjPKsZGnX6.webp";
-
-function InstagramIcon() {
-  return (
-    <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" }}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+    <div className="flex items-center gap-1 px-3 py-2">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ background: "#A1A1AA" }}
+          animate={{ opacity: [0.3, 1, 0.3] }}
+          transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
     </div>
   );
 }
 
-function XIcon() {
+function TelegramPanel({ step, item }: { step: number; item: typeof FEED_ITEMS[0] }) {
   return (
-    <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#000" }}>
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-    </div>
-  );
-}
+    <div
+      className="flex flex-col h-full rounded-xl overflow-hidden"
+      style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div
+        className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", background: "#0a0a0a" }}
+      >
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ background: "#F97316" }}
+        >
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+            <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div>
+          <p className="text-white font-semibold text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>
+            Mr Context
+          </p>
+          <p className="text-[11px]" style={{ color: "#52525B" }}>bot</p>
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ background: "#22c55e" }} />
+          <span className="text-[11px]" style={{ color: "#52525B" }}>online</span>
+        </div>
+      </div>
 
-function TelegramPanel({ step }: { step: number }) {
-  return (
-    <div className="flex flex-col h-full" style={{ background: "#17212b" }}>
-      <div className="flex items-center justify-between px-3 py-2.5 flex-shrink-0" style={{ background: "#232e3c", borderBottom: "1px solid #1a2533" }}>
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0" style={{ border: "2px solid #F97316" }}><img src={MR_CONTEXT_LOGO} alt="Mr Context" className="w-full h-full object-cover" /></div>
-          <div><div className="font-semibold" style={{ fontSize: 13, color: "white" }}>Mr Context</div><div style={{ fontSize: 10, color: "#6c8ea4" }}>bot</div></div>
-        </div>
-        <div className="flex items-center gap-3">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6c8ea4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6c8ea4" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col justify-end gap-2 px-3 py-3 overflow-hidden">
-        <div className="flex items-end gap-2">
-          <div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div>
-          <div className="rounded-2xl rounded-bl-sm px-3 py-2.5" style={{ background: "#232e3c", maxWidth: "88%" }}>
-            <div style={{ fontSize: 10.5, color: "#F97316", fontWeight: 700, marginBottom: 3 }}><span className="inline-flex items-center gap-1"><IconSignal size={11} color="#F97316" /> Claude &quot;7 Days of Work in 1 Hour&quot;</span></div>
-            <div style={{ fontSize: 10, color: "#8ba4b8", lineHeight: 1.5 }}><span className="inline-flex items-center gap-1"><IconBrain size={10} color="#8ba4b8" /> Generic productivity hype. Zero specifics.</span></div>
-            <div style={{ fontSize: 10, color: "#8ba4b8", lineHeight: 1.5 }}><span className="inline-flex items-center gap-1"><IconLightning size={10} color="#8ba4b8" /> Skip it.</span></div>
-            <div style={{ fontSize: 9, color: "#4a6070", marginTop: 4 }}>9:28 PM</div>
-            <div className="flex gap-1.5 mt-2"><BotButtons /></div>
-          </div>
-        </div>
-        <AnimatePresence>{step >= 1 && (<motion.div key="user-link" initial={{ opacity: 0, y: 8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.25 }} className="flex justify-end"><div className="px-3 py-2 rounded-2xl rounded-br-sm" style={{ background: "#2b5278", maxWidth: "82%" }}><div style={{ fontSize: 10, color: "#a8c8e8", wordBreak: "break-all", lineHeight: 1.4 }}>instagram.com/reel/C8x4mKjL...</div><div style={{ fontSize: 9, color: "#4a6070", textAlign: "right", marginTop: 2 }}>10:51 PM ✓✓</div></div></motion.div>)}</AnimatePresence>
-        <AnimatePresence>{step >= 2 && (<motion.div key="on-it" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex justify-center"><div style={{ fontSize: 9.5, color: "#4a6070" }}>On it — about 30 seconds. <span style={{ color: "#6c8ea4" }}>10:51 PM</span></div></motion.div>)}</AnimatePresence>
-        <AnimatePresence>{step === 2 && (<motion.div key="typing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex items-end gap-2"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="px-3 py-2.5 rounded-2xl rounded-bl-sm" style={{ background: "#232e3c" }}><div className="flex gap-1 items-center" style={{ height: 14 }}>{[0, 0.18, 0.36].map(d => (<motion.div key={d} className="w-1.5 h-1.5 rounded-full" style={{ background: "#6c8ea4" }} animate={{ y: [0, -4, 0] }} transition={{ duration: 0.55, repeat: Infinity, delay: d }} />))}</div></div></motion.div>)}</AnimatePresence>
-        <AnimatePresence>{step >= 3 && (<motion.div key="bot-card" initial={{ opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="flex items-end gap-2"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="rounded-2xl rounded-bl-sm px-3 py-2.5" style={{ background: "#232e3c", maxWidth: "88%" }}><div style={{ fontSize: 10.5, color: "#F97316", fontWeight: 700, marginBottom: 4 }}><span className="inline-flex items-center gap-1"><IconSignal size={11} color="#F97316" /> Claude Code: sub-agents that ship</span></div>{step >= 4 ? (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}><div style={{ fontSize: 10, color: "#8ba4b8", lineHeight: 1.55, marginBottom: 2 }}><span className="inline-flex items-center gap-1"><IconBrain size={10} color="#8ba4b8" /> Solid. CLAUDE.md at 14:30 is the only part worth rewinding.</span></div><div style={{ fontSize: 10, color: "#e8f0f7", lineHeight: 1.55 }}><span className="inline-flex items-center gap-1"><IconLightning size={10} color="#e8f0f7" /> This is your stack — try it on the next build.</span></div><div style={{ fontSize: 9, color: "#4a6070", marginTop: 4 }}>10:51 PM</div><div className="flex gap-1.5 mt-2"><BotButtons /></div></motion.div>) : (<div className="space-y-1.5">{[78, 92, 55].map((w, i) => (<motion.div key={i} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.12 }} className="h-2 rounded" style={{ background: "#2b3a4a", width: `${w}%` }} />))}</div>)}</div></motion.div>)}</AnimatePresence>
-        <AnimatePresence>{step >= 6 && (<motion.div key="confirm" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="flex items-end gap-2"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="px-3 py-2 rounded-2xl rounded-bl-sm" style={{ background: "#232e3c", fontSize: 10.5, color: "#e8f0f7" }}><span className="inline-flex items-center gap-1.5"><IconCheck size={11} color="#4ade80" /> Added to your tasks.</span></div></motion.div>)}</AnimatePresence>
-      </div>
-      <div className="px-3 pb-3 pt-1 flex-shrink-0">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: "#232e3c" }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4a6070" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-          <span className="flex-1 text-xs truncate" style={{ color: step === 1 ? "#a8c8e8" : "#3d5263" }}>{step === 0 ? (<motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.4, repeat: Infinity }}>Write a message...</motion.span>) : step === 1 ? "instagram.com/reel/C8x4mKjL..." : "Write a message..."}</span>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4a6070" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-          <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: step === 1 ? "#F97316" : "#2b3a4a" }}><svg width="11" height="11" viewBox="0 0 24 24" fill={step === 1 ? "white" : "#4a6070"}><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DashboardFeed({ step, taskCount, newCardVisible, newCardTaskAdded }: { step: number; taskCount: number; newCardVisible: boolean; newCardTaskAdded: boolean }) {
-  return (
-    <div className="flex h-full" style={{ background: "white" }}>
-      <div className="hidden lg:flex flex-col flex-shrink-0" style={{ width: 160, background: "#faf8f5", borderRight: "1px solid #f0ece6", padding: "12px 0" }}>
-        <div className="flex items-center gap-2 px-3 pb-3 mb-2" style={{ borderBottom: "1px solid #f0ece6" }}><div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#F97316" }}><svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div><span className="font-bold text-xs" style={{ color: "#1a1a1a" }}>ContextDrop</span></div>
-        <div className="flex flex-col gap-0.5 px-2">
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg" style={{ background: "#fff7ed" }}><IconDashboard size={13} color="#F97316" /><span className="text-xs font-semibold" style={{ color: "#F97316" }}>My Feed</span></div>
-          <div className="flex items-center justify-between px-2 py-1.5 rounded-lg"><div className="flex items-center gap-2"><IconCheck size={13} color="#6b7280" /><span className="text-xs" style={{ color: "#374151" }}>Tasks</span></div><motion.span key={taskCount} initial={{ scale: 1.6, color: "#F97316" }} animate={{ scale: 1, color: "#F97316" }} transition={{ duration: 0.3, type: "spring", stiffness: 300 }} className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#fff7ed", minWidth: 18, textAlign: "center" }}>{taskCount}</motion.span></div>
-          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg"><IconBrain size={13} color="#6b7280" /><span className="text-xs" style={{ color: "#374151" }}>Ask AI</span><span className="ml-auto text-xs px-1.5 py-0.5 rounded-full text-white" style={{ background: "#F97316", fontSize: 8 }}>New</span></div>
-        </div>
-        <div className="mt-auto px-3"><div className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-white text-xs font-semibold" style={{ background: "#F97316" }}><IconEye size={12} color="white" /> Send link</div></div>
-      </div>
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <div className="flex items-center gap-1.5 px-3 py-2 flex-shrink-0" style={{ borderBottom: "1px solid #f0ece6" }}>
-          {["All", "Instagram", "TikTok", "X"].map(tab => (<button key={tab} className="px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap" style={tab === "All" ? { background: "#F97316", color: "white" } : { background: "#f5f5f5", color: "#6b7280" }}>{tab}</button>))}
-          <button className="ml-auto px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap hidden sm:block" style={{ background: "#fff7ed", color: "#F97316", border: "1px solid #fed7aa" }}>+ Analyse new</button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2">
-          <AnimatePresence>{newCardVisible && (<motion.div key="new-card" initial={{ opacity: 0, y: -14, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} className="rounded-xl p-3" style={{ background: "white", border: "1.5px solid #fed7aa", boxShadow: "0 2px 14px rgba(249,115,22,0.1)" }}>
-            <div className="flex items-center gap-2 mb-2"><InstagramIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>INSTAGRAM</span></div>
-            {step >= 4 ? (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}><div className="font-bold text-sm mb-1 leading-snug" style={{ color: "#1a1a1a" }}>Claude Code: sub-agents that ship</div><div className="text-xs mb-2 leading-relaxed" style={{ color: "#6b7280", fontStyle: "italic" }}>CLAUDE.md at 14:30 is the only part worth rewinding. Skip the intro.</div><div className="flex flex-wrap gap-1 mb-2">{["claude code", "ai dev"].map(t => <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#f5f5f5", color: "#6b7280" }}>{t}</span>)}</div></motion.div>) : (<div className="space-y-1.5 mb-2">{[70, 88, 52].map((w, i) => (<motion.div key={i} animate={{ opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15 }} className="h-2.5 rounded" style={{ background: "#f0ece6", width: `${w}%` }} />))}</div>)}
-            {step >= 4 && (<motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.3 }} className="flex items-center gap-2"><motion.button animate={step === 5 ? { scale: [1, 1.06, 1], boxShadow: ["0 0 0 0 rgba(249,115,22,0)", "0 0 0 5px rgba(249,115,22,0.22)", "0 0 0 0 rgba(249,115,22,0)"] } : {}} transition={{ duration: 0.5 }} className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={newCardTaskAdded ? { background: "#dcfce7", color: "#16a34a", border: "1px solid #bbf7d0" } : { background: "#fff7ed", color: "#F97316", border: "1px solid #fed7aa" }}><span className="inline-flex items-center gap-1"><IconCheck size={12} color={newCardTaskAdded ? "#16a34a" : "#F97316"} />{newCardTaskAdded ? "Added to tasks" : "Add to tasks"}</span></motion.button><button className="px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a" }}><span className="inline-flex items-center gap-1"><IconLightning size={12} color="#d97706" /> Look closer</span></button></motion.div>)}
-            <AnimatePresence>{newCardTaskAdded && (<motion.div initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: "auto", marginTop: 8 }} transition={{ duration: 0.3 }} className="flex items-center gap-2 px-3 py-2 rounded-lg overflow-hidden" style={{ background: "#fff7ed", borderLeft: "3px solid #F97316" }}><input type="checkbox" className="w-3 h-3 flex-shrink-0" style={{ accentColor: "#F97316" }} readOnly /><span className="text-xs" style={{ color: "#374151" }}>Set up CLAUDE.md in every new project</span></motion.div>)}</AnimatePresence>
-          </motion.div>)}</AnimatePresence>
-          <div className="rounded-xl p-3" style={{ background: "white", border: "1px solid #f0ece6" }}><div className="flex items-center gap-2 mb-1.5"><XIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>X / TWITTER</span></div><div className="font-bold text-xs mb-1 leading-snug" style={{ color: "#1a1a1a" }}>The Cursor AI tab-completion setup that saved me hours</div><div className="text-xs mb-1.5 leading-relaxed" style={{ color: "#6b7280", fontStyle: "italic" }}>Tab completion + inline chat = 3x faster reviews.</div><div className="flex gap-1">{["cursor", "workflow"].map(t => <span key={t} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "#f5f5f5", color: "#6b7280" }}>{t}</span>)}</div></div>
-          <div className="rounded-xl p-3" style={{ background: "white", border: "1px solid #f0ece6" }}><div className="flex items-center gap-2 mb-1.5"><InstagramIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>INSTAGRAM</span></div><div className="font-bold text-xs mb-1 leading-snug" style={{ color: "#1a1a1a" }}>Why most SaaS pricing pages fail</div><div className="text-xs leading-relaxed" style={{ color: "#6b7280", fontStyle: "italic" }}>The anchoring stat is worth 30 seconds. Skip the rest.</div></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// — Mobile Preview (vertical stack) —
-function MobileDashboardPreview({ step, taskCount, newCardTaskAdded }: { step: number; taskCount: number; newCardTaskAdded: boolean }) {
-  return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid #e5e0d8", boxShadow: "0 8px 40px rgba(0,0,0,0.08)" }}>
-      <div className="flex items-center gap-2 px-3 py-2" style={{ background: "#f5f0eb", borderBottom: "1px solid #e5e0d8" }}>
-        <div className="flex gap-1"><div className="w-2.5 h-2.5 rounded-full" style={{ background: "#ff5f57" }} /><div className="w-2.5 h-2.5 rounded-full" style={{ background: "#febc2e" }} /><div className="w-2.5 h-2.5 rounded-full" style={{ background: "#28c840" }} /></div>
-        <div className="flex-1 mx-2"><div className="mx-auto max-w-[180px] px-2 py-0.5 rounded-full text-center" style={{ background: "white", color: "#9ca3af", fontSize: 9, border: "1px solid #e5e0d8" }}>app.contextdrop.com</div></div>
-      </div>
-      <div style={{ position: "relative" }}>
-        <motion.div animate={{ height: step >= 3 ? 220 : 340 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} style={{ overflow: "hidden", background: "#17212b" }}>
-          <div className="flex items-center justify-between px-3 py-2 flex-shrink-0" style={{ background: "#232e3c", borderBottom: "1px solid #1a2533" }}>
-            <div className="flex items-center gap-2"><div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0" style={{ border: "2px solid #F97316" }}><img src={MR_CONTEXT_LOGO} alt="Mr Context" className="w-full h-full object-cover" /></div><div><div className="font-semibold" style={{ fontSize: 12, color: "white" }}>Mr Context</div><div style={{ fontSize: 9, color: "#6c8ea4" }}>bot</div></div></div>
-          </div>
-          <div className="flex flex-col gap-2.5 px-3 py-3 overflow-hidden">
-            <div className="flex items-end gap-1.5"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="rounded-2xl rounded-bl-sm px-2.5 py-2" style={{ background: "#232e3c", maxWidth: "88%" }}><div style={{ fontSize: 9.5, color: "#F97316", fontWeight: 700, marginBottom: 2 }}><span className="inline-flex items-center gap-1"><IconSignal size={9} color="#F97316" /> Claude &quot;7 Days in 1 Hour&quot;</span></div><div style={{ fontSize: 9, color: "#8ba4b8", lineHeight: 1.5 }}><span className="inline-flex items-center gap-1"><IconBrain size={9} color="#8ba4b8" /> Generic hype. Zero specifics.</span></div><div style={{ fontSize: 8, color: "#4a6070", marginTop: 3 }}>9:28 PM</div></div></div>
-            <AnimatePresence>{step >= 1 && (<motion.div key="mob-user-link" initial={{ opacity: 0, y: 6, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.2 }} className="flex justify-end"><div className="px-2.5 py-1.5 rounded-2xl rounded-br-sm" style={{ background: "#2b5278", maxWidth: "82%" }}><div style={{ fontSize: 9, color: "#a8c8e8", wordBreak: "break-all", lineHeight: 1.4 }}>instagram.com/reel/C8x4mKjL...</div><div style={{ fontSize: 8, color: "#4a6070", textAlign: "right", marginTop: 2 }}>10:51 PM ✓✓</div></div></motion.div>)}</AnimatePresence>
-            <AnimatePresence>{step >= 2 && (<motion.div key="mob-on-it" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex justify-center"><div style={{ fontSize: 8.5, color: "#4a6070" }}>On it — about 30 seconds.</div></motion.div>)}</AnimatePresence>
-            <AnimatePresence>{step === 2 && (<motion.div key="mob-typing" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="flex items-end gap-1.5"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="px-2.5 py-2 rounded-2xl rounded-bl-sm" style={{ background: "#232e3c" }}><div className="flex gap-1 items-center" style={{ height: 12 }}>{[0, 0.18, 0.36].map(d => (<motion.div key={d} className="w-1.5 h-1.5 rounded-full" style={{ background: "#6c8ea4" }} animate={{ y: [0, -3, 0] }} transition={{ duration: 0.55, repeat: Infinity, delay: d }} />))}</div></div></motion.div>)}</AnimatePresence>
-            <AnimatePresence>{step >= 3 && (<motion.div key="mob-bot-card" initial={{ opacity: 0, y: 8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className="flex items-end gap-1.5"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="rounded-2xl rounded-bl-sm px-2.5 py-2" style={{ background: "#232e3c", maxWidth: "88%" }}><div style={{ fontSize: 9.5, color: "#F97316", fontWeight: 700, marginBottom: 3 }}><span className="inline-flex items-center gap-1"><IconSignal size={9} color="#F97316" /> Claude Code: sub-agents that ship</span></div>{step >= 4 ? (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}><div style={{ fontSize: 9, color: "#8ba4b8", lineHeight: 1.5, marginBottom: 2 }}><span className="inline-flex items-center gap-1"><IconBrain size={9} color="#8ba4b8" /> CLAUDE.md at 14:30 is the only part worth rewinding.</span></div><div style={{ fontSize: 9, color: "#e8f0f7", lineHeight: 1.5 }}><span className="inline-flex items-center gap-1"><IconLightning size={9} color="#e8f0f7" /> This is your stack — try it on the next build.</span></div><div style={{ fontSize: 8, color: "#4a6070", marginTop: 3 }}>10:51 PM</div></motion.div>) : (<div className="space-y-1">{[78, 92, 55].map((w, i) => (<motion.div key={i} animate={{ opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.12 }} className="h-1.5 rounded" style={{ background: "#2b3a4a", width: `${w}%` }} />))}</div>)}</div></motion.div>)}</AnimatePresence>
-            <AnimatePresence>{step >= 6 && (<motion.div key="mob-confirm" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="flex items-end gap-1.5"><div className="w-5 h-5 rounded-full overflow-hidden flex-shrink-0"><img src={MR_CONTEXT_LOGO} alt="" className="w-full h-full object-cover" /></div><div className="px-2.5 py-1.5 rounded-2xl rounded-bl-sm" style={{ background: "#232e3c", fontSize: 9.5, color: "#e8f0f7" }}><span className="inline-flex items-center gap-1.5"><IconCheck size={10} color="#4ade80" /> Added to your tasks.</span></div></motion.div>)}</AnimatePresence>
+      <div className="flex-1 p-4 flex flex-col gap-3 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: step >= 0 ? 1 : 0, x: step >= 0 ? 0 : 20 }}
+          transition={{ duration: 0.4 }}
+          className="flex justify-end"
+        >
+          <div className="px-3 py-2 rounded-xl rounded-tr-sm max-w-[85%]" style={{ background: "#F97316" }}>
+            <p className="text-[11px] text-white break-all" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+              {item.platform === "Instagram"
+                ? "instagram.com/reel/abc123xyz"
+                : item.platform === "LinkedIn"
+                  ? "linkedin.com/posts/johndoe-abc"
+                  : "x.com/user/status/123456"}
+            </p>
           </div>
         </motion.div>
-        <AnimatePresence>{step >= 3 && (<motion.div key="mob-dashboard" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} style={{ background: "white", borderTop: "1px solid #e5e0d8" }}>
-          <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: "1px solid #f0ece6", background: "#faf8f5" }}>
-            <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: "#F97316" }}><svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></div>
-            <span className="font-bold text-xs" style={{ color: "#1a1a1a" }}>ContextDrop</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: "#fff7ed", color: "#F97316" }}>My Feed</span>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: "#f5f5f5", color: "#6b7280" }}>Tasks <motion.span key={taskCount} initial={{ scale: 1.5, color: "#F97316" }} animate={{ scale: 1, color: "#F97316" }} transition={{ duration: 0.3, type: "spring" }} className="ml-1 font-bold" style={{ color: "#F97316" }}>{taskCount}</motion.span></span>
-            </div>
-          </div>
-          <div className="p-2.5">
-            <motion.div initial={{ opacity: 0, y: -8, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.1 }} className="rounded-xl p-2.5" style={{ background: "white", border: "1.5px solid #fed7aa", boxShadow: "0 2px 12px rgba(249,115,22,0.1)" }}>
-              <div className="flex items-center gap-1.5 mb-1.5"><InstagramIcon /><span className="text-xs font-semibold tracking-wide" style={{ color: "#9ca3af" }}>INSTAGRAM</span></div>
-              {step >= 4 ? (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }}><div className="font-bold text-xs mb-1 leading-snug" style={{ color: "#1a1a1a" }}>Claude Code: sub-agents that ship</div><div className="text-xs mb-2" style={{ color: "#6b7280", fontStyle: "italic", lineHeight: 1.5 }}>CLAUDE.md at 14:30 is the only part worth rewinding.</div><div className="flex items-center gap-2"><motion.button animate={step === 5 ? { scale: [1, 1.06, 1], boxShadow: ["0 0 0 0 rgba(249,115,22,0)", "0 0 0 4px rgba(249,115,22,0.22)", "0 0 0 0 rgba(249,115,22,0)"] } : {}} transition={{ duration: 0.5 }} className="px-2.5 py-1 rounded-lg text-xs font-semibold" style={newCardTaskAdded ? { background: "#dcfce7", color: "#16a34a", border: "1px solid #bbf7d0" } : { background: "#fff7ed", color: "#F97316", border: "1px solid #fed7aa" }}><span className="inline-flex items-center gap-1"><IconCheck size={11} color={newCardTaskAdded ? "#16a34a" : "#F97316"} />{newCardTaskAdded ? "Added" : "Add to tasks"}</span></motion.button><button className="px-2.5 py-1 rounded-lg text-xs font-semibold" style={{ background: "#fffbeb", color: "#d97706", border: "1px solid #fde68a" }}><span className="inline-flex items-center gap-1"><IconLightning size={11} color="#d97706" /> Look closer</span></button></div>
-              <AnimatePresence>{newCardTaskAdded && (<motion.div initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: "auto", marginTop: 6 }} transition={{ duration: 0.3 }} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg overflow-hidden" style={{ background: "#fff7ed", borderLeft: "3px solid #F97316" }}><input type="checkbox" className="w-3 h-3 flex-shrink-0" style={{ accentColor: "#F97316" }} readOnly /><span className="text-xs" style={{ color: "#374151" }}>Set up CLAUDE.md in every new project</span></motion.div>)}</AnimatePresence></motion.div>) : (<div className="space-y-1.5">{[70, 88, 52].map((w, i) => (<motion.div key={i} animate={{ opacity: [0.35, 0.7, 0.35] }} transition={{ duration: 1.1, repeat: Infinity, delay: i * 0.15 }} className="h-2 rounded" style={{ background: "#f0ece6", width: `${w}%` }} />))}</div>)}
+
+        <AnimatePresence>
+          {step === 1 && (
+            <motion.div
+              initial={{ opacity: 0, x: -16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex items-start gap-2"
+            >
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: "#F97316" }}
+              >
+                <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div
+                className="rounded-xl rounded-tl-sm"
+                style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                <TypingDots />
+              </div>
             </motion.div>
-          </div>
-        </motion.div>)}</AnimatePresence>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {step >= 2 && (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, x: -20, y: 10 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-start gap-2"
+            >
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
+                style={{ background: "#F97316" }}
+              >
+                <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
+                  <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div
+                className="rounded-xl rounded-tl-sm p-3 flex-1 min-w-0"
+                style={{
+                  background: "#1a1a1a",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderLeft: `3px solid ${item.platformColor}`,
+                }}
+              >
+                <div className="flex items-center gap-1.5 mb-2">
+                  {PLATFORM_ICONS[item.platform]}
+                  <span
+                    className="text-[10px] uppercase tracking-wider font-medium"
+                    style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+                  >
+                    {item.platform}
+                  </span>
+                </div>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: step >= 3 ? 1 : 0 }}
+                  transition={{ duration: 0.4, delay: 0.1 }}
+                  className="font-semibold mb-1.5 leading-snug"
+                  style={{ color: "#FAFAFA", fontSize: "12px", fontFamily: "'Inter', sans-serif" }}
+                >
+                  {item.title}
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: step >= 3 ? 1 : 0 }}
+                  transition={{ duration: 0.4, delay: 0.2 }}
+                  className="mb-2"
+                  style={{ color: "#A1A1AA", fontSize: "11px", lineHeight: 1.6, fontFamily: "'Inter', sans-serif" }}
+                >
+                  {item.summary}
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: step >= 4 ? 1 : 0, y: step >= 4 ? 0 : 8 }}
+                  transition={{ duration: 0.4 }}
+                  className="rounded-lg p-2.5 mb-2"
+                  style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}
+                >
+                  <div
+                    className="text-[9px] font-semibold uppercase tracking-widest mb-1"
+                    style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+                  >
+                    TRY THIS ONCE
+                  </div>
+                  <p className="text-[11px] leading-relaxed" style={{ color: "#D4D4D8" }}>{item.action}</p>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: step >= 4 ? 1 : 0 }}
+                  transition={{ duration: 0.3, delay: 0.3 }}
+                  className="flex gap-2"
+                >
+                  <button
+                    className="text-[10px] px-2.5 py-1 rounded-md font-medium"
+                    style={{
+                      background: "rgba(249,115,22,0.12)",
+                      color: "#F97316",
+                      border: "1px solid rgba(249,115,22,0.25)",
+                    }}
+                  >
+                    + Add to tasks
+                  </button>
+                  <button
+                    className="text-[10px] px-2.5 py-1 rounded-md font-medium"
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      color: "#71717A",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                  >
+                    Chat with it ↗
+                  </button>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-export default function DashboardPreviewSection() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(sectionRef, { once: false, margin: "-80px" });
-  const [step, setStep] = useState(0);
-  const [taskCount, setTaskCount] = useState(4);
-  const [newCardVisible, setNewCardVisible] = useState(false);
-  const [newCardTaskAdded, setNewCardTaskAdded] = useState(false);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const clear = () => { timers.current.forEach(clearTimeout); timers.current = []; };
-  const after = (fn: () => void, ms: number) => { const id = setTimeout(fn, ms); timers.current.push(id); };
-  const runSequence = () => {
-    clear(); setStep(0); setTaskCount(4); setNewCardVisible(false); setNewCardTaskAdded(false);
-    after(() => setStep(1), 800);
-    after(() => setStep(2), 1700);
-    after(() => { setStep(3); setNewCardVisible(true); }, 3000);
-    after(() => setStep(4), 4000);
-    after(() => setStep(5), 5200);
-    after(() => { setStep(6); setNewCardTaskAdded(true); setTaskCount(5); }, 6000);
-    after(runSequence, 10000);
-  };
+type DashView = "feed" | "tasks" | "chat";
+
+function InteractiveDashboard({
+  animStep,
+  animItem,
+}: {
+  animStep: number;
+  animItem: typeof FEED_ITEMS[0];
+}) {
+  const [view, setView] = useState<DashView>("feed");
+  const [tasks, setTasks] = useState<string[]>([]);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [chatItem, setChatItem] = useState<typeof FEED_ITEMS[0] | null>(null);
+  const [chatInput, setChatInput] = useState("");
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const animTaskAdded = animStep >= 7;
+  const showNewCard = animStep >= 5;
+
   useEffect(() => {
-    if (isInView) { const id = setTimeout(runSequence, 400); timers.current.push(id); }
-    else { clear(); setStep(0); setTaskCount(4); setNewCardVisible(false); setNewCardTaskAdded(false); }
-    return clear;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isInView]);
-  const dashboardBlurred = step < 3;
+    if (animTaskAdded && !tasks.includes(animItem.id)) {
+      setTasks((prev) => [...prev, animItem.id]);
+    }
+  }, [animTaskAdded, animItem.id, tasks]);
+
+  const addTask = useCallback((id: string) => {
+    setTasks((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }, []);
+
+  const [chatSearchState, setChatSearchState] = useState<"idle" | "searching" | "done">("idle");
+
+  const openChat = useCallback((item: typeof FEED_ITEMS[0]) => {
+    setChatItem(item);
+    setChatSearchState("idle");
+    setView("chat");
+    setTimeout(() => {
+      setChatSearchState("searching");
+      setTimeout(() => setChatSearchState("done"), 2000);
+    }, 600);
+  }, []);
+
+  const sendChat = useCallback(() => {
+    if (!chatInput.trim() || !chatItem) return;
+    setChatInput("");
+    setChatSearchState("searching");
+    setTimeout(() => setChatSearchState("done"), 2000);
+  }, [chatInput, chatItem]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  const allItems = showNewCard
+    ? [animItem, ...FEED_ITEMS.filter((f) => f.id !== animItem.id)]
+    : FEED_ITEMS.filter((f) => f.id !== animItem.id);
+  const taskItems = FEED_ITEMS.filter((f) => tasks.includes(f.id));
 
   return (
-    <section ref={sectionRef} id="preview" className="py-20 px-4" style={{ background: "#faf8f5", borderTop: "1px solid #e7e2d9", borderBottom: "1px solid #e7e2d9" }}>
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="inline-block text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full" style={{ color: "#F97316", background: "#fff7ed", border: "1px solid #fed7aa" }}>The Dashboard</div>
-          <h2 className="font-black mb-4" style={{ fontSize: "clamp(2rem, 3.5vw, 3rem)", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1.1 }}>One thing this week.<br /><span style={{ color: "#F97316" }}>The rest can wait.</span></h2>
-          <p className="text-base max-w-md mx-auto" style={{ color: "#78716c", lineHeight: 1.7 }}>The dashboard surfaces the single most actionable save from your week. Everything else stays quiet in three small piles you open when you want to.</p>
-        </div>
-
-        {/* Mobile */}
-        <div className="block md:hidden">
-          <MobileDashboardPreview step={step} taskCount={taskCount} newCardTaskAdded={newCardTaskAdded} />
-        </div>
-
-        {/* Desktop */}
-        <div className="hidden md:block rounded-2xl overflow-hidden" style={{ border: "1px solid #e5e0d8", boxShadow: "0 8px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)" }}>
-          <div className="flex items-center gap-2 px-4 py-3" style={{ background: "#f5f0eb", borderBottom: "1px solid #e5e0d8" }}>
-            <div className="flex gap-1.5"><div className="w-3 h-3 rounded-full" style={{ background: "#ff5f57" }} /><div className="w-3 h-3 rounded-full" style={{ background: "#febc2e" }} /><div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} /></div>
-            <div className="flex-1 mx-4"><div className="mx-auto max-w-xs px-3 py-1 rounded-full text-xs text-center" style={{ background: "white", color: "#9ca3af", border: "1px solid #e5e0d8" }}>contextdrop.com/dashboard</div></div>
+    <div
+      className="flex h-full rounded-xl overflow-hidden"
+      style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.08)" }}
+    >
+      <div
+        className="flex flex-col w-[118px] flex-shrink-0"
+        style={{ background: "#0a0a0a", borderRight: "1px solid rgba(255,255,255,0.06)" }}
+      >
+        <div
+          className="flex items-center gap-2 px-3 py-3 flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div
+            className="w-5 h-5 rounded-md flex items-center justify-center"
+            style={{ background: "#F97316" }}
+          >
+            <svg width="9" height="9" viewBox="0 0 14 14" fill="none">
+              <path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
-          <div className="flex" style={{ height: "clamp(380px, 56vh, 500px)" }}>
-            <motion.div className="hidden md:block flex-shrink-0" style={{ width: 240, borderRight: "1px solid #1a2533", position: "relative", zIndex: dashboardBlurred ? 2 : 1 }} animate={{ boxShadow: dashboardBlurred ? "4px 0 24px rgba(0,0,0,0.18)" : "none" }} transition={{ duration: 0.5 }}><TelegramPanel step={step} /></motion.div>
-            <motion.div className="flex-1 overflow-hidden" animate={{ filter: dashboardBlurred ? "blur(2px) brightness(0.92)" : "blur(0px) brightness(1)", opacity: dashboardBlurred ? 0.7 : 1 }} transition={{ duration: 0.5, ease: "easeInOut" }}><DashboardFeed step={step} taskCount={taskCount} newCardVisible={newCardVisible} newCardTaskAdded={newCardTaskAdded} /></motion.div>
+          <span
+            className="text-white font-semibold text-[11px]"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+          >
+            Context
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-0.5 p-2 flex-1">
+          {(
+            [
+              { id: "feed" as DashView, label: "All verdicts", count: allItems.length },
+              { id: "tasks" as DashView, label: "Tasks", count: taskItems.length, highlight: taskItems.length > 0 },
+              { id: "chat" as DashView, label: "Chat", badge: "NEW" },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id !== "chat") setView(item.id);
+                else if (chatItem) setView("chat");
+              }}
+              className="flex items-center justify-between px-2 py-1.5 rounded-md w-full text-left transition-all duration-200"
+              style={{
+                background: view === item.id ? "rgba(249,115,22,0.1)" : "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                className="text-[10px] font-medium"
+                style={{
+                  color:
+                    view === item.id
+                      ? "#F97316"
+                      : "highlight" in item && item.highlight
+                        ? "#F97316"
+                        : "#71717A",
+                  fontFamily: "'Inter', sans-serif",
+                }}
+              >
+                {item.label}
+              </span>
+              {"badge" in item && item.badge ? (
+                <span
+                  className="text-[8px] px-1 py-0.5 rounded font-bold"
+                  style={{ background: "#F97316", color: "white" }}
+                >
+                  {item.badge}
+                </span>
+              ) : "count" in item && item.count > 0 ? (
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background:
+                      "highlight" in item && item.highlight
+                        ? "rgba(249,115,22,0.2)"
+                        : "rgba(255,255,255,0.08)",
+                    color: "highlight" in item && item.highlight ? "#F97316" : "#71717A",
+                  }}
+                >
+                  {item.count}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+
+        <div
+          className="p-2 flex-shrink-0"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div
+            className="text-[9px] uppercase tracking-wider mb-1 flex items-center justify-between"
+            style={{ color: "#52525B", fontFamily: "'JetBrains Mono', monospace" }}
+          >
+            <span>Credits</span>
+            <span style={{ color: "#71717A" }}>187</span>
+          </div>
+          <div className="h-1 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+            <div className="h-full rounded-full" style={{ width: "62%", background: "#F97316" }} />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {view === "feed" && (
+            <motion.div
+              key="feed"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col h-full"
+            >
+              <div
+                className="flex items-center gap-1 px-3 py-2 flex-shrink-0 overflow-x-auto"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#0a0a0a" }}
+              >
+                {["All", "Instagram", "LinkedIn", "X"].map((p, i) => (
+                  <span
+                    key={p}
+                    className="text-[9px] px-2 py-0.5 rounded-md whitespace-nowrap flex-shrink-0 font-medium"
+                    style={{
+                      background: i === 0 ? "rgba(249,115,22,0.1)" : "transparent",
+                      color: i === 0 ? "#F97316" : "#52525B",
+                      border: i === 0 ? "1px solid rgba(249,115,22,0.2)" : "1px solid transparent",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex-1 p-2.5 flex flex-col gap-1.5 overflow-y-auto">
+                {allItems.map((item, idx) => {
+                  const isExpanded = expandedId === item.id;
+                  const isTasked = tasks.includes(item.id);
+                  const isNew = item.id === animItem.id && showNewCard;
+                  return (
+                    <motion.div
+                      key={item.id}
+                      initial={isNew && idx === 0 ? { opacity: 0, y: 12, scale: 0.97 } : { opacity: 1 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-lg overflow-hidden cursor-pointer"
+                      style={{
+                        background: "#0a0a0a",
+                        border: isNew ? "1px solid rgba(249,115,22,0.2)" : "1px solid rgba(255,255,255,0.05)",
+                        borderLeft: `2px solid ${item.platformColor}`,
+                        boxShadow: isNew ? "0 0 12px rgba(249,115,22,0.06)" : "none",
+                      }}
+                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                    >
+                      <div className="flex items-center justify-between px-3 pt-2 pb-1">
+                        <div className="flex items-center gap-1.5">
+                          {PLATFORM_ICONS[item.platform]}
+                          <span
+                            className="text-[9px] uppercase tracking-wider"
+                            style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+                          >
+                            {item.platform}
+                          </span>
+                          {isNew && (
+                            <span
+                              className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold"
+                              style={{ background: "rgba(249,115,22,0.12)", color: "#F97316" }}
+                            >
+                              NEW
+                            </span>
+                          )}
+                          {isTasked && (
+                            <span
+                              className="text-[8px] px-1.5 py-0.5 rounded-full font-semibold"
+                              style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}
+                            >
+                              ✓ Task
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[9px]" style={{ color: "#52525B" }}>{isExpanded ? "▲" : "▼"}</span>
+                      </div>
+                      <p
+                        className="text-[11px] font-semibold px-3 pb-1.5 leading-snug"
+                        style={{ color: "#FAFAFA", fontFamily: "'Inter', sans-serif" }}
+                      >
+                        {item.title}
+                      </p>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="px-3 pb-2.5"
+                          >
+                            <p
+                              className="text-[10px] mb-2 leading-relaxed"
+                              style={{ color: "#A1A1AA", fontFamily: "'Inter', sans-serif" }}
+                            >
+                              {item.summary}
+                            </p>
+                            <div
+                              className="rounded-md p-2 mb-2"
+                              style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.15)" }}
+                            >
+                              <div
+                                className="text-[8px] font-semibold uppercase tracking-widest mb-0.5"
+                                style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+                              >
+                                TRY THIS ONCE
+                              </div>
+                              <p className="text-[10px] leading-relaxed" style={{ color: "#A1A1AA" }}>
+                                {item.action}
+                              </p>
+                            </div>
+                            <div
+                              className="flex gap-1.5 mb-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => addTask(item.id)}
+                                className="text-[9px] px-2 py-1 rounded-md font-medium transition-all"
+                                style={{
+                                  background: isTasked ? "rgba(34,197,94,0.12)" : "rgba(249,115,22,0.12)",
+                                  color: isTasked ? "#22c55e" : "#F97316",
+                                  border: `1px solid ${
+                                    isTasked ? "rgba(34,197,94,0.25)" : "rgba(249,115,22,0.25)"
+                                  }`,
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                              >
+                                {isTasked ? "✓ Added" : "+ Add to tasks"}
+                              </button>
+                              <button
+                                onClick={() => openChat(item)}
+                                className="text-[9px] px-2 py-1 rounded-md font-medium"
+                                style={{
+                                  background: "rgba(255,255,255,0.05)",
+                                  color: "#A1A1AA",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                              >
+                                Chat with it
+                              </button>
+                            </div>
+                            {item.tags && (
+                              <div className="flex gap-1 flex-wrap">
+                                {item.tags.map((tag: string) => (
+                                  <span
+                                    key={tag}
+                                    className="text-[8px] px-2 py-0.5 rounded-full"
+                                    style={{
+                                      background: "rgba(255,255,255,0.05)",
+                                      color: "#71717A",
+                                      border: "1px solid rgba(255,255,255,0.06)",
+                                      fontFamily: "'Inter', sans-serif",
+                                    }}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {view === "tasks" && (
+            <motion.div
+              key="tasks"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col h-full"
+            >
+              <div
+                className="px-3 py-2 flex-shrink-0"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#0a0a0a" }}
+              >
+                <span
+                  className="text-[10px] font-semibold"
+                  style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  TASKS · {taskItems.length}
+                </span>
+              </div>
+              <div className="flex-1 p-2.5 flex flex-col gap-1.5 overflow-y-auto">
+                {taskItems.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p
+                      className="text-[11px] text-center"
+                      style={{ color: "#52525B", fontFamily: "'Inter', sans-serif" }}
+                    >
+                      No tasks yet.<br />
+                      Add one from the feed.
+                    </p>
+                  </div>
+                ) : (
+                  taskItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg px-3 py-2.5"
+                      style={{
+                        background: "#0a0a0a",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        borderLeft: `2px solid ${item.platformColor}`,
+                      }}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        {PLATFORM_ICONS[item.platform]}
+                        <span
+                          className="text-[9px] uppercase tracking-wider"
+                          style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+                        >
+                          {item.platform}
+                        </span>
+                      </div>
+                      <p
+                        className="text-[10px] font-semibold mb-1.5 leading-snug"
+                        style={{ color: "#FAFAFA", fontFamily: "'Inter', sans-serif" }}
+                      >
+                        {item.title}
+                      </p>
+                      <div
+                        className="rounded-md p-1.5"
+                        style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.12)" }}
+                      >
+                        <p className="text-[9px] leading-relaxed" style={{ color: "#A1A1AA" }}>
+                          {item.action}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {view === "chat" && (
+            <motion.div
+              key="chat"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col h-full"
+            >
+              <div
+                className="flex items-center gap-2 px-3 py-2 flex-shrink-0"
+                style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "#0a0a0a" }}
+              >
+                <button
+                  onClick={() => setView("feed")}
+                  className="text-[11px] mr-1"
+                  style={{ color: "#71717A" }}
+                >
+                  ←
+                </button>
+                <span
+                  className="text-[10px] font-semibold truncate"
+                  style={{ color: "#FAFAFA", fontFamily: "'Inter', sans-serif" }}
+                >
+                  {chatItem?.title ?? "Chat"}
+                </span>
+              </div>
+
+              <div className="flex-1 p-3 flex flex-col gap-3 overflow-y-auto">
+                <motion.div
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex justify-end"
+                >
+                  <div
+                    className="px-3 py-2 rounded-xl rounded-tr-sm text-[10px] leading-relaxed"
+                    style={{
+                      background: "#F97316",
+                      color: "white",
+                      fontFamily: "'Inter', sans-serif",
+                      maxWidth: "85%",
+                    }}
+                  >
+                    What's the most important takeaway from this?
+                  </div>
+                </motion.div>
+
+                <AnimatePresence>
+                  {(chatSearchState === "searching" || chatSearchState === "done") && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                      style={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.08)", width: "fit-content" }}
+                    >
+                      {chatSearchState === "searching" ? (
+                        <>
+                          <motion.div
+                            className="w-3 h-3 rounded-full"
+                            style={{ background: "#F97316" }}
+                            animate={{ scale: [1, 1.3, 1], opacity: [1, 0.5, 1] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                          />
+                          <span
+                            className="text-[10px]"
+                            style={{ color: "#A1A1AA", fontFamily: "'JetBrains Mono', monospace" }}
+                          >
+                            🔍 Searching the web...
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[10px]" style={{ color: "#22c55e" }}>✓</span>
+                          <span
+                            className="text-[10px]"
+                            style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+                          >
+                            Web search complete
+                          </span>
+                        </>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                  {chatSearchState === "done" && chatItem && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#1a1a1a",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderLeft: `3px solid ${chatItem.platformColor}`,
+                      }}
+                    >
+                      <div
+                        className="text-[9px] font-semibold uppercase tracking-widest mb-2"
+                        style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+                      >
+                        Analysis · {chatItem.platform}
+                      </div>
+                      <p
+                        className="text-[11px] font-semibold mb-2 leading-snug"
+                        style={{ color: "#FAFAFA", fontFamily: "'Inter', sans-serif" }}
+                      >
+                        {chatItem.title}
+                      </p>
+                      <p
+                        className="text-[10px] leading-relaxed mb-3"
+                        style={{ color: "#A1A1AA", fontFamily: "'Inter', sans-serif" }}
+                      >
+                        {chatItem.summary}
+                      </p>
+                      <div
+                        className="rounded-lg p-2.5 mb-3"
+                        style={{ background: "rgba(249,115,22,0.07)", border: "1px solid rgba(249,115,22,0.18)" }}
+                      >
+                        <div
+                          className="text-[8px] font-bold uppercase tracking-widest mb-1"
+                          style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+                        >
+                          TRY THIS ONCE
+                        </div>
+                        <p className="text-[10px] leading-relaxed" style={{ color: "#D4D4D8" }}>
+                          {chatItem.action}
+                        </p>
+                      </div>
+                      <div
+                        className="rounded-lg p-2.5"
+                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}
+                      >
+                        <p
+                          className="text-[9px] mb-2"
+                          style={{ color: "#71717A", fontFamily: "'Inter', sans-serif" }}
+                        >
+                          This is a preview. Sign up to get web search + full analysis on every link you send.
+                        </p>
+                        <a
+                          href="/signup"
+                          className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md text-[10px] font-semibold transition-all"
+                          style={{ background: "#F97316", color: "white", fontFamily: "'Inter', sans-serif", textDecoration: "none" }}
+                        >
+                          Sign up free →
+                        </a>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="flex gap-2 px-3 pb-3 flex-shrink-0">
+                <input
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && sendChat()}
+                  placeholder="Ask another question..."
+                  className="flex-1 text-[10px] px-3 py-1.5 rounded-lg outline-none"
+                  style={{
+                    background: "#1a1a1a",
+                    color: "#FAFAFA",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                />
+                <button
+                  onClick={sendChat}
+                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold"
+                  style={{ background: "#F97316", color: "white" }}
+                >
+                  →
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+const ALL_PLATFORMS = [
+  { label: "Instagram", color: "#E1306C" },
+  { label: "LinkedIn", color: "#0A66C2" },
+  { label: "X", color: "#A1A1AA" },
+  { label: "TikTok", color: "#52525B" },
+];
+
+export default function DashboardPreviewSection() {
+  const [step, setStep] = useState(0);
+  const [itemIdx, setItemIdx] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [interactive, setInteractive] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  const currentItem = FEED_ITEMS[itemIdx];
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setStarted(true); },
+      { threshold: 0.3 },
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!started) return;
+
+    const timings = [0, 1000, 2200, 3000, 4000, 5000, 6200, 7200];
+    const timeouts = timings.map((t, i) => setTimeout(() => setStep(i), t));
+
+    const unlockTimeout = setTimeout(() => setInteractive(true), 9000);
+
+    const cycleTimeout = setTimeout(() => {
+      setItemIdx((prev) => (prev + 1) % FEED_ITEMS.length);
+      setStep(0);
+      setInteractive(false);
+      setStarted(false);
+      setTimeout(() => setStarted(true), 300);
+    }, 18000);
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      clearTimeout(unlockTimeout);
+      clearTimeout(cycleTimeout);
+    };
+  }, [started, itemIdx]);
+
+  return (
+    <section
+      ref={sectionRef}
+      id="preview"
+      className="py-24"
+      style={{ background: "#0a0a0a", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <div className="cd-container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-10"
+        >
+          <p
+            className="text-[11px] font-semibold uppercase tracking-widest mb-4"
+            style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+          >
+            See it live
+          </p>
+          <h2
+            className="text-white mb-6"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(1.8rem, 4vw, 2.6rem)",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.1,
+            }}
+          >
+            Send a link. Get a card.
+            <br />
+            <span style={{ color: "#A1A1AA" }}>It really is that fast.</span>
+          </h2>
+
+          <div className="flex items-center justify-center gap-2 flex-wrap">
+            {ALL_PLATFORMS.map((p) => {
+              const isActive = p.label === currentItem.platform;
+              return (
+                <div
+                  key={p.label}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    background: isActive ? `${p.color}18` : "rgba(255,255,255,0.04)",
+                    border: `1px solid ${isActive ? p.color + "44" : "rgba(255,255,255,0.08)"}`,
+                  }}
+                >
+                  {PLATFORM_ICONS[p.label] ?? (
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: p.color }} />
+                  )}
+                  <span
+                    className="text-[11px] font-medium"
+                    style={{
+                      color: isActive ? p.color : "#52525B",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {p.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <AnimatePresence>
+            {interactive && (
+              <motion.p
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+                className="mt-4 text-[11px]"
+                style={{ color: "#71717A", fontFamily: "'Inter', sans-serif" }}
+              >
+                ✦ Dashboard is now interactive — click the cards, tasks, and chat
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        <div className="hidden md:grid grid-cols-2 gap-5 max-w-4xl mx-auto" style={{ height: 500 }}>
+          <TelegramPanel step={step} item={currentItem} />
+          <InteractiveDashboard animStep={step} animItem={currentItem} />
+        </div>
+
+        <div className="md:hidden flex flex-col gap-4">
+          <div style={{ height: 400 }}>
+            <TelegramPanel step={step} item={currentItem} />
+          </div>
+          <div style={{ height: 400 }}>
+            <InteractiveDashboard animStep={step} animItem={currentItem} />
           </div>
         </div>
 
-        <p className="text-center mt-4 text-sm font-mono" style={{ color: "#9ca3af" }}>// Every link you&apos;ve ever saved — finally turned into action.</p>
+        <div className="flex items-center justify-center gap-2 mt-8">
+          {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <div
+              key={i}
+              className="rounded-full transition-all duration-300"
+              style={{
+                width: step === i ? 20 : 6,
+                height: 6,
+                background: step === i ? "#F97316" : "rgba(255,255,255,0.15)",
+              }}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );

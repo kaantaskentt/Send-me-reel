@@ -1,371 +1,168 @@
 "use client";
 
 /*
- * HowItWorksSection — Manus "Warm Signal" port (Apr 26)
- * 3-column with connecting dashed line. Step 3 has cycling verdict preview.
+ * HowItWorksSection — Manus "Dark Signal" port (Apr 26)
+ * 3 steps with large orange numeral backgrounds.
  */
 
-import type { RefObject } from "react";
-import { useEffect, useState } from "react";
-import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
-const PLATFORMS = ["Instagram", "TikTok", "LinkedIn", "X", "YouTube"];
-
-const VERDICT_CARDS = [
+const STEPS = [
   {
-    tag: "instagram reel",
-    tagColor: "#ec4899",
-    tagBg: "#fce7f3",
-    title: "How to set up Claude agent managers",
-    intent: "Apply",
-    intentColor: "#16a34a",
-    intentBg: "#f0fdf4",
+    num: "01",
+    title: "Send a link",
+    desc: "Drop any URL into Mr Context on Telegram — Instagram, TikTok, X, LinkedIn, YouTube, or any article.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+      </svg>
+    ),
   },
   {
-    tag: "linkedin post",
-    tagColor: "#0077b5",
-    tagBg: "#e8f4fd",
-    title: "Why most AI startups fail at distribution",
-    intent: "Learn",
-    intentColor: "#f97316",
-    intentBg: "#fff5ee",
+    num: "02",
+    title: "Get the signal",
+    desc: "Mr Context reads it, strips the noise, and sends back a sharp summary + the one thing worth doing.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+      </svg>
+    ),
   },
   {
-    tag: "youtube short",
-    tagColor: "#dc2626",
-    tagBg: "#fef2f2",
-    title: "The Cursor AI workflow that 10x'd my output",
-    intent: "Apply",
-    intentColor: "#16a34a",
-    intentBg: "#f0fdf4",
+    num: "03",
+    title: "Act on it",
+    desc: "One tap to add the action to your dashboard. Your feed becomes a to-do list — not a graveyard.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
   },
 ];
 
-function AnimatedVerdictPreview() {
-  const [active, setActive] = useState(0);
-  const [visible, setVisible] = useState(true);
-
+function useInView(threshold = 0.2) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
   useEffect(() => {
-    const interval = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setActive((prev) => (prev + 1) % VERDICT_CARDS.length);
-        setVisible(true);
-      }, 350);
-    }, 2800);
-    return () => clearInterval(interval);
-  }, []);
-
-  const card = VERDICT_CARDS[active];
-
-  return (
-    <div
-      style={{
-        background: "white",
-        border: "1px solid #ede9e3",
-        borderRadius: 14,
-        padding: "14px 16px",
-        boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-        transition: "opacity 0.35s ease, transform 0.35s ease",
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(6px)",
-      }}
-    >
-      <div className="flex items-center gap-2 mb-2">
-        <span
-          className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-          style={{ background: card.tagBg, color: card.tagColor }}
-        >
-          {card.tag}
-        </span>
-      </div>
-      <p
-        className="text-[#1a1a1a] text-xs font-semibold mb-2.5 leading-snug"
-        style={{ fontFamily: "'DM Sans', sans-serif" }}
-      >
-        {card.title}
-      </p>
-      <div className="flex gap-1.5">
-        <span
-          className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: card.intentBg, color: card.intentColor }}
-        >
-          {card.intent}
-        </span>
-        <span
-          className="text-[10px] font-semibold px-2.5 py-1 rounded-full"
-          style={{ background: "#faf8f5", color: "#78716c" }}
-        >
-          Skip
-        </span>
-      </div>
-    </div>
-  );
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setInView(true); },
+      { threshold },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [threshold]);
+  return { ref, inView };
 }
 
 export default function HowItWorksSection() {
-  const headlineRef = useScrollAnimation(0.2) as RefObject<HTMLDivElement>;
-  const stepsRef = useScrollAnimation(0.15) as RefObject<HTMLDivElement>;
+  const { ref, inView } = useInView();
 
   return (
     <section
-      id="how-it-works"
-      style={{
-        background: "#f5f1eb",
-        borderTop: "1px solid #e7e2d9",
-        borderBottom: "1px solid #e7e2d9",
-      }}
+      ref={ref}
+      className="py-24"
+      style={{ background: "#111111", borderTop: "1px solid rgba(255,255,255,0.06)" }}
     >
-      <div
-        style={{
-          maxWidth: 1040,
-          margin: "0 auto",
-          padding: "clamp(4rem, 8vh, 6rem) clamp(1.5rem, 5vw, 4rem)",
-        }}
-      >
-        {/* Headline */}
-        <div
-          ref={headlineRef}
-          className="cd-fade-up"
-          style={{ textAlign: "center", marginBottom: "3.5rem" }}
+      <div className="cd-container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-16"
         >
-          <span
-            style={{
-              display: "inline-block",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-              color: "#f97316",
-              marginBottom: "1rem",
-              fontFamily: "'DM Sans', sans-serif",
-            }}
-          >
-            How It Works
-          </span>
-          <h2
-            style={{
-              fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-              fontWeight: 800,
-              fontSize: "clamp(2rem, 3.5vw, 3rem)",
-              letterSpacing: "-0.04em",
-              color: "#1c1917",
-              lineHeight: 1.1,
-              marginBottom: "1rem",
-            }}
-          >
-            Three steps. <span style={{ color: "#f97316" }}>30 seconds.</span>
-          </h2>
           <p
-            style={{
-              fontSize: 15,
-              color: "#78716c",
-              maxWidth: 400,
-              margin: "0 auto",
-              lineHeight: 1.7,
-              fontFamily: "'DM Sans', sans-serif",
-            }}
+            className="text-[11px] font-semibold uppercase tracking-widest mb-4"
+            style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
           >
-            From link to actionable insight — faster than you can scroll past the next video.
+            How it works
           </p>
-        </div>
-
-        {/* Steps */}
-        <div ref={stepsRef} className="cd-stagger-children" style={{ position: "relative" }}>
-          <div
+          <h2
+            className="text-white"
             style={{
-              position: "absolute",
-              top: 36,
-              left: "calc(33.33% - 8px)",
-              right: "calc(33.33% - 8px)",
-              height: 1,
-              borderTop: "2px dashed #e7e2d9",
-              pointerEvents: "none",
-              zIndex: 0,
-            }}
-            className="hidden lg:block"
-          />
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-              gap: "1.25rem",
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(1.8rem, 4vw, 2.6rem)",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.1,
             }}
           >
-            {/* Step 1 */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #e7e2d9",
-                borderRadius: 18,
-                padding: "1.75rem",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <StepBadge n={1} />
-              <h3 style={stepTitle}>Send a link</h3>
-              <p style={stepBody}>
-                Drop any video or post URL into ContextDrop on Telegram or WhatsApp. No app to download. No account needed to start.
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
-                {PLATFORMS.map((p) => (
-                  <span
-                    key={p}
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      padding: "3px 9px",
-                      borderRadius: 100,
-                      background: "#faf8f5",
-                      color: "#78716c",
-                      border: "1px solid #e7e2d9",
-                      fontFamily: "'DM Sans', sans-serif",
-                    }}
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <span style={chipStyle("#0088cc")}>Telegram</span>
-                <span style={chipStyle("#25D366")}>WhatsApp</span>
-              </div>
-            </div>
+            Three steps. Thirty seconds.
+          </h2>
+        </motion.div>
 
-            {/* Step 2 */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #e7e2d9",
-                borderRadius: 18,
-                padding: "1.75rem",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                position: "relative",
-                zIndex: 1,
-              }}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          {STEPS.map((step, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 24 }}
+              animate={inView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.55, delay: 0.1 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
+              className="relative rounded-xl p-6 overflow-hidden"
+              style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.08)" }}
             >
-              <StepBadge n={2} />
-              <h3 style={stepTitle}>AI analyses it</h3>
-              <p style={stepBody}>
-                ContextDrop watches the video, transcribes the audio, and surfaces every tool, framework, and idea mentioned — structured into a clean verdict.
-              </p>
               <div
+                className="absolute top-2 right-4 select-none pointer-events-none"
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                  background: "#faf8f5",
-                  border: "1px solid #e7e2d9",
-                  borderRadius: 8,
-                  padding: "7px 12px",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 11,
-                  color: "#a8a29e",
+                  fontFamily: "'Inter', sans-serif",
+                  fontWeight: 800,
+                  fontSize: "6rem",
+                  color: "rgba(249,115,22,0.06)",
+                  lineHeight: 1,
+                  letterSpacing: "-0.04em",
                 }}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
-                ~30 seconds avg
+                {step.num}
               </div>
-            </div>
-
-            {/* Step 3 */}
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #e7e2d9",
-                borderRadius: 18,
-                padding: "1.75rem",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                position: "relative",
-                zIndex: 1,
-              }}
-            >
-              <StepBadge n={3} />
-              <h3 style={stepTitle}>You get a verdict</h3>
-              <p style={stepBody}>
-                A structured breakdown — what it is, what's inside, why it matters to you. Tap{" "}
-                <strong style={{ color: "#f97316" }}>Learn</strong>,{" "}
-                <strong style={{ color: "#16a34a" }}>Apply</strong>, or{" "}
-                <strong style={{ color: "#78716c" }}>Skip</strong>. Your feed stays clean.
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                style={{ background: "rgba(249,115,22,0.1)" }}
+              >
+                {step.icon}
+              </div>
+              <div
+                className="text-[11px] font-semibold uppercase tracking-widest mb-2"
+                style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                Step {step.num}
+              </div>
+              <h3
+                className="text-white font-semibold mb-2"
+                style={{ fontFamily: "'Inter', sans-serif", fontSize: "18px", letterSpacing: "-0.01em" }}
+              >
+                {step.title}
+              </h3>
+              <p
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "14px",
+                  color: "#71717A",
+                  lineHeight: 1.65,
+                }}
+              >
+                {step.desc}
               </p>
-              <AnimatedVerdictPreview />
-            </div>
-          </div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* CTA */}
-        <div style={{ textAlign: "center", marginTop: "3rem" }}>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mt-12"
+        >
           <a
-            href="https://t.me/contextdrop2027bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="cd-btn-primary inline-flex"
+            href="/signup"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm transition-all duration-150 hover:brightness-110 active:scale-95"
+            style={{ background: "#F97316", textDecoration: "none" }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
-            </svg>
-            Try it now — it's free
+            Try it free — first 50 on us
           </a>
-        </div>
+        </motion.div>
       </div>
     </section>
   );
-}
-
-function StepBadge({ n }: { n: number }) {
-  return (
-    <div
-      style={{
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        background: "#f97316",
-        color: "white",
-        fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-        fontWeight: 800,
-        fontSize: 14,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: "1.25rem",
-      }}
-    >
-      {n}
-    </div>
-  );
-}
-
-const stepTitle: React.CSSProperties = {
-  fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-  fontWeight: 700,
-  fontSize: 17,
-  color: "#1c1917",
-  marginBottom: 8,
-  letterSpacing: "-0.02em",
-};
-
-const stepBody: React.CSSProperties = {
-  fontSize: 13.5,
-  color: "#78716c",
-  lineHeight: 1.7,
-  fontFamily: "'DM Sans', sans-serif",
-  marginBottom: 16,
-};
-
-function chipStyle(bg: string): React.CSSProperties {
-  return {
-    fontSize: 10,
-    fontWeight: 700,
-    padding: "3px 10px",
-    borderRadius: 100,
-    background: bg,
-    color: "#fff",
-    fontFamily: "'DM Sans', sans-serif",
-  };
 }

@@ -1,349 +1,260 @@
 "use client";
 
 /*
- * HeroSection — Manus "Warm Signal" port (Apr 26)
- * Video bg + bookmark transform mockup. Plus Jakarta Sans 800 headline.
+ * HeroSection — Manus "Dark Signal" port (Apr 26)
+ * Dark #0a0a0a + dot grid + orange radial glow.
+ * Rotating word headline, two floating analysis cards.
  */
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const HERO_VIDEO_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/hero_loop_5e8e7a1f.mp4";
+const ROTATING_WORDS = ["actioned.", "summarised.", "tried.", "understood."];
 
-const BOOKMARK_MOCKUP =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/bookmark_transform-Jha2Z6WFfgQy3n73aNgcYF.webp";
+const HERO_CARDS = [
+  {
+    platform: "Instagram",
+    platformColor: "#E1306C",
+    title: "Kimi K2.6 — Moonshot AI's coding model",
+    summary: "SWE-Bench Pro 58.6. Top-ranked on agentic coding benchmarks. Free tier available.",
+    action: "Try it at kimi.com — drop a bug and see if it catches what Cursor misses.",
+    tags: ["AI Tools", "Coding"],
+    time: "2h ago",
+  },
+  {
+    platform: "X",
+    platformColor: "#FAFAFA",
+    title: "Caveman — open-source AI output compressor",
+    summary: "Rewrites verbose AI coding agent outputs into terse English. ~75% token reduction.",
+    action: "github.com/JuliusBrussee/caveman — add to your Claude Code setup.",
+    tags: ["Open Source", "Dev Tools"],
+    time: "5h ago",
+  },
+];
+
+function PlatformIcon({ platform, color }: { platform: string; color: string }) {
+  if (platform === "Instagram") {
+    return (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill={color}>
+        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+      </svg>
+    );
+  }
+  if (platform === "X") {
+    return (
+      <svg width="13" height="13" viewBox="0 0 24 24" fill={color}>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+      </svg>
+    );
+  }
+  return null;
+}
 
 export default function HeroSection() {
-  const [visible, setVisible] = useState(false);
+  const [wordIndex, setWordIndex] = useState(0);
 
   useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 80);
-    return () => clearTimeout(t);
+    const interval = setInterval(() => {
+      setWordIndex((i) => (i + 1) % ROTATING_WORDS.length);
+    }, 2200);
+    return () => clearInterval(interval);
   }, []);
-
-  const fade = (delay: number) => ({
-    opacity: visible ? 1 : 0,
-    transform: visible ? "translateY(0)" : "translateY(20px)",
-    transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
-  });
 
   return (
     <section
-      style={{
-        position: "relative",
-        minHeight: "100vh",
-        overflow: "hidden",
-        background: "#faf8f5",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
+      className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-24 pb-16"
+      style={{ background: "#0a0a0a" }}
     >
-      {/* Video background */}
-      <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.22 }}
-        >
-          <source src={HERO_VIDEO_URL} type="video/mp4" />
-        </video>
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background:
-              "linear-gradient(180deg, rgba(250,248,245,0.08) 0%, rgba(250,248,245,0.05) 30%, rgba(250,248,245,0.75) 68%, rgba(250,248,245,1) 100%)",
-          }}
-        />
-      </div>
-
-      {/* Content */}
       <div
+        className="absolute inset-0 pointer-events-none"
         style={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: 860,
-          margin: "0 auto",
-          padding: "clamp(100px, 14vh, 130px) clamp(1.5rem, 5vw, 4rem) 0",
-          textAlign: "center",
+          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.055) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
         }}
-      >
-        {/* Badge */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            background: "rgba(255,255,255,0.9)",
-            backdropFilter: "blur(8px)",
-            border: "1px solid #fed7aa",
-            color: "#f97316",
-            fontSize: 13,
-            fontWeight: 600,
-            padding: "6px 16px",
-            borderRadius: 100,
-            marginBottom: "2rem",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-            fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-            ...fade(0),
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "#f97316",
-              display: "inline-block",
-              animation: "cd-pulse-dot 2s infinite",
-            }}
-          />
-          50 free analyses · No card needed
-        </div>
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 45% at 50% -5%, rgba(249,115,22,0.14) 0%, transparent 70%)",
+        }}
+      />
 
-        {/* Headline */}
-        <h1
-          style={{
-            fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-            fontWeight: 800,
-            fontSize: "clamp(2.8rem, 6.5vw, 5.2rem)",
-            lineHeight: 1.0,
-            letterSpacing: "-0.05em",
-            color: "#1c1917",
-            marginBottom: "1.5rem",
-            ...fade(0.1),
-          }}
+      <div className="cd-container relative z-10 flex flex-col items-center text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8"
+          style={{ border: "1px solid rgba(249,115,22,0.3)", background: "rgba(249,115,22,0.06)" }}
         >
-          Your social feed
-          <span style={{ color: "#f97316", display: "block" }}>
-            is actually useful.
+          <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#F97316" }} />
+          <span className="text-[13px] font-medium" style={{ color: "#F97316" }}>
+            50 free analyses · No card needed
           </span>
-        </h1>
+        </motion.div>
 
-        {/* Subline */}
-        <p
-          style={{
-            fontSize: "clamp(15px, 1.8vw, 17px)",
-            color: "#78716c",
-            maxWidth: 500,
-            margin: "0 auto 2.5rem",
-            lineHeight: 1.75,
-            fontFamily: "'DM Sans', sans-serif",
-            fontWeight: 400,
-            ...fade(0.2),
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-6"
         >
-          Every video you save and forget is a tool, a framework, or an idea
-          you never used. ContextDrop turns your saved content into a feed of
-          verdicts — what it contains, what to do with it, and why it matters{" "}
-          <em>to you</em>. In 30 seconds.
-        </p>
-
-        {/* CTAs */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "0.75rem",
-            marginBottom: "1.5rem",
-            ...fade(0.3),
-          }}
-        >
-          <CTAButton />
-
-          <div
+          <h1
+            className="text-white"
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1.25rem",
-              flexWrap: "wrap",
-              justifyContent: "center",
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 800,
+              fontSize: "clamp(2.8rem, 7vw, 5rem)",
+              letterSpacing: "-0.04em",
+              lineHeight: 1.05,
             }}
           >
-            <a
-              href="/dashboard"
-              style={{
-                color: "#78716c",
-                fontFamily: "'DM Sans', sans-serif",
-                fontWeight: 600,
-                fontSize: 13,
-                textDecoration: "none",
-                borderBottom: "1px solid #d6d3d1",
-                paddingBottom: 1,
-                transition: "color 0.15s, border-color 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                const el = e.currentTarget as HTMLAnchorElement;
-                el.style.color = "#44403c";
-                el.style.borderBottomColor = "#78716c";
-              }}
-              onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLAnchorElement;
-                el.style.color = "#78716c";
-                el.style.borderBottomColor = "#d6d3d1";
-              }}
-            >
-              Go to dashboard →
-            </a>
-            <span style={{ color: "#d6d3d1", fontSize: 12 }}>·</span>
-            <a
-              href="#how-it-works"
-              style={{
-                color: "#a8a29e",
-                fontFamily: "'DM Sans', sans-serif",
-                fontWeight: 500,
-                fontSize: 13,
-                textDecoration: "none",
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "#78716c";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLAnchorElement).style.color = "#a8a29e";
-              }}
-            >
-              See how it works ↓
-            </a>
-          </div>
-        </div>
+            Your feed.{" "}
+            <span className="inline-block">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={wordIndex}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="inline-block"
+                  style={{ color: "#F97316" }}
+                >
+                  {ROTATING_WORDS[wordIndex]}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+          </h1>
+        </motion.div>
 
-        {/* Social proof */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 10,
-            marginBottom: "3.5rem",
-            ...fade(0.4),
-          }}
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          className="max-w-xl mb-10 leading-relaxed"
+          style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)", color: "#A1A1AA" }}
         >
-          <div style={{ display: "flex" }}>
+          Send any link to Mr Context on Telegram. Get back the one thing worth doing — in 30 seconds.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col sm:flex-row items-center gap-3 mb-10"
+        >
+          <a
+            href="/signup"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-base transition-all duration-150 hover:brightness-110 active:scale-95"
+            style={{ background: "#F97316", boxShadow: "0 0 28px rgba(249,115,22,0.28)", textDecoration: "none" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
+            </svg>
+            Start free — 50 analyses
+          </a>
+          <a
+            href="/dashboard"
+            className="text-sm font-medium transition-colors duration-150 hover:text-white"
+            style={{ color: "#71717A", textDecoration: "none" }}
+          >
+            or see the dashboard →
+          </a>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.38 }}
+          className="flex items-center gap-3 mb-14"
+        >
+          <div className="flex -space-x-2">
             {[
-              { bg: "#F97316", l: "A" },
-              { bg: "#8B5CF6", l: "M" },
-              { bg: "#10B981", l: "J" },
-              { bg: "#3B82F6", l: "K" },
-            ].map((u, i) => (
-              <div
-                key={i}
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  border: "2px solid #faf8f5",
-                  background: u.bg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 10,
-                  color: "#fff",
-                  fontWeight: 700,
-                  marginLeft: i > 0 ? -8 : 0,
-                  fontFamily: "'DM Sans', sans-serif",
-                }}
-              >
-                {u.l}
-              </div>
+              "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=32&h=32&fit=crop&crop=face",
+              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=32&h=32&fit=crop&crop=face",
+              "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=32&h=32&fit=crop&crop=face",
+              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=32&h=32&fit=crop&crop=face",
+            ].map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={src} alt="" className="w-7 h-7 rounded-full border-2 object-cover" style={{ borderColor: "#0a0a0a" }} />
             ))}
           </div>
-          <span
-            style={{
-              fontSize: 13,
-              color: "#a8a29e",
-              fontFamily: "'DM Sans', sans-serif",
-            }}
-          >
-            Joined by <strong style={{ color: "#44403c" }}>2,400+</strong>{" "}
-            creators &amp; founders
+          <span className="text-sm" style={{ color: "#71717A" }}>
+            <span className="text-white font-semibold">2,400+</span> creators &amp; founders
           </span>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* Bookmark transform mockup */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: 960,
-          margin: "0 auto",
-          padding:
-            "0 clamp(1rem, 4vw, 3rem) clamp(3rem, 6vh, 5rem)",
-          ...fade(0.5),
-        }}
-      >
-        <div
-          style={{
-            borderRadius: 20,
-            overflow: "hidden",
-            boxShadow:
-              "0 24px 80px rgba(0,0,0,0.12), 0 8px 24px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={BOOKMARK_MOCKUP}
-            alt="Your Instagram saved posts become a clean ContextDrop feed"
-            style={{ width: "100%", display: "block" }}
-            loading="eager"
-          />
+        <div className="w-full max-w-2xl flex flex-col sm:flex-row gap-4">
+          {HERO_CARDS.map((card, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 28 + i * 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, delay: 0.5 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-1 rounded-xl p-4 text-left"
+              style={{
+                background: "#111111",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderLeft: `3px solid ${card.platformColor}`,
+              }}
+            >
+              <div className="flex items-center gap-1.5 mb-3">
+                <PlatformIcon platform={card.platform} color={card.platformColor} />
+                <span
+                  className="text-[11px] font-medium uppercase tracking-wider"
+                  style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  {card.platform}
+                </span>
+                <span
+                  className="ml-auto text-[11px]"
+                  style={{ color: "#52525B", fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  {card.time}
+                </span>
+              </div>
+              <p className="text-white text-sm font-semibold mb-2 leading-snug">{card.title}</p>
+              <p className="text-[13px] mb-3 leading-relaxed" style={{ color: "#A1A1AA" }}>{card.summary}</p>
+              <div className="rounded-lg p-3" style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.2)" }}>
+                <div
+                  className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+                  style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+                >
+                  TRY THIS ONCE
+                </div>
+                <p className="text-[12px] leading-relaxed" style={{ color: "#D4D4D8" }}>{card.action}</p>
+              </div>
+              <div className="flex gap-1.5 mt-3">
+                {card.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[11px] px-2 py-0.5 rounded-md"
+                    style={{ background: "rgba(255,255,255,0.06)", color: "#71717A", border: "1px solid rgba(255,255,255,0.08)" }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+          ))}
         </div>
-        <p
-          style={{
-            textAlign: "center",
-            fontSize: 12,
-            color: "#a8a29e",
-            marginTop: "1rem",
-            fontFamily: "'DM Sans', sans-serif",
-            letterSpacing: "0.04em",
-          }}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2, duration: 0.5 }}
+          className="mt-14 flex flex-col items-center gap-2"
         >
-          Every video you've ever saved — finally useful.
-        </p>
+          <span className="text-xs" style={{ color: "#52525B" }}>scroll to see how it works</span>
+          <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3v10M4 9l4 4 4-4" stroke="#52525B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
-  );
-}
-
-function CTAButton() {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <a
-      href="https://t.me/contextdrop2027bot"
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        background: hovered ? "#ea6c0a" : "#f97316",
-        color: "#fff",
-        fontFamily: "'Plus Jakarta Sans', 'DM Sans', sans-serif",
-        fontWeight: 700,
-        fontSize: 15,
-        padding: "14px 26px",
-        borderRadius: 100,
-        textDecoration: "none",
-        boxShadow: hovered
-          ? "0 12px 36px rgba(249,115,22,0.45)"
-          : "0 6px 28px rgba(249,115,22,0.28)",
-        transform: hovered ? "translateY(-2px)" : "translateY(0)",
-        transition: "all 0.2s",
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z" />
-      </svg>
-      Start free on Telegram
-    </a>
   );
 }

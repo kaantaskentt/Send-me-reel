@@ -13,13 +13,19 @@ const ERROR_MESSAGES: Record<string, string> = {
   account_not_found: "Account not found.",
 };
 
-export default function LoginContent({ botDashboardLink }: { botDashboardLink: string }) {
+export default function LoginContent({
+  botDashboardLink,
+  defaultMode = "signin",
+}: {
+  botDashboardLink: string;
+  defaultMode?: "signin" | "signup";
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const errorParam = searchParams.get("error");
   const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] || "Something went wrong." : null;
 
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

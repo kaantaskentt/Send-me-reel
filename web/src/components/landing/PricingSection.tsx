@@ -1,112 +1,192 @@
 "use client";
 
-/**
- * PricingSection — from Manus, with hover effects and circular checks
+/*
+ * PricingSection — Manus "Dark Signal" port (Apr 26)
+ * Free + Pro dark cards. Both CTAs go to /signup.
  */
 
-import { useState } from "react";
+import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+
+function useInView(threshold = 0.2) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setInView(true); },
+      { threshold },
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+}
 
 const FREE_FEATURES = [
-  "10 analyses per month",
-  "Full summary + sharp take",
-  "Add to tasks (up to 10)",
-  "Works on Telegram",
-  "Feed dashboard",
+  "50 analyses to start",
+  "All platforms (Instagram, TikTok, X, YouTube, LinkedIn, articles)",
+  "Summary + action item per link",
+  "Personal dashboard",
+  "Telegram bot",
 ];
 
 const PRO_FEATURES = [
+  "Everything in Free",
   "Unlimited analyses",
-  "Full summary + sharp take",
-  "Unlimited tasks",
-  "Works on Telegram & WhatsApp",
-  "Feed dashboard + search",
-  "Ask AI follow-ups",
   "Notion sync",
+  "WhatsApp support (coming soon)",
   "Priority processing",
+  "Ask AI follow-up questions",
 ];
 
-function CheckIcon({ color = "#16a34a" }: { color?: string }) {
+function CheckIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
-      <circle cx="12" cy="12" r="11" fill={color} fillOpacity="0.12" />
-      <path d="M7 12.5L10.5 16L17 9" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="flex-shrink-0 mt-0.5">
+      <path d="M2.5 7L6 10.5L11.5 3.5" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
 export default function PricingSection() {
-  const [hovered, setHovered] = useState<"free" | "pro" | null>(null);
+  const { ref, inView } = useInView();
 
   return (
-    <section id="pricing" className="py-20 px-4" style={{ background: "#faf8f5" }}>
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <div className="inline-block text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full"
-            style={{ color: "#F97316", background: "#fff7ed", border: "1px solid #fed7aa" }}>Pricing</div>
-          <h2 className="font-black mb-3" style={{ fontSize: "clamp(2rem, 3.5vw, 3rem)", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1.1 }}>
-            Simple pricing.<br /><span style={{ color: "#F97316" }}>No surprises.</span>
-          </h2>
-          <p className="text-base max-w-sm mx-auto" style={{ color: "#78716c", lineHeight: 1.7 }}>
-            Start free. Upgrade when you&apos;re getting value. Cancel anytime — no dark patterns.
+    <section
+      ref={ref}
+      id="pricing"
+      className="py-24"
+      style={{ background: "#111111", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+    >
+      <div className="cd-container">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="text-center mb-14"
+        >
+          <p
+            className="text-[11px] font-semibold uppercase tracking-widest mb-4"
+            style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+          >
+            Pricing
           </p>
-        </div>
+          <h2
+            className="text-white"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 700,
+              fontSize: "clamp(1.8rem, 4vw, 2.6rem)",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.1,
+            }}
+          >
+            Start free. Go Pro when you're ready.
+          </h2>
+          <p className="mt-3" style={{ color: "#71717A", fontSize: "15px" }}>
+            No credit card needed to start. Cancel anytime.
+          </p>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          {/* Free */}
-          <div className="rounded-2xl p-8 flex flex-col" onMouseEnter={() => setHovered("free")} onMouseLeave={() => setHovered(null)}
-            style={{ background: "white", border: "1px solid #e5e0d8", boxShadow: hovered === "free" ? "0 8px 32px rgba(0,0,0,0.08)" : "0 2px 8px rgba(0,0,0,0.04)", transition: "box-shadow 0.2s" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.55, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl p-6"
+            style={{ background: "#0a0a0a", border: "1px solid rgba(255,255,255,0.1)" }}
+          >
             <div className="mb-6">
-              <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#9ca3af" }}>Free</div>
-              <div className="flex items-end gap-1 mb-2">
-                <span className="font-black" style={{ fontSize: "2.5rem", color: "#1a1a1a", letterSpacing: "-0.04em", lineHeight: 1 }}>$0</span>
-                <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
+              <p
+                className="text-[11px] font-semibold uppercase tracking-widest mb-3"
+                style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                Free
+              </p>
+              <div className="flex items-baseline gap-1">
+                <span
+                  className="text-white"
+                  style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "2.5rem", letterSpacing: "-0.04em" }}
+                >
+                  $0
+                </span>
+                <span style={{ color: "#71717A", fontSize: "14px" }}>/month</span>
               </div>
-              <p className="text-sm" style={{ color: "#6b7280" }}>Enough to see if this fits your week.</p>
+              <p className="mt-2" style={{ color: "#71717A", fontSize: "13px" }}>50 analyses to get started</p>
             </div>
-            <ul className="flex flex-col gap-3 mb-8 flex-1">
-              {FREE_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: "#374151" }}>
-                  <CheckIcon color="#9ca3af" />{f}
+            <ul className="space-y-3 mb-8">
+              {FREE_FEATURES.map((f, i) => (
+                <li key={i} className="flex items-start gap-2.5">
+                  <CheckIcon />
+                  <span style={{ color: "#A1A1AA", fontSize: "14px", fontFamily: "'Inter', sans-serif" }}>{f}</span>
                 </li>
               ))}
             </ul>
-            <a href="https://t.me/contextdrop2027bot" target="_blank" rel="noopener noreferrer"
-              className="block text-center py-3 rounded-xl text-sm font-bold transition-colors"
-              style={{ background: "#f5f0eb", color: "#44403c", border: "1px solid #e5e0d8" }}>
-              Start free on Telegram
+            <a
+              href="/signup"
+              className="block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all duration-150 hover:brightness-110"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                color: "#FAFAFA",
+                border: "1px solid rgba(255,255,255,0.12)",
+                textDecoration: "none",
+              }}
+            >
+              Start free
             </a>
-          </div>
+          </motion.div>
 
-          {/* Pro */}
-          <div className="rounded-2xl p-8 flex flex-col relative overflow-hidden" onMouseEnter={() => setHovered("pro")} onMouseLeave={() => setHovered(null)}
-            style={{ background: "#1a1a1a", border: "1.5px solid #F97316", boxShadow: hovered === "pro" ? "0 12px 48px rgba(249,115,22,0.25)" : "0 4px 24px rgba(249,115,22,0.12)", transition: "box-shadow 0.2s" }}>
-            <div className="absolute top-5 right-6 text-xs font-bold tracking-widest uppercase" style={{ color: "#9ca3af" }}>Cancel anytime</div>
-            <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 80% 0%, rgba(249,115,22,0.08) 0%, transparent 60%)" }} />
-            <div className="mb-6 relative">
-              <div className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#F97316" }}>Pro</div>
-              <div className="flex items-end gap-1 mb-2">
-                <span className="font-black" style={{ fontSize: "2.5rem", color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>$9.99</span>
-                <span className="text-sm mb-1" style={{ color: "#9ca3af" }}>/month</span>
-              </div>
-              <p className="text-sm" style={{ color: "#9ca3af" }}>For when you want more after the free 50.</p>
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={inView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.55, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl p-6 relative"
+            style={{
+              background: "#0a0a0a",
+              border: "1px solid rgba(249,115,22,0.4)",
+              boxShadow: "0 0 32px rgba(249,115,22,0.08)",
+            }}
+          >
+            <div
+              className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-[11px] font-semibold"
+              style={{ background: "#F97316", color: "white", fontFamily: "'JetBrains Mono', monospace" }}
+            >
+              MOST POPULAR
             </div>
-            <ul className="flex flex-col gap-3 mb-8 flex-1 relative">
-              {PRO_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2.5 text-sm" style={{ color: "#e5e7eb" }}>
-                  <CheckIcon color="#F97316" />{f}
+            <div className="mb-6">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-widest mb-3"
+                style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
+              >
+                Pro
+              </p>
+              <div className="flex items-baseline gap-1">
+                <span
+                  className="text-white"
+                  style={{ fontFamily: "'Inter', sans-serif", fontWeight: 800, fontSize: "2.5rem", letterSpacing: "-0.04em" }}
+                >
+                  $9
+                </span>
+                <span style={{ color: "#71717A", fontSize: "14px" }}>/month</span>
+              </div>
+              <p className="mt-2" style={{ color: "#71717A", fontSize: "13px" }}>Unlimited analyses, all features</p>
+            </div>
+            <ul className="space-y-3 mb-8">
+              {PRO_FEATURES.map((f, i) => (
+                <li key={i} className="flex items-start gap-2.5">
+                  <CheckIcon />
+                  <span style={{ color: "#A1A1AA", fontSize: "14px", fontFamily: "'Inter', sans-serif" }}>{f}</span>
                 </li>
               ))}
             </ul>
-            <a href="/pricing" className="block text-center py-3 rounded-xl text-sm font-bold transition-all relative"
-              style={{ background: "#F97316", color: "white", textDecoration: "none" }}>
-              Get Pro — $9.99/mo
+            <a
+              href="/signup"
+              className="block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all duration-150 hover:brightness-110 active:scale-95"
+              style={{ background: "#F97316", color: "white", textDecoration: "none" }}
+            >
+              Go Pro
             </a>
-          </div>
+          </motion.div>
         </div>
-
-        <p className="text-center mt-8 text-sm font-mono" style={{ color: "#9ca3af" }}>
-          // No annual lock-in. Cancel from Telegram with one message.
-        </p>
       </div>
     </section>
   );
