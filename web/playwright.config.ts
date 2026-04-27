@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: "./e2e",
   timeout: 30000,
   use: {
-    baseURL: "https://send-me-reel.vercel.app",
+    baseURL: process.env.PW_BASE_URL || "https://send-me-reel.vercel.app",
     screenshot: "on",
     trace: "on-first-retry",
     launchOptions: {
