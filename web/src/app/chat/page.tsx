@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import Markdown from "@/components/chat/Markdown";
 
 interface Analysis {
   id: string;
@@ -620,10 +621,12 @@ function ChatContent() {
                         border: msg.role === "assistant" ? "1px solid #e7e2d9" : "none",
                         fontSize: 14,
                         lineHeight: 1.65,
-                        whiteSpace: "pre-wrap",
+                        whiteSpace: msg.role === "user" ? "pre-wrap" : "normal",
                         wordBreak: "break-word",
                       }}>
-                        {displayText}
+                        {msg.role === "assistant" && displayText
+                          ? <Markdown>{displayText}</Markdown>
+                          : displayText}
                         {msg.streaming && !displayText && (
                           <motion.span
                             animate={{ opacity: [0.3, 1, 0.3] }}
