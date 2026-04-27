@@ -80,6 +80,7 @@ function handleSseEvent(
   ctx: {
     appendAssistantText: (delta: string) => void;
     patchAssistant: (patch: Partial<Message>) => void;
+    onThreadId?: (threadId: string) => void;
   },
 ) {
   switch (ev.event) {
@@ -95,9 +96,12 @@ function handleSseEvent(
     case "tool_done":
       ctx.patchAssistant({ toolState: "done" });
       return;
-    case "done":
+    case "done": {
+      const threadId = (ev.data as { thread_id?: string })?.thread_id;
+      if (threadId && ctx.onThreadId) ctx.onThreadId(threadId);
       ctx.patchAssistant({ streaming: false });
       return;
+    }
     case "error": {
       const msg = (ev.data as { message?: string })?.message ?? "Something broke.";
       ctx.patchAssistant({ content: msg, streaming: false, toolState: undefined });
@@ -155,6 +159,10 @@ function ChatContent() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(preselectedId);
   const [chatHistory, setChatHistory] = useState<Record<string, Message[]>>({});
+  // Map of analysisId → server-assigned threadId. Captured from the `done` SSE
+  // event after the first message so subsequent turns in the same session
+  // append to the same chat_threads row.
+  const [threadIds, setThreadIds] = useState<Record<string, string>>({});
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
@@ -205,6 +213,9 @@ function ChatContent() {
   const clearChat = () => {
     if (!selectedId) return;
     setChatHistory((prev) => { const next = { ...prev }; delete next[selectedId]; return next; });
+    // Drop the thread association so the next message starts a fresh
+    // chat_threads row instead of appending to the cleared session.
+    setThreadIds((prev) => { const next = { ...prev }; delete next[selectedId]; return next; });
   };
 
   const sendMessage = useCallback(async (text: string) => {
@@ -245,12 +256,14 @@ function ChatContent() {
     };
 
     try {
+      const existingThreadId = threadIds[selectedId];
       const res = await fetch(`/api/analyses/${selectedId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           // Send the conversation WITHOUT the empty assistant placeholder
           messages: [...currentMsgs, userMsg].map((m) => ({ role: m.role, content: m.content })),
+          ...(existingThreadId ? { thread_id: existingThreadId } : {}),
         }),
       });
 
@@ -305,7 +318,11 @@ function ChatContent() {
           const block = buffer.slice(0, nl);
           buffer = buffer.slice(nl + 2);
           const ev = parseSseBlock(block);
-          if (ev) handleSseEvent(ev, { appendAssistantText, patchAssistant });
+          if (ev) handleSseEvent(ev, {
+            appendAssistantText,
+            patchAssistant,
+            onThreadId: (tid) => setThreadIds((prev) => prev[selectedId] === tid ? prev : { ...prev, [selectedId]: tid }),
+          });
           nl = buffer.indexOf("\n\n");
         }
       }
@@ -320,7 +337,7 @@ function ChatContent() {
       setIsLoading(false);
       inputRef.current?.focus();
     }
-  }, [selectedId, chatHistory, isLoading]);
+  }, [selectedId, chatHistory, isLoading, threadIds]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

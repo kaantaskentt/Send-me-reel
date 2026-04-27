@@ -105,7 +105,8 @@ export async function POST(
     );
   }
 
-  const { messages } = (await request.json()) as { messages: ChatMessage[] };
+  const body = (await request.json()) as { messages: ChatMessage[]; thread_id?: string };
+  const { messages } = body;
   if (!messages?.length) {
     return NextResponse.json({ error: "Messages required" }, { status: 400 });
   }
@@ -121,6 +122,46 @@ export async function POST(
 
   if (!analysis) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Resolve the thread: use the provided thread_id (validated by ownership) or
+  // create a fresh one scoped to this user + analysis. The first user message
+  // is saved before the stream starts so a half-finished generation still
+  // leaves a paper trail in the UI.
+  let threadId = body.thread_id ?? null;
+  if (threadId) {
+    const { data: ownedThread } = await db
+      .from("chat_threads")
+      .select("id")
+      .eq("id", threadId)
+      .eq("user_id", session.sub)
+      .single();
+    if (!ownedThread) threadId = null;
+  }
+  if (!threadId) {
+    const firstUserMsg = messages.find((m) => m.role === "user");
+    const inferredTitle = firstUserMsg?.content.slice(0, 80) ?? null;
+    const { data: created, error: threadErr } = await db
+      .from("chat_threads")
+      .insert({ user_id: session.sub, analysis_id: id, title: inferredTitle })
+      .select("id")
+      .single();
+    if (threadErr || !created) {
+      console.error("[chat] thread create failed:", threadErr);
+      return NextResponse.json({ error: "Failed to create thread" }, { status: 500 });
+    }
+    threadId = created.id;
+  }
+
+  // Save the latest user message NOW (before stream). Idempotency note: we only
+  // save messages[messages.length-1] on the assumption that the client always
+  // sends the full history with the new message at the tail. The new chat UI
+  // will enforce that contract.
+  const latestUserMsg = messages[messages.length - 1];
+  if (latestUserMsg && latestUserMsg.role === "user" && latestUserMsg.content.trim()) {
+    await db
+      .from("chat_messages")
+      .insert({ thread_id: threadId, role: "user", content: latestUserMsg.content });
   }
 
   const contextParts: string[] = [];
@@ -205,13 +246,23 @@ export async function POST(
             return;
           }
           if (event.type === "response.completed") {
-            send("done", { text: fullText });
+            if (fullText.trim()) {
+              await db
+                .from("chat_messages")
+                .insert({ thread_id: threadId, role: "assistant", content: fullText });
+            }
+            send("done", { text: fullText, thread_id: threadId });
             controller.close();
             return;
           }
         }
         // Stream ended without explicit completed event — emit done anyway
-        send("done", { text: fullText });
+        if (fullText.trim()) {
+          await db
+            .from("chat_messages")
+            .insert({ thread_id: threadId, role: "assistant", content: fullText });
+        }
+        send("done", { text: fullText, thread_id: threadId });
         controller.close();
       } catch (err) {
         console.error("[chat stream] error:", err);
