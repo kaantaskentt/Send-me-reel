@@ -4,6 +4,7 @@ import { getSupabase } from "@/lib/supabase";
 import OpenAI from "openai";
 import { HUMANIZER_RULES } from "@/lib/humanizer-rules";
 import { formatSubjectResearchForPrompt, type SubjectResearch } from "@/lib/subject-research";
+import { consumeChatMessage, FREE_DAILY_CHAT_LIMIT } from "@/lib/chat-usage";
 
 const CHAT_SYSTEM_PROMPT = `You're a friend who knows what the saved post is about — and you can look things up on the web when the reader's question reaches past what's in the source.
 
@@ -79,18 +80,29 @@ export async function POST(
 
   const db = getSupabase();
 
-  // Premium gate — paid OR earned (3+ tries / has used premium)
-  const [userRes, triedRes, premiumUseRes] = await Promise.all([
-    db.from("users").select("premium").eq("id", session.sub).single(),
-    db.from("analyses").select("id", { count: "exact", head: true })
-      .eq("user_id", session.sub).not("tried_at", "is", null),
-    db.from("analyses").select("id", { count: "exact", head: true })
-      .eq("user_id", session.sub).not("action_items", "is", null),
-  ]);
-  const isPaidPremium = !!userRes.data?.premium;
-  const earnedDepth = (triedRes.count ?? 0) >= 3 || (premiumUseRes.count ?? 0) > 0;
-  if (!isPaidPremium && !earnedDepth) {
-    return NextResponse.json({ error: "Earn the chat by trying 3 things first." }, { status: 403 });
+  // Free users get a daily taste of chat (FREE_DAILY_CHAT_LIMIT messages).
+  // Premium is unlimited. We bump the counter atomically before generation so
+  // a half-finished stream still counts — keeps the gate honest if the model
+  // errors mid-flight.
+  const { data: userRow } = await db
+    .from("users")
+    .select("premium")
+    .eq("id", session.sub)
+    .single();
+  const isPaidPremium = !!userRow?.premium;
+
+  const usage = await consumeChatMessage(db, session.sub, isPaidPremium);
+  if (usage.locked) {
+    return NextResponse.json(
+      {
+        error: "daily_limit",
+        message: `You've used your ${FREE_DAILY_CHAT_LIMIT} daily chats. Upgrade for unlimited.`,
+        resetAt: usage.resetAt,
+        remaining: 0,
+        limit: usage.limit,
+      },
+      { status: 429 },
+    );
   }
 
   const { messages } = (await request.json()) as { messages: ChatMessage[] };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { getChatUsage } from "@/lib/chat-usage";
 
 const VALID_STANCES = [
   "curious_not_started",
@@ -47,6 +48,8 @@ export async function GET() {
 
   const lifetimeTriedCount = triedRes.count ?? 0;
   const hasUsedPremium = (premiumUseRes.count ?? 0) > 0;
+  const isPremium = !!userRes.data?.premium;
+  const chatUsage = await getChatUsage(supabase, session.sub, isPremium);
 
   return NextResponse.json({
     user: userRes.data,
@@ -56,6 +59,7 @@ export async function GET() {
     has_used_premium: hasUsedPremium,
     // Premium-tab gate: >= 3 tries OR previously used. transformation-plan §11.
     premium_tabs_unlocked: lifetimeTriedCount >= 3 || hasUsedPremium,
+    chat_usage: chatUsage,
   });
 }
 

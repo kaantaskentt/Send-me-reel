@@ -82,6 +82,10 @@ export async function setOnboarded(userId: string, onboarded: boolean): Promise<
   await supabase.from("users").update({ onboarded }).eq("id", userId);
 }
 
+export async function setFirstName(userId: string, firstName: string): Promise<void> {
+  await supabase.from("users").update({ first_name: firstName }).eq("id", userId);
+}
+
 // Phase 4 stance + reflection ──────────────────────────────────────────────
 // Stance is the only signal we use for verdict tone calibration. Intention
 // and pattern_to_stop are personal reflection notes the user keeps for

@@ -41,9 +41,9 @@ export default function ProfileSidebar({ profile }: Props) {
         </div>
       </div>
 
-      {/* Context — clean short labels */}
+      {/* Context summary — only when context exists */}
       {context?.role && (
-        <div style={{ marginBottom: 14 }}>
+        <div style={{ marginBottom: 8 }}>
           <p style={{ fontSize: 12, color: "#78716c", margin: "0 0 4px 0", lineHeight: 1.5 }}>
             {shortLabel(context.role, 60)}
           </p>
@@ -52,11 +52,13 @@ export default function ProfileSidebar({ profile }: Props) {
               {shortLabel(context.goal, 70)}
             </p>
           )}
-          <a href="/context" style={{ display: "inline-block", fontSize: 11, color: "#f97316", textDecoration: "none", fontWeight: 600, marginTop: 6 }}>
-            Edit profile →
-          </a>
         </div>
       )}
+
+      {/* Edit profile — always available, free or paid */}
+      <a href="/context" style={{ display: "inline-block", fontSize: 11, color: "#f97316", textDecoration: "none", fontWeight: 600, marginBottom: 14 }}>
+        Edit profile →
+      </a>
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 

@@ -31,6 +31,23 @@ interface ParsedAction {
   raw: string;
 }
 
+interface ChatUsage {
+  limit: number | null;
+  remaining: number | null;
+  resetAt: string | null;
+  locked: boolean;
+}
+
+function formatResetIn(resetAt: string | null): string {
+  if (!resetAt) return "";
+  const ms = Date.parse(resetAt) - Date.now();
+  if (ms <= 0) return "soon";
+  const hours = Math.ceil(ms / (60 * 60 * 1000));
+  if (hours <= 1) return "1 hour";
+  if (hours < 24) return `${hours} hours`;
+  return "tomorrow";
+}
+
 function parseAction(content: string): { text: string; action: ParsedAction | null } {
   const match = content.match(/\[ACTION:(add_task|save_notion)(?::([^\]]*))?\]/);
   if (!match) return { text: content, action: null };
@@ -140,6 +157,7 @@ function ChatContent() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const [chatUsage, setChatUsage] = useState<ChatUsage | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [loadingAnalyses, setLoadingAnalyses] = useState(true);
 
@@ -165,7 +183,10 @@ function ChatContent() {
 
     fetch("/api/user")
       .then((r) => r.json())
-      .then((data) => setIsPremium(!!data.user?.premium))
+      .then((data) => {
+        setIsPremium(!!data.user?.premium);
+        setChatUsage(data.chat_usage ?? null);
+      })
       .catch(() => setIsPremium(false));
   }, []);
 
@@ -234,16 +255,38 @@ function ChatContent() {
 
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({ error: "Something went wrong" }));
+        if (res.status === 429 && err?.error === "daily_limit") {
+          setChatUsage({
+            limit: err.limit ?? null,
+            remaining: 0,
+            resetAt: err.resetAt ?? null,
+            locked: true,
+          });
+          patchAssistant({
+            content:
+              err.message ||
+              "You've used your daily chats. Reset soon, or upgrade for unlimited.",
+            streaming: false,
+            toolState: undefined,
+          });
+          return;
+        }
         patchAssistant({
-          content:
-            err.error?.includes("Premium")
-              ? "This feature requires Premium. Upgrade at /pricing to chat with your analyses."
-              : err.error || "Something went wrong. Try again.",
+          content: err.error || err.message || "Something went wrong. Try again.",
           streaming: false,
           toolState: undefined,
         });
         return;
       }
+
+      // Optimistically decrement the local counter for free users so the
+      // header pill updates without waiting for a refetch. Server is the
+      // source of truth — we'll re-sync on next /api/user.
+      setChatUsage((prev) => {
+        if (!prev || prev.remaining === null) return prev;
+        const next = Math.max(0, prev.remaining - 1);
+        return { ...prev, remaining: next, locked: next <= 0 };
+      });
 
       // SSE consumer — parse `event:` / `data:` blocks separated by blank lines
       const reader = res.body.getReader();
@@ -286,8 +329,17 @@ function ChatContent() {
   const selectedAnalysis = analyses.find((a) => a.id === selectedId);
   const hasMessages = messages.length > 0;
 
-  // Locked state for free users
-  if (isPremium === false) {
+  // Daily-limit-reached state for free users. Premium users (chatUsage.limit
+  // === null) never hit this. Note that we still render the chat once the
+  // window resets — the gate is per-day, not per-account.
+  const dailyLimitReached =
+    isPremium === false &&
+    chatUsage !== null &&
+    chatUsage.limit !== null &&
+    chatUsage.locked;
+
+  if (dailyLimitReached) {
+    const resetIn = formatResetIn(chatUsage?.resetAt ?? null);
     return (
       <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column" }}>
         <ChatHeader onBack={() => router.push("/dashboard")} />
@@ -298,16 +350,16 @@ function ChatContent() {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1c1917", margin: "0 0 8px 0" }}>Chat with your analyses</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1c1917", margin: "0 0 8px 0" }}>You&apos;ve used your daily chats</h2>
             <p style={{ fontSize: 14, color: "#78716c", lineHeight: 1.6, margin: "0 0 24px 0" }}>
-              Ask follow-up questions, get advice tailored to your goals, and go deeper into any content you've analyzed.
+              {resetIn ? `Resets in ${resetIn}` : "Resets soon"} — or upgrade for unlimited chat with every analysis.
             </p>
             <a href="/pricing" style={{
               display: "inline-block", padding: "13px 32px", background: "#f97316", color: "#fff",
               fontWeight: 700, fontSize: 15, borderRadius: 100, textDecoration: "none",
               fontFamily: "'DM Sans', sans-serif",
             }}>
-              Upgrade to Premium
+              Upgrade for unlimited
             </a>
           </div>
         </div>
@@ -315,10 +367,26 @@ function ChatContent() {
     );
   }
 
+  const showUsagePill =
+    isPremium === false &&
+    chatUsage !== null &&
+    chatUsage.limit !== null &&
+    chatUsage.remaining !== null;
+
   return (
     <div style={{ height: "100dvh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Header */}
-      <ChatHeader onBack={() => router.push("/dashboard")} />
+      <ChatHeader
+        onBack={() => router.push("/dashboard")}
+        usagePill={
+          showUsagePill && chatUsage
+            ? {
+                remaining: chatUsage.remaining ?? 0,
+                limit: chatUsage.limit ?? 0,
+              }
+            : null
+        }
+      />
 
       {/* Analysis Selector */}
       <div style={{ padding: "12px 16px", borderBottom: "1px solid #e7e2d9", background: "#fff", flexShrink: 0 }}>
@@ -684,7 +752,13 @@ function ActionButton({ action, analysisId }: { action: ParsedAction; analysisId
   );
 }
 
-function ChatHeader({ onBack }: { onBack: () => void }) {
+function ChatHeader({
+  onBack,
+  usagePill,
+}: {
+  onBack: () => void;
+  usagePill?: { remaining: number; limit: number } | null;
+}) {
   return (
     <header style={{
       display: "flex", alignItems: "center", gap: 12, padding: "0 16px", height: 56,
@@ -710,6 +784,29 @@ function ChatHeader({ onBack }: { onBack: () => void }) {
       </a>
       <span style={{ fontSize: 13, color: "#c4bdb5" }}>/</span>
       <span style={{ fontSize: 14, fontWeight: 600, color: "#78716c" }}>Chat</span>
+      {usagePill && (
+        <a
+          href="/pricing"
+          title="Upgrade for unlimited chat"
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 10px",
+            background: usagePill.remaining <= 1 ? "#fef2f2" : "#fff7ed",
+            border: `1px solid ${usagePill.remaining <= 1 ? "#fecaca" : "#fed7aa"}`,
+            borderRadius: 100,
+            fontSize: 11,
+            fontWeight: 700,
+            color: usagePill.remaining <= 1 ? "#dc2626" : "#f97316",
+            textDecoration: "none",
+            fontFamily: "'DM Sans', sans-serif",
+          }}
+        >
+          {usagePill.remaining}/{usagePill.limit} left today
+        </a>
+      )}
     </header>
   );
 }

@@ -107,3 +107,8 @@ Before: no way to capture action items from content. After: TodoList component o
 **Design system reference**
 Created `.claude/design.md` — complete design reference codifying ContextDrop's visual language: color palette, typography scale, spacing, component patterns, animation rules, UI copy voice, and anti-patterns. Any future AI or developer can build consistent UI by reading this file.
 
+### Apr 27, 2026
+
+**Friend-feedback batch: name capture, profile dropdown, free chat preview**
+Before: bot never asked for the user's name (dashboard greeted "Hey @username" with the raw Telegram handle); the "Edit profile" link was hidden inside a context-conditional in the sidebar so users without a saved context couldn't find it; chat was locked entirely behind a 3-tries OR premium gate, so free users never got to feel the relationship layer. After: onboarding asks "What should I call you?" first and stores it as `first_name` (auto-fills the profile field too); "Edit profile →" is always visible in `ProfileSidebar`; every free user gets 5 chat messages per day with a remaining-count pill in the header and a calm "resets in N hours / upgrade for unlimited" overlay when they hit zero. Touched `src/bot/onboarding.ts`, `src/db/users.ts`, `web/src/components/dashboard/ProfileSidebar.tsx`, `web/src/lib/chat-usage.ts` (new), `web/src/app/api/analyses/[id]/chat/route.ts`, `web/src/app/api/user/route.ts`, `web/src/app/chat/page.tsx`, `supabase/migrations/017_daily_chat_usage.sql` (new — adds `daily_chat_count` and `daily_chat_reset_at` to `users`). Conversion play borrowed from ChatGPT free tier — small enough to enforce a habit, big enough to create attachment.
+

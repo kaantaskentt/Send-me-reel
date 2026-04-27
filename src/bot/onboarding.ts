@@ -34,15 +34,31 @@ const STANCE_OPTIONS: { value: UserStance; label: string }[] = [
 ];
 
 export async function onboarding(conversation: MyConversation, ctx: MyContext) {
+  await ctx.reply(
+    "Hey. <b>ContextDrop</b> here.\n\n" +
+      "I help with the AI / tech / business stuff you save and never come back to.\n\n" +
+      "First — what should I call you?",
+    { parse_mode: "HTML" },
+  );
+
+  const nameCtx = await conversation.waitFor("message:text");
+  const rawName = nameCtx.message.text.trim();
+  // Keep it short and harmless. Strip @, slashes (so /skip etc. don't slip in
+  // as a name), and clamp to 80 chars so the DB column stays clean.
+  const firstName = rawName
+    .replace(/^[@/]+/, "")
+    .replace(/[\r\n\t]/g, " ")
+    .slice(0, 80)
+    .trim();
+
   const keyboard = new InlineKeyboard();
   for (const opt of STANCE_OPTIONS) {
     keyboard.text(opt.label, `stance_${opt.value}`).row();
   }
 
+  const greeting = firstName ? `Nice to meet you, ${firstName}.` : "Got it.";
   await ctx.reply(
-    "Hey. <b>ContextDrop</b> here.\n\n" +
-      "I help with the AI / tech / business stuff you save and never come back to.\n\n" +
-      "Where are you with AI right now? Pick the closest one.",
+    `${greeting}\n\nWhere are you with AI right now? Pick the closest one.`,
     { parse_mode: "HTML", reply_markup: keyboard },
   );
 
@@ -57,6 +73,7 @@ export async function onboarding(conversation: MyConversation, ctx: MyContext) {
   await conversation.external(async () => {
     const user = await users.getByTelegramId(telegramId);
     if (!user) return;
+    if (firstName) await users.setFirstName(user.id, firstName);
     await users.setStance(user.id, stance);
     await users.setOnboarded(user.id, true);
   });
