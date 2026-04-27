@@ -803,7 +803,6 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, notionConnect
                       </span>
                     </button>
                     {[
-                      { name: "Todoist", color: "#e44332", icon: "✓" },
                       { name: "Google Calendar", color: "#4285f4", icon: "📅" },
                     ].map((c) => (
                       <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 12, opacity: 0.6 }}>

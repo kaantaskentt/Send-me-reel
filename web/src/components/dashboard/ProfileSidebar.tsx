@@ -193,18 +193,6 @@ function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
             )}
           </div>
 
-          {/* Todoist */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#e44332", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Todoist</p>
-              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Sync tasks to Todoist</p>
-            </div>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
-          </div>
-
           {/* Google Calendar */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "#4285f4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
