@@ -12,6 +12,7 @@ import Link from "next/link";
 export default function NavBar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
   const pathname = usePathname();
   const isInApp = pathname === "/dashboard" || pathname === "/chat";
 
@@ -19,6 +20,10 @@ export default function NavBar() {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/user").then((r) => { if (r.ok) setHasSession(true); }).catch(() => {});
   }, []);
 
   return (
@@ -81,34 +86,26 @@ export default function NavBar() {
           <div className="flex items-center gap-3">
             {!isInApp && (
               <Link
-                href="/login"
+                href={hasSession ? "/dashboard" : "/login"}
                 className="hidden sm:inline-flex text-sm text-[#71717A] hover:text-[#A1A1AA] transition-colors font-medium"
                 style={{ textDecoration: "none" }}
               >
-                Sign in
+                {hasSession ? "Dashboard" : "Sign in"}
               </Link>
             )}
 
-            {isInApp ? (
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-150"
-                style={{ background: "#F97316", textDecoration: "none" }}
-              >
-                My Feed
-              </Link>
-            ) : (
-              <Link
-                href="/signup"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-150 hover:brightness-110 active:scale-95"
-                style={{ background: "#F97316", textDecoration: "none" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-                </svg>
-                Start free
-              </Link>
-            )}
+            <a
+              href="https://t.me/contextdrop2027bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-all duration-150 hover:brightness-110 active:scale-95"
+              style={{ background: "#F97316", textDecoration: "none" }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
+              </svg>
+              Analyse
+            </a>
 
             <button
               className="sm:hidden flex flex-col gap-1 p-2"
@@ -148,14 +145,26 @@ export default function NavBar() {
                 </a>
               </>
             )}
-            <Link
-              href="/signup"
+            {!isInApp && (
+              <Link
+                href={hasSession ? "/dashboard" : "/login"}
+                className="text-white text-2xl font-semibold"
+                onClick={() => setMenuOpen(false)}
+                style={{ textDecoration: "none" }}
+              >
+                {hasSession ? "Dashboard" : "Sign in"}
+              </Link>
+            )}
+            <a
+              href="https://t.me/contextdrop2027bot"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-lg font-bold text-white"
               style={{ background: "#F97316", textDecoration: "none" }}
               onClick={() => setMenuOpen(false)}
             >
-              Start free
-            </Link>
+              Analyse
+            </a>
           </div>
         </div>
       )}
