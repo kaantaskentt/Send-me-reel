@@ -159,7 +159,7 @@ export default function HowItWorksSection() {
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm transition-all duration-150 hover:brightness-110 active:scale-95"
             style={{ background: "#F97316", textDecoration: "none" }}
           >
-            Try it free — first 50 on us
+            Try it free
           </a>
         </motion.div>
       </div>

@@ -154,7 +154,7 @@ export default function NavBar() {
               style={{ background: "#F97316", textDecoration: "none" }}
               onClick={() => setMenuOpen(false)}
             >
-              Start free — 50 analyses
+              Start free
             </Link>
           </div>
         </div>
