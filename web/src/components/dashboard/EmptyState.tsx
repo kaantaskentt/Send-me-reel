@@ -4,12 +4,12 @@ import { useState } from "react";
 
 interface Props { isFiltered: boolean; onClearFilters: () => void; }
 
-const DEMO_LINK = "https://www.instagram.com/reel/DFnVBmxx2Lj/";
+const DEMO_LINK = "https://www.instagram.com/reel/DXltuaWDmzd/?igsh=NTc4MTIwNjQ2YQ==";
 
 const STEPS = [
-  { num: "1", icon: "✈️", title: "Open the bot", sub: "Tap the button below to open Mr Context on Telegram." },
-  { num: "2", icon: "🔗", title: "Paste any link", sub: "Reel, TikTok, tweet, LinkedIn, YouTube, article — anything." },
-  { num: "3", icon: "⚡", title: "Come back here", sub: "Your verdict appears in about 30 seconds." },
+  { num: "1", title: "Open the bot", sub: "Tap the button below to open Mr Context on Telegram." },
+  { num: "2", title: "Paste any link", sub: "Reel, TikTok, tweet, LinkedIn, YouTube, article — anything." },
+  { num: "3", title: "Come back here", sub: "Your verdict appears in about 30 seconds." },
 ];
 
 export default function EmptyState({ isFiltered, onClearFilters }: Props) {
@@ -36,7 +36,6 @@ export default function EmptyState({ isFiltered, onClearFilters }: Props) {
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px", fontFamily: "'DM Sans', sans-serif" }}>
 
       {/* Header */}
-      <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff7ed", border: "1px solid #fed7aa", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, marginBottom: 16 }}>📱</div>
       <h3 style={{ fontSize: 20, fontWeight: 800, color: "#1c1917", marginBottom: 6, marginTop: 0, textAlign: "center" }}>Get your first verdict</h3>
       <p style={{ fontSize: 13, color: "#a8a29e", marginBottom: 28, textAlign: "center" }}>Three steps. Thirty seconds.</p>
 
@@ -52,16 +51,14 @@ export default function EmptyState({ isFiltered, onClearFilters }: Props) {
               background: i === 2 ? "#f97316" : "white",
               border: i === 2 ? "none" : "2px solid #e7e2d9",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 20,
+              fontSize: 16, fontWeight: 800, fontFamily: "'DM Sans', sans-serif",
+              color: i === 2 ? "#fff" : "#a8a29e",
               boxShadow: i === 2 ? "0 4px 16px rgba(249,115,22,0.25)" : "0 1px 4px rgba(0,0,0,0.04)",
             }}>
-              {step.icon}
+              {step.num}
             </div>
-            <div style={{ paddingTop: 4 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#f97316", background: "#fff7ed", border: "1px solid #fed7aa", padding: "1px 7px", borderRadius: 20, fontFamily: "'JetBrains Mono', monospace" }}>{step.num}</span>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: "#1c1917", margin: 0 }}>{step.title}</h4>
-              </div>
+            <div style={{ paddingTop: 10 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: "#1c1917", margin: "0 0 2px 0" }}>{step.title}</h4>
               <p style={{ fontSize: 13, color: "#78716c", margin: 0, lineHeight: 1.5 }}>{step.sub}</p>
             </div>
           </div>
