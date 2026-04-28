@@ -21,6 +21,40 @@ export interface VerdictInput {
    *  verdict treats it as authoritative for naming the thing and giving its
    *  canonical link. The post is one mention; the subject is the thing itself. */
   subjectResearch?: SubjectResearch | null;
+  /** Apr 27 — detected from stance + profile. "technical" users get denser
+   *  Pass 1 description and a stronger Pass 2 action cue. Never changes the
+   *  output format — same lengths, same structure, just less hand-holding. */
+  techPersona?: "technical" | "standard";
+}
+
+const TECH_ROLE_KEYWORDS = /engineer|developer|dev\b|founder|builder|coder|architect|programmer|ai\b|ml\b|llm|data scientist/i;
+const TECH_CONTEXT_KEYWORDS = /api|cli|sdk|github|model|prompt|fine.?tun|deploy|inference|embedding|vector|agent|token|llm|rag|openai|anthropic|cursor|claude|gpt/i;
+
+/**
+ * Detect whether the user is a technical AI experimenter from their stance
+ * and profile. Returns "technical" only when the signal is clear — we'd
+ * rather under-detect than treat a beginner as an expert.
+ *
+ * Primary signal: stance === "using_want_more" (they said so explicitly).
+ * Supporting signal: role or extended_context contains enough technical terms.
+ */
+export function detectTechPersona(
+  stance: UserStance | null | undefined,
+  userContext: UserContext | null | undefined,
+): "technical" | "standard" {
+  if (stance === "using_want_more") return "technical";
+
+  const role = userContext?.role ?? "";
+  const extended = userContext?.extendedContext ?? "";
+
+  if (TECH_ROLE_KEYWORDS.test(role)) return "technical";
+
+  if (extended.length > 200) {
+    const matches = (extended.match(TECH_CONTEXT_KEYWORDS) ?? []).length;
+    if (matches >= 2) return "technical";
+  }
+
+  return "standard";
 }
 
 export type UserStance =
@@ -146,6 +180,7 @@ export async function generateVerdict(input: VerdictInput): Promise<string> {
     userNote: input.userNote,
     stance: input.stance,
     subjectResearch: input.subjectResearch ?? null,
+    techPersona: input.techPersona,
   });
 
   return assembleVerdict(content.description, action);
@@ -191,6 +226,7 @@ async function generateActionLine(args: {
   userNote?: string;
   stance?: UserStance;
   subjectResearch?: SubjectResearch | null;
+  techPersona?: "technical" | "standard";
 }): Promise<string> {
   const userPrompt = buildActionPrompt(args);
 
@@ -256,6 +292,12 @@ function buildContentPrompt(input: VerdictInput): string {
     parts.push(`\n${research}`);
   }
 
+  if (input.techPersona === "technical") {
+    parts.push(
+      `\n--- READER SIGNAL ---\nTechnical user. Use precise terminology without explaining it (RAG, fine-tuning, context window, inference, etc. need no gloss). Include version numbers, benchmark scores, or API names if present in source. Format unchanged — 📍 ≤ 220 chars, 🪜 ≤ 100 chars.`,
+    );
+  }
+
   parts.push(
     `\nProduce the description. Lead with the named subject. Use research as authoritative when present. Don't assume anything about who's reading.`,
   );
@@ -269,6 +311,7 @@ function buildActionPrompt(args: {
   userNote?: string;
   stance?: UserStance;
   subjectResearch?: SubjectResearch | null;
+  techPersona?: "technical" | "standard";
 }): string {
   const parts: string[] = [];
 
@@ -295,6 +338,10 @@ function buildActionPrompt(args: {
   if (args.stance) {
     parts.push(`\n--- READER'S STANCE (tone calibration only — never name them) ---`);
     parts.push(stanceCue(args.stance));
+  }
+
+  if (args.techPersona === "technical") {
+    parts.push(`\n--- READER SIGNAL ---\nTechnical. Skip beginner framing — they can install things, run code, call APIs. Action may name a specific CLI command, API endpoint, config flag, or prompt pattern from the content. Under 10 minutes (not 5).`);
   }
 
   parts.push(

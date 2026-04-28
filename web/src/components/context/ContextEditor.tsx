@@ -10,6 +10,42 @@ interface ContextData {
   extended_context: string | null;
 }
 
+interface ParsedProfile {
+  role: string;
+  goal: string;
+  preferences: string;
+  extended: string;
+}
+
+const EXTENDED_KEYS = ["short-term goal", "audience", "tools", "learning priorities", "content that clicks", "style preferences"];
+
+function parseAIProfile(raw: string): ParsedProfile | null {
+  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  const map: Record<string, string> = {};
+
+  for (const line of lines) {
+    const colon = line.indexOf(":");
+    if (colon === -1) continue;
+    const key = line.slice(0, colon).toLowerCase().trim().replace(/^[-–—*#\s]+/, "");
+    const val = line.slice(colon + 1).trim();
+    if (val && !val.startsWith("[")) map[key] = val;
+  }
+
+  if (Object.keys(map).length === 0) return null;
+
+  const extendedParts: string[] = [];
+  for (const k of EXTENDED_KEYS) {
+    if (map[k]) extendedParts.push(`${k.charAt(0).toUpperCase() + k.slice(1)}: ${map[k]}`);
+  }
+
+  return {
+    role: map["role"] ?? "",
+    goal: map["focus"] ?? map["current focus"] ?? "",
+    preferences: map["interests"] ?? map["interests & topics"] ?? "",
+    extended: extendedParts.join("\n"),
+  };
+}
+
 // Restored from pre-Phase-4c. The 8-field profile output produces richer
 // context than the 3-field reflection version did — Kaan flagged Apr 25.
 // One small addition vs the original: an optional "Short-term goal" field
@@ -55,6 +91,8 @@ export default function ContextEditor() {
   const [showAiHelper, setShowAiHelper] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [parsedPreview, setParsedPreview] = useState<ParsedProfile | null>(null);
 
   useEffect(() => {
     // Phase 5+ — load both /api/user (display_name) and /api/context (profile)
@@ -295,7 +333,7 @@ export default function ContextEditor() {
                 <div style={{ background: "#faf8f5", border: "1px solid #f0ebe4", borderRadius: 14, padding: 16, marginTop: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
                     <p style={{ fontSize: 12, color: "#78716c", margin: 0 }}>
-                      Copy this prompt, paste it into ChatGPT or Claude, then paste the result in the box above.
+                      Copy this prompt → paste into ChatGPT or Claude → paste the result below to auto-fill your profile.
                     </p>
                     <button
                       onClick={copyPrompt}
@@ -312,12 +350,81 @@ export default function ContextEditor() {
                         fontFamily: "'DM Sans', sans-serif",
                       }}
                     >
-                      {copied ? "Copied" : "Copy Prompt"}
+                      {copied ? "Copied ✓" : "Copy Prompt"}
                     </button>
                   </div>
-                  <pre style={{ fontSize: 11, color: "#78716c", background: "#fff", border: "1px solid #f0ebe4", borderRadius: 10, padding: 12, overflow: "auto", whiteSpace: "pre-wrap", maxHeight: 240, margin: 0, lineHeight: 1.55 }}>
+                  <pre style={{ fontSize: 11, color: "#78716c", background: "#fff", border: "1px solid #f0ebe4", borderRadius: 10, padding: 12, overflow: "auto", whiteSpace: "pre-wrap", maxHeight: 200, margin: "0 0 12px 0", lineHeight: 1.55 }}>
                     {AI_PROMPT}
                   </pre>
+
+                  {/* Paste + auto-parse */}
+                  <div style={{ borderTop: "1px solid #f0ebe4", paddingTop: 12 }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: "#44403c", margin: "0 0 8px 0" }}>
+                      Paste the AI output here →
+                    </p>
+                    <textarea
+                      value={importText}
+                      onChange={(e) => {
+                        setImportText(e.target.value);
+                        setParsedPreview(e.target.value.trim() ? parseAIProfile(e.target.value) : null);
+                      }}
+                      placeholder="Paste the formatted profile output from ChatGPT or Claude..."
+                      rows={6}
+                      style={{ ...inputStyle, resize: "vertical", fontSize: 12 }}
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
+                    />
+
+                    {/* Parsed preview */}
+                    {parsedPreview && (
+                      <div style={{ background: "#fff", border: "1px solid #e7e2d9", borderRadius: 12, padding: 14, marginTop: 10 }}>
+                        <p style={{ fontSize: 11, fontWeight: 700, color: "#a8a29e", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 10px 0" }}>Detected fields</p>
+                        {[
+                          { label: "Role", val: parsedPreview.role },
+                          { label: "Focus", val: parsedPreview.goal },
+                          { label: "Interests", val: parsedPreview.preferences },
+                          { label: "More about you", val: parsedPreview.extended },
+                        ].filter((f) => f.val).map((f) => (
+                          <div key={f.label} style={{ marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#78716c" }}>{f.label}: </span>
+                            <span style={{ fontSize: 11, color: "#44403c" }}>{f.val.slice(0, 120)}{f.val.length > 120 ? "…" : ""}</span>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            if (!parsedPreview) return;
+                            if (parsedPreview.role) setRole(parsedPreview.role);
+                            if (parsedPreview.goal) setGoal(parsedPreview.goal);
+                            if (parsedPreview.preferences) setPreferences(parsedPreview.preferences);
+                            if (parsedPreview.extended) setExtendedContext(parsedPreview.extended);
+                            setImportText("");
+                            setParsedPreview(null);
+                            setShowAiHelper(false);
+                          }}
+                          style={{
+                            marginTop: 6,
+                            padding: "8px 20px",
+                            background: "#f97316",
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: 13,
+                            borderRadius: 100,
+                            border: "none",
+                            cursor: "pointer",
+                            fontFamily: "'DM Sans', sans-serif",
+                          }}
+                        >
+                          Fill fields with this →
+                        </button>
+                      </div>
+                    )}
+
+                    {importText.trim() && !parsedPreview && (
+                      <p style={{ fontSize: 11, color: "#a8a29e", marginTop: 8 }}>
+                        Couldn&apos;t read the format. Make sure the AI output uses the <code>Role:</code> / <code>Focus:</code> labels from the prompt.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

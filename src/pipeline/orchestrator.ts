@@ -301,14 +301,11 @@ export async function executeVideoPipeline(
     throw new ServiceError("NO_CONTENT", decision.reason, false);
   }
 
-  // Phase 4: stance is the only signal Pass 2 uses for tone calibration.
-  // userContext is fetched for back-compat with the type but Phase 1 already
-  // removed it from the verdict prompt. Both can be NULL for new users —
-  // the verdict pipeline handles that gracefully.
   const [userContext, stance] = await Promise.all([
     users.getContext(userId),
     users.getStance(userId),
   ]);
+  const techPersona = verdictGenerator.detectTechPersona(stance, userContext);
 
   // Apr 26 — agentic understanding layer. Identify the named subject of the
   // post (Kimi, Vibeyard, Sam Altman…) and look it up on the web BEFORE
@@ -336,6 +333,7 @@ export async function executeVideoPipeline(
     userNote,
     stance: stance ?? undefined,
     subjectResearch,
+    techPersona,
   });
 
   await analyses.updateResult(analysisId, {
