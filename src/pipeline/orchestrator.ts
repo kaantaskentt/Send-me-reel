@@ -305,7 +305,6 @@ export async function executeVideoPipeline(
     users.getContext(userId),
     users.getStance(userId),
   ]);
-  const techPersona = verdictGenerator.detectTechPersona(stance, userContext);
 
   // Apr 26 — agentic understanding layer. Identify the named subject of the
   // post (Kimi, Vibeyard, Sam Altman…) and look it up on the web BEFORE
@@ -333,7 +332,6 @@ export async function executeVideoPipeline(
     userNote,
     stance: stance ?? undefined,
     subjectResearch,
-    techPersona,
   });
 
   await analyses.updateResult(analysisId, {
