@@ -111,23 +111,20 @@ export default function HeroSection() {
             }}
           >
             Your feed.
-            {/* Block on mobile keeps word on its own line — prevents layout shift when word width changes */}
-            <span className="block sm:inline"> </span>
-            <span className="block sm:inline-block" style={{ overflow: "hidden" }}>
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={wordIndex}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className="inline-block"
-                  style={{ color: "#F97316" }}
-                >
-                  {ROTATING_WORDS[wordIndex]}
-                </motion.span>
-              </AnimatePresence>
-            </span>
+            <br />
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={wordIndex}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="inline-block"
+                style={{ color: "#F97316" }}
+              >
+                {ROTATING_WORDS[wordIndex]}
+              </motion.span>
+            </AnimatePresence>
           </h1>
         </motion.div>
 
