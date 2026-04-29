@@ -110,8 +110,10 @@ export default function HeroSection() {
               lineHeight: 1.05,
             }}
           >
-            Your feed.{" "}
-            <span className="inline-block">
+            Your feed.
+            {/* Block on mobile keeps word on its own line — prevents layout shift when word width changes */}
+            <span className="block sm:inline"> </span>
+            <span className="block sm:inline-block" style={{ overflow: "hidden" }}>
               <AnimatePresence mode="wait">
                 <motion.span
                   key={wordIndex}
