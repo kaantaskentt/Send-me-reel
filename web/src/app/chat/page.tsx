@@ -20,6 +20,9 @@ interface Thread {
   title: string;
   updated_at: string;
   message_count: number;
+  analysis_id: string;
+  analysis_platform?: string;
+  analysis_title?: string;
 }
 
 interface Message {
@@ -195,7 +198,20 @@ function ChatContent() {
   };
   void setMessages; // referenced by clearChat below
 
-  // Fetch analyses + user on mount
+  const loadAllThreads = useCallback(async () => {
+    setLoadingThreads(true);
+    try {
+      const res = await fetch("/api/chat/threads");
+      if (res.ok) {
+        const data = await res.json();
+        setThreads(data.threads ?? []);
+      }
+    } finally {
+      setLoadingThreads(false);
+    }
+  }, []);
+
+  // Fetch analyses + user + all threads on mount
   useEffect(() => {
     fetch("/api/analyses?limit=50")
       .then((r) => r.json())
@@ -213,30 +229,17 @@ function ChatContent() {
         setFirstName(data.user?.first_name ?? "");
       })
       .catch(() => setIsPremium(false));
-  }, []);
 
-  // Load thread list when analysis changes
-  const loadThreadsForAnalysis = useCallback(async (analysisId: string) => {
-    setLoadingThreads(true);
-    try {
-      const res = await fetch(`/api/analyses/${analysisId}/chat/threads`);
-      if (res.ok) {
-        const data = await res.json();
-        setThreads(data.threads ?? []);
-      }
-    } finally {
-      setLoadingThreads(false);
-    }
-  }, []);
+    loadAllThreads();
+  }, [loadAllThreads]);
 
-  useEffect(() => {
-    if (selectedId) loadThreadsForAnalysis(selectedId);
-    else setThreads([]);
-  }, [selectedId, loadThreadsForAnalysis]);
-
-  // Load a past thread's messages into the chat history
-  const loadThread = useCallback(async (threadId: string) => {
-    if (!selectedId) return;
+  // Load a past thread's messages into the chat history.
+  // analysisId is optional — when coming from the global sidebar it's provided
+  // so we can switch analysis and load messages in one step.
+  const loadThread = useCallback(async (threadId: string, analysisId?: string) => {
+    const targetId = analysisId ?? selectedId;
+    if (!targetId) return;
+    if (analysisId && analysisId !== selectedId) setSelectedId(analysisId);
     const res = await fetch(`/api/chat/threads/${threadId}`);
     if (!res.ok) return;
     const data = await res.json();
@@ -245,8 +248,8 @@ function ChatContent() {
       role: m.role as "user" | "assistant",
       content: m.content,
     }));
-    setChatHistory((prev) => ({ ...prev, [selectedId]: loaded }));
-    setThreadIds((prev) => ({ ...prev, [selectedId]: threadId }));
+    setChatHistory((prev) => ({ ...prev, [targetId]: loaded }));
+    setThreadIds((prev) => ({ ...prev, [targetId]: threadId }));
   }, [selectedId]);
 
   // Auto-scroll on new messages
@@ -389,7 +392,7 @@ function ChatContent() {
       }
       patchAssistant({ streaming: false });
       // Refresh sidebar thread list after message completes
-      loadThreadsForAnalysis(selectedId);
+      loadAllThreads();
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         // User stopped the stream — mark message as stopped, do not save to DB
@@ -404,7 +407,7 @@ function ChatContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedId, chatHistory, isLoading, threadIds, loadThreadsForAnalysis]);
+  }, [selectedId, chatHistory, isLoading, threadIds, loadAllThreads]);
 
   const selectedAnalysis = analyses.find((a) => a.id === selectedId);
   const hasMessages = messages.length > 0;
@@ -435,10 +438,10 @@ function ChatContent() {
         threads={threads}
         activeThreadId={selectedId ? (threadIds[selectedId] ?? null) : null}
         loadingThreads={loadingThreads}
-        onSelectThread={loadThread}
+        onSelectThread={(threadId, analysisId) => loadThread(threadId, analysisId)}
         onNewChat={() => {
           clearChat();
-          if (selectedId) loadThreadsForAnalysis(selectedId);
+          loadAllThreads();
         }}
         onRenameThread={renameThread}
       />

@@ -8,6 +8,9 @@ interface Thread {
   title: string;
   updated_at: string;
   message_count: number;
+  analysis_id: string;
+  analysis_platform?: string;
+  analysis_title?: string;
 }
 
 interface Props {
@@ -16,7 +19,7 @@ interface Props {
   threads: Thread[];
   activeThreadId: string | null;
   loadingThreads: boolean;
-  onSelectThread: (threadId: string) => void;
+  onSelectThread: (threadId: string, analysisId: string) => void;
   onNewChat: () => void;
   onRenameThread: (threadId: string, newTitle: string) => Promise<void>;
 }
@@ -176,7 +179,7 @@ export default function ChatSidebar({
                       }}
                     >
                       <button
-                        onClick={() => !isEditing && onSelectThread(t.id)}
+                        onClick={() => !isEditing && onSelectThread(t.id, t.analysis_id)}
                         style={{
                           flex: 1,
                           display: "flex",
@@ -233,6 +236,19 @@ export default function ChatSidebar({
                               }}
                             >
                               {t.title.length > 36 ? t.title.slice(0, 36) + "…" : t.title}
+                            </div>
+                          )}
+                          {t.analysis_title && (
+                            <div style={{
+                              fontSize: 10,
+                              color: "#c4bdb5",
+                              marginTop: 1,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: 140,
+                            }}>
+                              {t.analysis_title.slice(0, 30)}{t.analysis_title.length > 30 ? "…" : ""}
                             </div>
                           )}
                           <div
