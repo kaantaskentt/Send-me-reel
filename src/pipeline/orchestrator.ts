@@ -129,10 +129,10 @@ export async function runPipeline(
         await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId, userNote);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
-        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
-
-        if (fallbackCodes.includes(errCode)) {
-          console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
+        // Only fall back to article for NOT_A_VIDEO (image posts with captions).
+        // Scraping failures on social media URLs also fail via Jina and produce junk verdicts.
+        if (errCode === "NOT_A_VIDEO") {
+          console.log(`[pipeline] Image post (NOT_A_VIDEO), falling back to article pipeline: ${url}`);
           await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote);
         } else {
           throw videoErr;
@@ -361,6 +361,28 @@ export async function executeArticlePipeline(
   await analyses.updateStatus(analysisId, "scraping");
   const article = await scraper.scrapeArticle(url);
 
+  // Safety net: detect social media login walls (Jina returns platform homepage instead of content)
+  const SOCIAL_DOMAINS = ["instagram.com", "tiktok.com", "x.com", "twitter.com"];
+  const isSocialMedia = SOCIAL_DOMAINS.some((d) => url.includes(d));
+  if (isSocialMedia) {
+    const textLower = article.text.toLowerCase();
+    const loginWallPatterns = [
+      "social media platform for sharing",
+      "sign up or log in",
+      "log in or sign up",
+      "log in to see",
+      "sign in to see",
+      "create an account",
+    ];
+    if (loginWallPatterns.some((p) => textLower.includes(p))) {
+      throw new ServiceError(
+        "NO_CONTENT",
+        "Couldn't access that post — it may require login. The link might be private or rate-limited. Try again in a minute.",
+        false,
+      );
+    }
+  }
+
   // Quality gate — AI decides if article content is real
   const decision = await qualityGate.evaluateContent({
     transcript: null,
@@ -437,9 +459,10 @@ export async function executePipeline(
         await executeVideoPipeline(userId, analysisId, url, platform, userNote);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
-        const fallbackCodes = ["NOT_A_VIDEO", "DOWNLOAD_FAILED", "SCRAPE_FAILED", "SCRAPE_MISMATCH", "APIFY_NO_MATCH"];
-        if (fallbackCodes.includes(errCode)) {
-          console.log(`[pipeline] Video failed (${errCode}), falling back to article pipeline: ${url}`);
+        // Only fall back to article for NOT_A_VIDEO (image posts with captions).
+        // Scraping failures on social media URLs also fail via Jina and produce junk verdicts.
+        if (errCode === "NOT_A_VIDEO") {
+          console.log(`[pipeline] Image post (NOT_A_VIDEO), falling back to article pipeline: ${url}`);
           await executeArticlePipeline(userId, analysisId, url, userNote);
         } else {
           throw videoErr;
