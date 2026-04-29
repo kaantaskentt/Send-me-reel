@@ -17,6 +17,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (saved === "dark" || saved === "light") setTheme(saved);
   }, []);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, [theme]);
+
   const toggle = () => {
     setTheme((t) => {
       const next = t === "light" ? "dark" : "light";
