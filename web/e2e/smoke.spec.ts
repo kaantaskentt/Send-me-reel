@@ -8,7 +8,7 @@ import { SignJWT } from "jose";
 // ============================================================
 
 // Generate a real session cookie for authenticated tests
-const JWT_SECRET = "contextdrop-jwt-secret-change-in-production-2026";
+const JWT_SECRET = process.env.JWT_SECRET ?? process.env.PW_JWT_SECRET ?? "";
 const TEST_USER = {
   sub: "e4065b0b-ef97-4553-93b1-4d8dfa5d266e", // Kaan's user ID
   username: "taskentkaan@gmail.com",
@@ -52,7 +52,7 @@ test.describe("Landing Page", () => {
 });
 
 test.describe("Login Page", () => {
-  test("renders Google and Telegram only (no email/password form)", async ({ page }) => {
+  test("renders all three sign-in options", async ({ page }) => {
     await page.goto("/login");
     await page.waitForLoadState("networkidle");
     await page.screenshot({ path: "test-results/02-login.png", fullPage: true });
@@ -60,13 +60,13 @@ test.describe("Login Page", () => {
     // Google button
     await expect(page.locator("text=Continue with Google")).toBeVisible();
 
+    // Email + password form
+    await expect(page.locator('input[type="email"]')).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+
     // Telegram option
     await expect(page.locator("text=Sign in via Telegram")).toBeVisible();
-
-    // Email + password form should NOT exist anymore
-    await expect(page.locator('input[type="email"]')).toHaveCount(0);
-    await expect(page.locator('input[type="password"]')).toHaveCount(0);
-    await expect(page.locator("text=Create account")).toHaveCount(0);
   });
 
   test("shows error banner for expired token", async ({ page }) => {
@@ -85,33 +85,25 @@ test.describe("Login Page", () => {
     await expect(page.locator("text=Google sign-in failed")).toBeVisible();
   });
 
+  test("email + password form accepts input", async ({ page }) => {
+    await page.goto("/login");
+    await page.waitForLoadState("networkidle");
+
+    await page.fill('input[type="email"]', "test@example.com");
+    await page.fill('input[type="password"]', "test-password-123");
+    await page.screenshot({ path: "test-results/05-login-email-filled.png", fullPage: true });
+
+    // Verify values were set (we don't submit — that would make a real API call)
+    await expect(page.locator('input[type="email"]')).toHaveValue("test@example.com");
+    await expect(page.locator('input[type="password"]')).toHaveValue("test-password-123");
+  });
+
   test("Google button links to auth endpoint", async ({ page }) => {
     await page.goto("/login");
     await page.waitForLoadState("networkidle");
 
     const googleLink = page.locator("a", { hasText: "Continue with Google" });
     await expect(googleLink).toHaveAttribute("href", "/api/auth/google");
-  });
-
-  test("/signup redirects to /login", async ({ page }) => {
-    await page.goto("/signup");
-    await page.waitForLoadState("networkidle");
-    expect(page.url()).toContain("/login");
-    await expect(page.locator("text=Continue with Google")).toBeVisible();
-  });
-
-  test("/api/auth/login returns 404 (route deleted)", async ({ request }) => {
-    const res = await request.post("/api/auth/login", {
-      data: { email: "test@example.com", password: "anything" },
-    });
-    expect(res.status()).toBe(404);
-  });
-
-  test("/api/auth/signup returns 404 (route deleted)", async ({ request }) => {
-    const res = await request.post("/api/auth/signup", {
-      data: { email: "test@example.com", password: "anything", name: "Test" },
-    });
-    expect(res.status()).toBe(404);
   });
 });
 
@@ -123,7 +115,7 @@ test.describe("Auth Redirects (logged out)", () => {
 
     // Should be on the login page now
     expect(page.url()).toContain("/login");
-    await expect(page.locator("text=Welcome to ContextDrop")).toBeVisible();
+    await expect(page.locator("text=Welcome back")).toBeVisible();
   });
 
   test("context page redirects to login", async ({ page }) => {
