@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/lib/theme";
 import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
 import { parseVerdict } from "@/lib/verdict-parser";
@@ -14,8 +15,6 @@ import PasteLinkInput from "./PasteLinkInput";
 import WeekHero from "./WeekHero";
 import AnalysisCard from "./AnalysisCard";
 
-// Apr 25 redesign — small filter-chip primitive, used for state + platform.
-// State filter is the primary axis; platform is secondary (one click further).
 function FilterChips({
   value,
   onChange,
@@ -27,6 +26,8 @@ function FilterChips({
   options: { value: string; label: string; count?: number }[];
   size?: "md" | "sm";
 }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const px = size === "sm" ? 10 : 12;
   const fz = size === "sm" ? 11 : 12;
   return (
@@ -41,9 +42,9 @@ function FilterChips({
               padding: `5px ${px}px`,
               fontSize: fz,
               fontWeight: 600,
-              color: active ? "#1c1917" : "#a8a29e",
-              background: active ? "#fff" : "transparent",
-              border: `1px solid ${active ? "#e7e2d9" : "transparent"}`,
+              color: active ? (isDark ? "#fafafa" : "#1c1917") : (isDark ? "#71717A" : "#a8a29e"),
+              background: active ? (isDark ? "#1a1a1a" : "#fff") : "transparent",
+              border: `1px solid ${active ? (isDark ? "rgba(255,255,255,0.12)" : "#e7e2d9") : "transparent"}`,
               borderRadius: 100,
               cursor: "pointer",
               fontFamily: "'DM Sans', sans-serif",
@@ -55,7 +56,7 @@ function FilterChips({
           >
             {o.label}
             {typeof o.count === "number" && (
-              <span style={{ fontSize: 10, color: active ? "#a8a29e" : "#c4bdb5", fontWeight: 500 }}>
+              <span style={{ fontSize: 10, color: active ? (isDark ? "#71717A" : "#a8a29e") : (isDark ? "#52525b" : "#c4bdb5"), fontWeight: 500 }}>
                 {o.count}
               </span>
             )}
@@ -67,20 +68,33 @@ function FilterChips({
 }
 
 function CardSkeleton() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   return (
-    <div style={{ borderRadius: 16, border: "1px solid #e7e2d9", background: "#fff", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{
+      borderRadius: 16,
+      border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
+      background: isDark ? "#111111" : "#fff",
+      padding: 16,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+    }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ width: 16, height: 16, borderRadius: 4, background: "#f0ebe4" }} />
-        <div style={{ height: 10, width: 48, borderRadius: 100, background: "#f0ebe4" }} />
-        <div style={{ height: 10, width: 60, borderRadius: 100, background: "#f0ebe4", marginLeft: "auto" }} />
+        <div style={{ width: 16, height: 16, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.06)" : "#f0ebe4" }} />
+        <div style={{ height: 10, width: 48, borderRadius: 100, background: isDark ? "rgba(255,255,255,0.06)" : "#f0ebe4" }} />
+        <div style={{ height: 10, width: 60, borderRadius: 100, background: isDark ? "rgba(255,255,255,0.04)" : "#f0ebe4", marginLeft: "auto" }} />
       </div>
-      <div style={{ height: 14, width: "70%", borderRadius: 100, background: "#f5f1eb" }} />
-      <div style={{ height: 11, width: "90%", borderRadius: 100, background: "#f5f1eb" }} />
+      <div style={{ height: 14, width: "70%", borderRadius: 100, background: isDark ? "rgba(255,255,255,0.05)" : "#f5f1eb" }} />
+      <div style={{ height: 11, width: "90%", borderRadius: 100, background: isDark ? "rgba(255,255,255,0.04)" : "#f5f1eb" }} />
     </div>
   );
 }
 
 export default function Dashboard() {
+  const { theme, toggle } = useTheme();
+  const isDark = theme === "dark";
+
   const searchParams = useSearchParams();
   const expandId = searchParams.get("expand");
 
@@ -91,14 +105,13 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // expandId — /dashboard?expand=<id> from Telegram links opens that card.
+
   useEffect(() => {
     if (expandId && analyses.some((a) => a.id === expandId)) {
       setOpenCardId(expandId);
     }
   }, [expandId, analyses]);
 
-  // Lock body scroll when mobile sidebar is open
   useEffect(() => {
     if (sidebarOpen) {
       document.body.style.overflow = "hidden";
@@ -107,16 +120,12 @@ export default function Dashboard() {
     }
     return () => { document.body.style.overflow = ""; };
   }, [sidebarOpen]);
+
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
-  // Apr 25 redesign — single chronological feed with state filter chips
-  // replacing the three-pile structure. "All" by default = the user lands on
-  // their full feed, just as Kaan asked.
   const [stateFilter, setStateFilter] = useState<"all" | AnalysisState>("all");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
 
-  // Hero card — dismissible with a localStorage flag. Once hidden, stays hidden
-  // across sessions until the user clicks "show this week's pick" in the chip row.
   const [heroDismissed, setHeroDismissed] = useState<boolean>(false);
   useEffect(() => {
     try {
@@ -164,8 +173,6 @@ export default function Dashboard() {
   };
   const clearFilters = () => { setPlatform("all"); setSearch(""); setStateFilter("all"); };
 
-  // Phase 3 — local optimistic state changes. When a user toggles tried/set-aside,
-  // the parent updates the analysis in-place so it re-buckets visually.
   const handleStateChanged = useCallback((id: string, state: AnalysisState) => {
     const now = new Date().toISOString();
     setAnalyses((prev) => prev.map((a) => {
@@ -178,9 +185,6 @@ export default function Dashboard() {
     }));
   }, []);
 
-  // Apr 25 redesign — pick the hero candidate (most recent saved-not-decided
-  // with an action line, last 7 days). Filter the main feed by stateFilter
-  // chip choice. Counts feed the chip badges.
   const { hero, feed, counts } = useMemo(() => {
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const c = { all: analyses.length, saved: 0, tried: 0, set_aside: 0 };
@@ -193,7 +197,6 @@ export default function Dashboard() {
       else if (s === "set_aside") c.set_aside++;
       else c.saved++;
 
-      // Hero pick: most recent saved-not-decided in last 7d with an action.
       if (s === "saved") {
         const created = new Date(a.created_at).getTime();
         if (created >= sevenDaysAgo) {
@@ -208,8 +211,6 @@ export default function Dashboard() {
 
     const heroAnalysis = heroPick ?? heroFallback;
 
-    // Feed = all analyses passing the active state filter, in chronological
-    // (newest-first) order — the API already returns in that order.
     const filteredFeed = stateFilter === "all"
       ? analyses
       : analyses.filter((a) => getAnalysisState(a) === stateFilter);
@@ -218,7 +219,7 @@ export default function Dashboard() {
   }, [analyses, stateFilter]);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: isDark ? "#0a0a0a" : "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
       <style>{`
         @media (max-width: 1023px) {
           .cd-sidebar { display: none !important; }
@@ -229,25 +230,51 @@ export default function Dashboard() {
         @media (min-width: 1024px) { .cd-sidebar { display: block !important; } .cd-menu-btn { display: none !important; } }
       `}</style>
 
-      <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,248,245,0.88)", backdropFilter: "blur(16px)", borderBottom: "1px solid #e7e2d9" }}>
+      <header style={{
+        position: "sticky", top: 0, zIndex: 50,
+        background: isDark ? "rgba(10,10,10,0.92)" : "rgba(250,248,245,0.88)",
+        backdropFilter: "blur(16px)",
+        borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
+      }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 1.25rem", height: 56, maxWidth: 1280, margin: "0 auto" }}>
           <button className="cd-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ display: "none", padding: 8, background: "none", border: "1px solid #e7e2d9", borderRadius: 10, cursor: "pointer", color: "#78716c", alignItems: "center", flexShrink: 0 }}>
+            style={{ display: "none", padding: 8, background: "none", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e7e2d9"}`, borderRadius: 10, cursor: "pointer", color: isDark ? "#71717A" : "#78716c", alignItems: "center", flexShrink: 0 }}>
             {sidebarOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
           </button>
           <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
-            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'DM Sans', sans-serif", color: "#1c1917" }}>
+            <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'DM Sans', sans-serif", color: isDark ? "#fafafa" : "#1c1917" }}>
               Context<span style={{ color: "#f97316" }}>Drop</span>
             </span>
           </a>
+
+          <button
+            onClick={toggle}
+            title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+            style={{
+              marginLeft: "auto",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 34, height: 34,
+              background: "none",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e7e2d9"}`,
+              borderRadius: 10,
+              cursor: "pointer",
+              color: isDark ? "#a1a1aa" : "#78716c",
+              flexShrink: 0,
+              transition: "all 0.15s",
+            }}
+          >
+            {isDark
+              ? <Sun style={{ width: 15, height: 15 }} />
+              : <Moon style={{ width: 15, height: 15 }} />
+            }
+          </button>
         </div>
       </header>
 
       <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex" }}>
-        {/* Mobile overlay */}
         {sidebarOpen && (
           <div
             onClick={() => setSidebarOpen(false)}
@@ -256,18 +283,24 @@ export default function Dashboard() {
           />
         )}
         <aside className={`cd-sidebar${sidebarOpen ? " open" : ""}`}
-          style={{ width: 260, flexShrink: 0, borderRight: "1px solid #e7e2d9", padding: "1.5rem 1.25rem", position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto", background: "#fff" }}>
+          style={{
+            width: 260, flexShrink: 0,
+            borderRight: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
+            padding: "1.5rem 1.25rem",
+            position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto",
+            background: isDark ? "#111111" : "#fff",
+          }}>
           {profile ? <ProfileSidebar profile={profile} /> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f0ebe4" }} />
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: isDark ? "rgba(255,255,255,0.06)" : "#f0ebe4" }} />
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div style={{ height: 12, background: "#f0ebe4", borderRadius: 100, width: "75%" }} />
-                  <div style={{ height: 10, background: "#f5f1eb", borderRadius: 100, width: "50%" }} />
+                  <div style={{ height: 12, background: isDark ? "rgba(255,255,255,0.06)" : "#f0ebe4", borderRadius: 100, width: "75%" }} />
+                  <div style={{ height: 10, background: isDark ? "rgba(255,255,255,0.04)" : "#f5f1eb", borderRadius: 100, width: "50%" }} />
                 </div>
               </div>
-              <div style={{ height: 8, background: "#f5f1eb", borderRadius: 100 }} />
-              <div style={{ height: 8, background: "#f5f1eb", borderRadius: 100, width: "85%" }} />
+              <div style={{ height: 8, background: isDark ? "rgba(255,255,255,0.04)" : "#f5f1eb", borderRadius: 100 }} />
+              <div style={{ height: 8, background: isDark ? "rgba(255,255,255,0.04)" : "#f5f1eb", borderRadius: 100, width: "85%" }} />
             </div>
           )}
         </aside>
@@ -276,12 +309,6 @@ export default function Dashboard() {
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} />
 
-            {/* Apr 25 redesign — dismissible hero. The user said the
-                "this week's pick" placement felt weird and the feature
-                might not even matter. Compromise: keep it (it's the one
-                guided moment), but let them × it away. Once dismissed,
-                a tiny "show this week's pick" link appears in the chip
-                bar so it's restorable without being in the way. */}
             <AnimatePresence initial={false} mode="wait">
               {hero && !heroDismissed && (
                 <motion.div
@@ -298,14 +325,9 @@ export default function Dashboard() {
                     aria-label="Hide this week's pick"
                     title="Hide"
                     style={{
-                      position: "absolute",
-                      top: 12,
-                      right: 12,
-                      width: 28,
-                      height: 28,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      position: "absolute", top: 12, right: 12,
+                      width: 28, height: 28,
+                      display: "flex", alignItems: "center", justifyContent: "center",
                       background: "rgba(255,255,255,0.7)",
                       border: "1px solid #e7e2d9",
                       borderRadius: 100,
@@ -320,19 +342,8 @@ export default function Dashboard() {
               )}
             </AnimatePresence>
 
-            {/* State filter — primary axis. "All" is the default so the
-                user lands on their feed, not a sub-pile. Counts feed the
-                chip badges but stay quiet (small, muted). */}
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 8,
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                 <FilterChips
                   value={stateFilter}
                   onChange={(v) => setStateFilter(v as "all" | AnalysisState)}
@@ -348,7 +359,7 @@ export default function Dashboard() {
                     onClick={restoreHero}
                     style={{
                       fontSize: 11,
-                      color: "#a8a29e",
+                      color: isDark ? "#52525b" : "#a8a29e",
                       background: "none",
                       border: "none",
                       cursor: "pointer",
@@ -364,8 +375,6 @@ export default function Dashboard() {
 
               <SearchBar value={search} onChange={setSearch} />
 
-              {/* Platform filter — secondary axis. Only shown when there's
-                  enough variety to matter (>1 platform present). */}
               <FilterChips
                 size="sm"
                 value={platform}
@@ -383,7 +392,7 @@ export default function Dashboard() {
             </div>
 
             {search && !loading && (
-              <p style={{ fontSize: 12, color: "#a8a29e", margin: 0 }}>
+              <p style={{ fontSize: 12, color: isDark ? "#71717A" : "#a8a29e", margin: 0 }}>
                 {total} result{total !== 1 ? "s" : ""} for &ldquo;{search}&rdquo;
               </p>
             )}
@@ -398,10 +407,10 @@ export default function Dashboard() {
                   padding: "32px 20px",
                   textAlign: "center",
                   fontSize: 13,
-                  color: "#a8a29e",
+                  color: isDark ? "#71717A" : "#a8a29e",
                   fontFamily: "'DM Sans', sans-serif",
-                  background: "#fff",
-                  border: "1px dashed #e7e2d9",
+                  background: isDark ? "#111111" : "#fff",
+                  border: `1px dashed ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
                   borderRadius: 16,
                 }}
               >
@@ -442,7 +451,13 @@ export default function Dashboard() {
                 {hasMore && (
                   <div style={{ paddingTop: 12 }}>
                     <button onClick={loadMore} disabled={loading}
-                      style={{ width: "100%", padding: 12, fontSize: 13, fontWeight: 600, color: "#a8a29e", background: "#fff", border: "1px solid #e7e2d9", borderRadius: 12, cursor: "pointer", fontFamily: "DM Sans, sans-serif" }}>
+                      style={{
+                        width: "100%", padding: 12, fontSize: 13, fontWeight: 600,
+                        color: isDark ? "#71717A" : "#a8a29e",
+                        background: isDark ? "#111111" : "#fff",
+                        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
+                        borderRadius: 12, cursor: "pointer", fontFamily: "DM Sans, sans-serif",
+                      }}>
                       {loading ? "Loading…" : "Load older"}
                     </button>
                   </div>
