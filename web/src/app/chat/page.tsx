@@ -418,35 +418,6 @@ function ChatContent() {
     chatUsage.limit !== null &&
     chatUsage.locked;
 
-  if (dailyLimitReached) {
-    const resetIn = formatResetIn(chatUsage?.resetAt ?? null);
-    return (
-      <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif", display: "flex", flexDirection: "column" }}>
-        <ChatHeader onBack={() => router.push("/dashboard")} />
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ maxWidth: 400, textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #f97316, #fb923c)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1c1917", margin: "0 0 8px 0" }}>You&apos;ve used your daily chats</h2>
-            <p style={{ fontSize: 14, color: "#78716c", lineHeight: 1.6, margin: "0 0 24px 0" }}>
-              {resetIn ? `Resets in ${resetIn}` : "Resets soon"} — or upgrade for unlimited chat with every analysis.
-            </p>
-            <a href="/pricing" style={{
-              display: "inline-block", padding: "13px 32px", background: "#f97316", color: "#fff",
-              fontWeight: 700, fontSize: 15, borderRadius: 100, textDecoration: "none",
-              fontFamily: "'DM Sans', sans-serif",
-            }}>
-              Upgrade for unlimited
-            </a>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const showUsagePill =
     isPremium === false &&
     chatUsage !== null &&
@@ -485,7 +456,36 @@ function ChatContent() {
         />
 
         {/* Messages Area */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", position: "relative" }}>
+          {dailyLimitReached && (
+            <div style={{
+              position: "absolute", inset: 0, zIndex: 10,
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              background: "rgba(250,248,245,0.65)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: 24,
+            }}>
+              <div style={{ maxWidth: 340, textAlign: "center" }}>
+                <div style={{ width: 48, height: 48, borderRadius: 14, background: "linear-gradient(135deg, #f97316, #fb923c)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <h2 style={{ fontSize: 19, fontWeight: 800, color: "#1c1917", margin: "0 0 8px 0" }}>You&apos;ve used your daily chats</h2>
+                <p style={{ fontSize: 13, color: "#78716c", lineHeight: 1.6, margin: "0 0 20px 0" }}>
+                  {formatResetIn(chatUsage?.resetAt ?? null) ? `Resets in ${formatResetIn(chatUsage?.resetAt ?? null)}` : "Resets soon"} — or upgrade for unlimited chat with every analysis.
+                </p>
+                <a href="/pricing" style={{
+                  display: "inline-block", padding: "11px 28px", background: "#f97316", color: "#fff",
+                  fontWeight: 700, fontSize: 14, borderRadius: 100, textDecoration: "none",
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  Upgrade for unlimited
+                </a>
+              </div>
+            </div>
+          )}
           {!selectedId ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", textAlign: "center", padding: "0 16px" }}>
               <div style={{ width: 52, height: 52, borderRadius: 16, background: "linear-gradient(135deg, #f97316, #fb923c)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
@@ -690,12 +690,23 @@ function ChatHeader({
       </a>
       <span style={{ fontSize: 13, color: "#c4bdb5" }}>/</span>
       <span style={{ fontSize: 14, fontWeight: 600, color: "#78716c" }}>Chat</span>
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        <button onClick={onBack} style={{
+          background: "none", border: "none", cursor: "pointer",
+          fontSize: 12, fontWeight: 500, color: "#a8a29e",
+          fontFamily: "'DM Sans', sans-serif", padding: "4px 8px",
+          borderRadius: 8, transition: "color 0.15s",
+        }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "#78716c"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = "#a8a29e"; }}
+        >
+          ← Dashboard
+        </button>
       {usagePill && (
         <a
           href="/pricing"
           title="Upgrade for unlimited chat"
           style={{
-            marginLeft: "auto",
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
@@ -713,6 +724,7 @@ function ChatHeader({
           {usagePill.remaining}/{usagePill.limit} left today
         </a>
       )}
+      </div>
     </header>
   );
 }

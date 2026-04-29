@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // the assistant before being asked to upgrade. Premium bypasses this at the
 // application layer but still has the columns populated so the gate logic
 // stays uniform.
-export const FREE_DAILY_CHAT_LIMIT = 5;
+export const FREE_DAILY_CHAT_LIMIT = 10;
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export interface ChatUsage {
