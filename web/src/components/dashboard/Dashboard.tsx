@@ -349,9 +349,9 @@ export default function Dashboard() {
                   onChange={(v) => setStateFilter(v as "all" | AnalysisState)}
                   options={[
                     { value: "all", label: "All", count: counts.all },
-                    { value: "saved", label: "Saved", count: counts.saved },
-                    { value: "tried", label: "Tried", count: counts.tried },
-                    { value: "set_aside", label: "Set aside", count: counts.set_aside },
+                    { value: "saved", label: "New", count: counts.saved },
+                    { value: "tried", label: "Done", count: counts.tried },
+                    { value: "set_aside", label: "Skipped", count: counts.set_aside },
                   ]}
                 />
                 {hero && heroDismissed && (
@@ -415,11 +415,11 @@ export default function Dashboard() {
                 }}
               >
                 {stateFilter === "tried"
-                  ? "Nothing tried yet."
+                  ? "Nothing marked done yet."
                   : stateFilter === "set_aside"
-                  ? "Nothing set aside yet."
+                  ? "Nothing skipped yet."
                   : stateFilter === "saved"
-                  ? "No saved items here."
+                  ? "No new items."
                   : "No matches."}
               </div>
             ) : (

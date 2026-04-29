@@ -75,12 +75,22 @@ function PlatformIcon({ platform }: { platform: string }) {
 
 // ── State badge ───────────────────────────────────────────────────────────────
 function StateBadge({ state }: { state: AnalysisState }) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   if (state === "saved") return null;
-  const map: Record<Exclude<AnalysisState, "saved">, { bg: string; color: string; border: string; label: string }> = {
-    tried: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0", label: "Tried" },
-    set_aside: { bg: "#faf8f5", color: "#78716c", border: "#e7e2d9", label: "Set aside" },
+  const map: Record<Exclude<AnalysisState, "saved">, { light: { bg: string; color: string; border: string }; dark: { bg: string; color: string; border: string }; label: string }> = {
+    tried: {
+      light: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+      dark:  { bg: "rgba(21,128,61,0.12)", color: "#4ade80", border: "rgba(74,222,128,0.2)" },
+      label: "Done",
+    },
+    set_aside: {
+      light: { bg: "#faf8f5", color: "#78716c", border: "#e7e2d9" },
+      dark:  { bg: "rgba(255,255,255,0.06)", color: "#a1a1aa", border: "rgba(255,255,255,0.1)" },
+      label: "Skipped",
+    },
   };
-  const s = map[state];
+  const s = isDark ? map[state].dark : map[state].light;
   return (
     <span style={{
       display: "inline-flex", alignItems: "center",
@@ -89,7 +99,7 @@ function StateBadge({ state }: { state: AnalysisState }) {
       background: s.bg, color: s.color, border: `1px solid ${s.border}`,
       fontFamily: "'DM Sans', sans-serif",
     }}>
-      {s.label}
+      {map[state].label}
     </span>
   );
 }
@@ -107,7 +117,7 @@ interface Props {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: Props) {
+export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, onStateChanged }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -115,8 +125,9 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: 
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
   const [taskAdded, setTaskAdded] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
+  const [localState, setLocalState] = useState<AnalysisState>(getAnalysisState(analysis));
+  const [stateBusy, setStateBusy] = useState(false);
 
-  const localState = getAnalysisState(analysis);
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
 
@@ -136,6 +147,26 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: 
     onDeleted(analysis.id);
   };
   const cancelDelete = (e: React.MouseEvent) => { e.stopPropagation(); setDeleteState("idle"); };
+
+  const handleDone = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (stateBusy || localState === "tried") return;
+    setStateBusy(true);
+    const previous = localState;
+    setLocalState("tried");
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/state`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: "tried" }),
+      });
+      if (!res.ok) throw new Error();
+      onStateChanged?.(analysis.id, "tried");
+    } catch {
+      setLocalState(previous);
+    }
+    setStateBusy(false);
+  };
 
   const addActionAsTask = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -378,6 +409,22 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: 
 
               {/* ── Compact footer — always visible ── */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, paddingTop: 4 }}>
+                <button
+                  onClick={handleDone}
+                  disabled={stateBusy}
+                  style={{
+                    fontSize: 12, fontWeight: 600,
+                    color: localState === "tried" ? "#10b981" : footerLinkColor,
+                    background: "none", border: "none", cursor: localState === "tried" ? "default" : "pointer",
+                    display: "flex", alignItems: "center", gap: 4,
+                    fontFamily: "'DM Sans', sans-serif", transition: "color 0.15s",
+                  }}
+                  onMouseEnter={(e) => { if (localState !== "tried") e.currentTarget.style.color = "#10b981"; }}
+                  onMouseLeave={(e) => { if (localState !== "tried") e.currentTarget.style.color = footerLinkColor; }}
+                >
+                  <Check style={{ width: 12, height: 12 }} />
+                  {localState === "tried" ? "Done" : "Mark done"}
+                </button>
                 <a
                   href={analysis.source_url}
                   target="_blank"
