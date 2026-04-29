@@ -7,6 +7,8 @@ import { Menu, X, Sun, Moon } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
+
+type ActiveFilter = "all" | "starred" | "tried";
 import { parseVerdict } from "@/lib/verdict-parser";
 import ProfileSidebar from "./ProfileSidebar";
 import SearchBar from "./SearchBar";
@@ -123,7 +125,7 @@ export default function Dashboard() {
 
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
-  const [stateFilter, setStateFilter] = useState<"all" | AnalysisState>("all");
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
 
   const [heroDismissed, setHeroDismissed] = useState<boolean>(false);
@@ -142,7 +144,7 @@ export default function Dashboard() {
     try { localStorage.removeItem("cd_hero_dismissed"); } catch { /* ignore */ }
   };
 
-  const isFiltered = platform !== "all" || search !== "" || stateFilter !== "all";
+  const isFiltered = platform !== "all" || search !== "" || activeFilter !== "all";
 
   useEffect(() => {
     fetch("/api/user").then((r) => r.json()).then(setProfile).catch(console.error);
@@ -171,7 +173,7 @@ export default function Dashboard() {
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
     setTotal((t) => t - 1);
   };
-  const clearFilters = () => { setPlatform("all"); setSearch(""); setStateFilter("all"); };
+  const clearFilters = () => { setPlatform("all"); setSearch(""); setActiveFilter("all"); };
 
   const handleStateChanged = useCallback((id: string, state: AnalysisState) => {
     const now = new Date().toISOString();
@@ -185,17 +187,20 @@ export default function Dashboard() {
     }));
   }, []);
 
+  const handleStarChanged = useCallback((id: string, _starred: boolean, starredAt: string | null) => {
+    setAnalyses((prev) => prev.map((a) => a.id === id ? { ...a, starred_at: starredAt } : a));
+  }, []);
+
   const { hero, feed, counts } = useMemo(() => {
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    const c = { all: analyses.length, saved: 0, tried: 0, set_aside: 0 };
+    const c = { all: analyses.length, starred: 0, tried: 0 };
     let heroPick: Analysis | null = null;
     let heroFallback: Analysis | null = null;
 
     for (const a of analyses) {
       const s = getAnalysisState(a);
       if (s === "tried") c.tried++;
-      else if (s === "set_aside") c.set_aside++;
-      else c.saved++;
+      if (a.starred_at) c.starred++;
 
       if (s === "saved") {
         const created = new Date(a.created_at).getTime();
@@ -211,12 +216,20 @@ export default function Dashboard() {
 
     const heroAnalysis = heroPick ?? heroFallback;
 
-    const filteredFeed = stateFilter === "all"
-      ? analyses
-      : analyses.filter((a) => getAnalysisState(a) === stateFilter);
+    let filteredFeed: Analysis[];
+    if (activeFilter === "starred") {
+      filteredFeed = analyses.filter((a) => !!a.starred_at);
+    } else if (activeFilter === "tried") {
+      filteredFeed = analyses.filter((a) => getAnalysisState(a) === "tried");
+    } else {
+      // "all" — starred float to top, then chronological
+      const starred = analyses.filter((a) => !!a.starred_at);
+      const rest = analyses.filter((a) => !a.starred_at);
+      filteredFeed = [...starred, ...rest];
+    }
 
     return { hero: heroAnalysis, feed: filteredFeed, counts: c };
-  }, [analyses, stateFilter]);
+  }, [analyses, activeFilter]);
 
   return (
     <div style={{ minHeight: "100vh", background: isDark ? "#0a0a0a" : "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
@@ -345,13 +358,12 @@ export default function Dashboard() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                 <FilterChips
-                  value={stateFilter}
-                  onChange={(v) => setStateFilter(v as "all" | AnalysisState)}
+                  value={activeFilter}
+                  onChange={(v) => setActiveFilter(v as ActiveFilter)}
                   options={[
                     { value: "all", label: "All", count: counts.all },
-                    { value: "saved", label: "New", count: counts.saved },
+                    { value: "starred", label: "Starred", count: counts.starred },
                     { value: "tried", label: "Done", count: counts.tried },
-                    { value: "set_aside", label: "Skipped", count: counts.set_aside },
                   ]}
                 />
                 {hero && heroDismissed && (
@@ -414,12 +426,10 @@ export default function Dashboard() {
                   borderRadius: 16,
                 }}
               >
-                {stateFilter === "tried"
+                {activeFilter === "tried"
                   ? "Nothing marked done yet."
-                  : stateFilter === "set_aside"
-                  ? "Nothing skipped yet."
-                  : stateFilter === "saved"
-                  ? "No new items."
+                  : activeFilter === "starred"
+                  ? "Nothing starred yet — star items you want to try."
                   : "No matches."}
               </div>
             ) : (
@@ -443,6 +453,7 @@ export default function Dashboard() {
                         onToggle={() => setOpenCardId((cur) => (cur === a.id ? null : a.id))}
                         onDeleted={handleDeleted}
                         onStateChanged={handleStateChanged}
+                        onStarChanged={handleStarChanged}
                       />
                     </motion.div>
                   ))}

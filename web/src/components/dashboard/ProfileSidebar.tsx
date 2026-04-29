@@ -65,7 +65,7 @@ export default function ProfileSidebar({ profile }: Props) {
       {/* Nav items */}
       <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 14 }}>
         <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600, color: "#f97316", background: "rgba(249,115,22,0.06)", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif" }}>
-          <Home style={{ width: 15, height: 15 }} /> All verdicts
+          <Home style={{ width: 15, height: 15 }} /> Feed
           <span style={{ marginLeft: "auto", fontSize: 11, color: "#a8a29e" }}>{creditsUsed || ""}</span>
         </a>
         <a href="/tasks" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}

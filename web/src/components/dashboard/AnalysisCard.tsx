@@ -114,10 +114,11 @@ interface Props {
   premiumTabsUnlocked?: boolean;
   onDeleted: (id: string) => void;
   onStateChanged?: (id: string, state: AnalysisState) => void;
+  onStarChanged?: (id: string, starred: boolean, starredAt: string | null) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, onStateChanged }: Props) {
+export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, onStateChanged, onStarChanged }: Props) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -127,6 +128,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
   const [addingTask, setAddingTask] = useState(false);
   const [localState, setLocalState] = useState<AnalysisState>(getAnalysisState(analysis));
   const [stateBusy, setStateBusy] = useState(false);
+  const [starred, setStarred] = useState(!!analysis.starred_at);
 
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
@@ -166,6 +168,20 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
       setLocalState(previous);
     }
     setStateBusy(false);
+  };
+
+  const handleStar = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const prev = starred;
+    setStarred(!prev);
+    try {
+      const res = await fetch(`/api/analyses/${analysis.id}/star`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onStarChanged?.(analysis.id, data.starred, data.starred_at);
+    } catch {
+      setStarred(prev);
+    }
   };
 
   const addActionAsTask = async (e: React.MouseEvent) => {
@@ -257,6 +273,15 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <StateBadge state={localState} />
             <span style={{ fontSize: 11, color: timeColor }}>{timeAgo}</span>
+            <button
+              onClick={handleStar}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 2, display: "flex", alignItems: "center", color: starred ? "#f97316" : timeColor, transition: "color 0.15s" }}
+              title={starred ? "Unstar" : "Star this"}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={starred ? "#f97316" : "none"} stroke={starred ? "#f97316" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
             <motion.div
               animate={{ rotate: isOpen ? 180 : 0 }}
               transition={{ duration: 0.2 }}

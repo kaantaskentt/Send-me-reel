@@ -42,12 +42,32 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
   );
 }
 
+interface StarredAnalysis {
+  id: string;
+  platform: string;
+  verdict: string | null;
+  caption: string | null;
+  starred_at: string;
+}
+
+function parseStarredTitle(a: StarredAnalysis): string {
+  if (a.verdict) {
+    const match = a.verdict.match(/🔷\s*(.+)/);
+    if (match) return match[1].trim().slice(0, 72);
+    const lines = a.verdict.split("\n").filter((l) => l.trim());
+    if (lines[0]) return lines[0].replace(/^[📍🌱🍵🪜#*\s]+/, "").slice(0, 72);
+  }
+  if (a.caption) return a.caption.slice(0, 72);
+  return "Untitled";
+}
+
 export default function TasksPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState<TaskWithSource[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
+  const [starred, setStarred] = useState<StarredAnalysis[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,7 +75,21 @@ export default function TasksPage() {
       .then((r) => { if (!r.ok) { router.push("/login"); return null; } return r.json(); })
       .then((data) => { if (data?.tasks) setTasks(data.tasks); setLoading(false); })
       .catch(() => setLoading(false));
+
+    fetch("/api/analyses?starred=true&limit=20")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.analyses) setStarred(data.analyses); })
+      .catch(() => {});
   }, [router]);
+
+  const handleMarkDone = async (id: string) => {
+    setStarred((prev) => prev.filter((a) => a.id !== id));
+    await fetch(`/api/analyses/${id}/state`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: "tried" }),
+    });
+  };
 
   const handleToggle = async (task: TaskWithSource) => {
     const newCompleted = !task.completed;
@@ -134,6 +168,58 @@ export default function TasksPage() {
             <p style={{ fontSize: 15, color: "#78716c", marginBottom: 8 }}>No tasks yet.</p>
             <p style={{ fontSize: 13, color: "#a8a29e" }}>Open an analysis on your dashboard and add a task from there.</p>
             <a href="/dashboard" style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 600, color: "#f97316", textDecoration: "none" }}>Go to dashboard →</a>
+          </div>
+        )}
+
+        {/* Up next — starred analyses */}
+        {starred.length > 0 && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "#f97316" }}>Up next</span>
+              <div style={{ flex: 1, height: 1, background: "#ede9e4" }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {starred.map((a) => {
+                const color = PLATFORM_COLORS[a.platform] || "#e7e2d9";
+                return (
+                  <div key={a.id} style={{
+                    background: "#fff",
+                    borderRadius: 14,
+                    border: "1px solid #e7e2d9",
+                    borderLeft: `3px solid ${color}`,
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 3, background: color, flexShrink: 0 }} />
+                    <a href={`/dashboard?expand=${a.id}`} style={{ flex: 1, minWidth: 0, textDecoration: "none" }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: "#1c1917", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {parseStarredTitle(a)}
+                      </p>
+                      <p style={{ fontSize: 11, color: "#a8a29e", margin: "2px 0 0 0", textTransform: "capitalize" }}>{a.platform}</p>
+                    </a>
+                    <button
+                      onClick={() => handleMarkDone(a.id)}
+                      style={{
+                        fontSize: 11, fontWeight: 600,
+                        color: "#15803d",
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 20,
+                        padding: "4px 12px",
+                        cursor: "pointer",
+                        fontFamily: "'DM Sans', sans-serif",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      Mark done
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

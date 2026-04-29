@@ -52,6 +52,7 @@ export interface Analysis {
   // Both terminal-good states.
   tried_at?: string | null;
   set_aside_at?: string | null;
+  starred_at?: string | null;
 }
 
 export type AnalysisState = "saved" | "tried" | "set_aside";

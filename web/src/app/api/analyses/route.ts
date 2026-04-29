@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const intent = params.get("intent");
   const platform = params.get("platform");
   const search = params.get("search");
+  const starred = params.get("starred");
   const page = parseInt(params.get("page") || "1", 10);
   const limit = parseInt(params.get("limit") || "20", 10);
   const offset = (page - 1) * limit;
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("analyses")
     .select(
-      "id, source_url, platform, status, caption, metadata, verdict, verdict_intent, created_at, completed_at, tried_at, set_aside_at",
+      "id, source_url, platform, status, caption, metadata, verdict, verdict_intent, created_at, completed_at, tried_at, set_aside_at, starred_at",
       { count: "exact" },
     )
     .eq("user_id", session.sub)
@@ -39,6 +40,10 @@ export async function GET(request: NextRequest) {
 
   if (search) {
     query = query.or(`verdict.ilike.%${search}%,transcript.ilike.%${search}%,caption.ilike.%${search}%`);
+  }
+
+  if (starred === "true") {
+    query = query.not("starred_at", "is", null);
   }
 
   const { data, count, error } = await query;
