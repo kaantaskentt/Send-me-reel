@@ -1,6 +1,7 @@
 "use client";
 
-import { PanelLeft, Plus, MessageSquare } from "lucide-react";
+import { useState } from "react";
+import { PanelLeft, Plus, MessageSquare, Pencil } from "lucide-react";
 
 interface Thread {
   id: string;
@@ -17,6 +18,7 @@ interface Props {
   loadingThreads: boolean;
   onSelectThread: (threadId: string) => void;
   onNewChat: () => void;
+  onRenameThread: (threadId: string, newTitle: string) => Promise<void>;
 }
 
 function timeAgo(iso: string): string {
@@ -37,7 +39,20 @@ export default function ChatSidebar({
   loadingThreads,
   onSelectThread,
   onNewChat,
+  onRenameThread,
 }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  async function commitRename(threadId: string) {
+    const trimmed = editValue.trim();
+    if (trimmed) {
+      await onRenameThread(threadId, trimmed);
+    }
+    setEditingId(null);
+  }
+
   return (
     <>
       {/* Toggle button — always visible */}
@@ -142,55 +157,127 @@ export default function ChatSidebar({
               ) : (
                 threads.map((t) => {
                   const isActive = t.id === activeThreadId;
+                  const isEditing = editingId === t.id;
+                  const isHovered = hoveredId === t.id;
+
                   return (
-                    <button
+                    <div
                       key={t.id}
-                      onClick={() => onSelectThread(t.id)}
+                      onMouseEnter={() => setHoveredId(t.id)}
+                      onMouseLeave={() => setHoveredId(null)}
                       style={{
-                        width: "100%",
                         display: "flex",
-                        alignItems: "flex-start",
-                        gap: 8,
-                        padding: "8px 10px",
+                        alignItems: "center",
+                        gap: 6,
                         borderRadius: 8,
-                        border: "none",
                         background: isActive ? "#f5f1eb" : "transparent",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontFamily: "var(--font-dm-sans), sans-serif",
                         marginBottom: 2,
+                        padding: "2px 2px 2px 0",
                       }}
                     >
-                      <MessageSquare
-                        size={12}
-                        style={{ color: "#a8a29e", marginTop: 2, flexShrink: 0 }}
-                      />
-                      <div style={{ minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 12,
-                            fontWeight: isActive ? 600 : 400,
-                            color: isActive ? "#1c1917" : "#44403c",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            maxWidth: 160,
-                          }}
-                        >
-                          {t.title.length > 36 ? t.title.slice(0, 36) + "…" : t.title}
+                      <button
+                        onClick={() => !isEditing && onSelectThread(t.id)}
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 8,
+                          padding: "6px 8px",
+                          border: "none",
+                          background: "transparent",
+                          cursor: isEditing ? "default" : "pointer",
+                          textAlign: "left",
+                          fontFamily: "var(--font-dm-sans), sans-serif",
+                          minWidth: 0,
+                        }}
+                      >
+                        <MessageSquare
+                          size={12}
+                          style={{ color: "#a8a29e", marginTop: 2, flexShrink: 0 }}
+                        />
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          {isEditing ? (
+                            <input
+                              autoFocus
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") { e.preventDefault(); commitRename(t.id); }
+                                if (e.key === "Escape") setEditingId(null);
+                              }}
+                              onBlur={() => commitRename(t.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                width: "100%",
+                                border: "none",
+                                outline: "1px solid #fed7aa",
+                                borderRadius: 4,
+                                background: "#fff",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#1c1917",
+                                fontFamily: "var(--font-dm-sans), sans-serif",
+                                padding: "1px 4px",
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                fontSize: 12,
+                                fontWeight: isActive ? 600 : 400,
+                                color: isActive ? "#1c1917" : "#44403c",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: 140,
+                              }}
+                            >
+                              {t.title.length > 36 ? t.title.slice(0, 36) + "…" : t.title}
+                            </div>
+                          )}
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#a8a29e",
+                              marginTop: 1,
+                            }}
+                          >
+                            {timeAgo(t.updated_at)}
+                            {t.message_count > 0 && ` · ${t.message_count} msg`}
+                          </div>
                         </div>
-                        <div
+                      </button>
+
+                      {/* Pencil rename button */}
+                      {!isEditing && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingId(t.id);
+                            setEditValue(t.title);
+                          }}
+                          title="Rename"
                           style={{
-                            fontSize: 10,
+                            width: 22,
+                            height: 22,
+                            borderRadius: 6,
+                            border: "none",
+                            background: "none",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: "pointer",
                             color: "#a8a29e",
-                            marginTop: 1,
+                            flexShrink: 0,
+                            opacity: isHovered || isActive ? 1 : 0,
+                            transition: "opacity 0.1s",
+                            marginRight: 4,
                           }}
                         >
-                          {timeAgo(t.updated_at)}
-                          {t.message_count > 0 && ` · ${t.message_count} msg`}
-                        </div>
-                      </div>
-                    </button>
+                          <Pencil size={11} />
+                        </button>
+                      )}
+                    </div>
                   );
                 })
               )}

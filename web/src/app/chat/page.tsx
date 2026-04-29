@@ -178,7 +178,6 @@ function ChatContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [chatUsage, setChatUsage] = useState<ChatUsage | null>(null);
-  const [selectorOpen, setSelectorOpen] = useState(false);
   const [loadingAnalyses, setLoadingAnalyses] = useState(true);
   const [firstName, setFirstName] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -258,7 +257,16 @@ function ChatContent() {
   // Switch analysis — preserves existing chat
   const handleSelectAnalysis = (id: string) => {
     setSelectedId(id);
-    setSelectorOpen(false);
+  };
+
+  const renameThread = async (threadId: string, newTitle: string) => {
+    if (!selectedId) return;
+    await fetch(`/api/analyses/${selectedId}/chat/threads/${threadId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle }),
+    });
+    setThreads((prev) => prev.map((t) => t.id === threadId ? { ...t, title: newTitle } : t));
   };
 
   const clearChat = () => {
@@ -461,6 +469,7 @@ function ChatContent() {
           clearChat();
           if (selectedId) loadThreadsForAnalysis(selectedId);
         }}
+        onRenameThread={renameThread}
       />
 
       {/* Main panel */}
@@ -475,92 +484,6 @@ function ChatContent() {
           }
         />
 
-        {/* Analysis Selector */}
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid #e7e2d9", background: "#fff", flexShrink: 0 }}>
-          <button
-            onClick={() => setSelectorOpen(!selectorOpen)}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", gap: 10,
-              padding: "10px 14px", background: "#faf8f5", border: "1px solid #e7e2d9",
-              borderRadius: 12, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-              textAlign: "left",
-            }}
-          >
-            {selectedAnalysis ? (
-              <>
-                <span style={{
-                  width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                  background: PLATFORM_ICONS[selectedAnalysis.platform]?.color || "#a8a29e",
-                }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {parseTitle(selectedAnalysis.verdict)}
-                </span>
-                {hasMessages && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); clearChat(); }}
-                    title="Clear chat"
-                    style={{ padding: "2px 6px", background: "none", border: "1px solid #e7e2d9", borderRadius: 6, cursor: "pointer", color: "#c4bdb5", fontSize: 11, fontFamily: "'DM Sans', sans-serif", flexShrink: 0, transition: "all 0.15s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#ef4444"; e.currentTarget.style.color = "#ef4444"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#e7e2d9"; e.currentTarget.style.color = "#c4bdb5"; }}
-                  >
-                    Clear
-                  </button>
-                )}
-                {!hasMessages && <span style={{ fontSize: 11, color: "#a8a29e", flexShrink: 0 }}>{timeAgo(selectedAnalysis.created_at)}</span>}
-              </>
-            ) : (
-              <span style={{ flex: 1, fontSize: 13, color: "#a8a29e" }}>
-                {loadingAnalyses ? "Loading..." : "Select an analysis to chat about..."}
-              </span>
-            )}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a8a29e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: selectorOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
-
-          <AnimatePresence>
-            {selectorOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                style={{ overflow: "hidden" }}
-              >
-                <div style={{ maxHeight: 240, overflowY: "auto", marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                  {analyses.map((a) => (
-                    <button
-                      key={a.id}
-                      onClick={() => handleSelectAnalysis(a.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "10px 12px", background: a.id === selectedId ? "#fff7ed" : "transparent",
-                        border: a.id === selectedId ? "1px solid #fed7aa" : "1px solid transparent",
-                        borderRadius: 10, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                        textAlign: "left", width: "100%", transition: "background 0.1s",
-                      }}
-                    >
-                      <span style={{
-                        width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                        background: PLATFORM_ICONS[a.platform]?.color || "#a8a29e",
-                      }} />
-                      <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: "#1c1917", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {parseTitle(a.verdict)}
-                      </span>
-                      {chatHistory[a.id]?.length ? (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: "#f97316", background: "#fff7ed", border: "1px solid #fed7aa", padding: "1px 6px", borderRadius: 20, flexShrink: 0 }}>
-                          {chatHistory[a.id].length}
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: 10, color: "#c4bdb5", flexShrink: 0 }}>{timeAgo(a.created_at)}</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
         {/* Messages Area */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px" }}>
           {!selectedId ? (
@@ -572,7 +495,7 @@ function ChatContent() {
               </div>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1c1917", margin: "0 0 6px 0" }}>Chat with your content</h3>
               <p style={{ fontSize: 13, color: "#a8a29e", lineHeight: 1.5, margin: "0 0 24px 0", maxWidth: 280 }}>
-                Select an analysis above to start a conversation. Ask questions, get advice tailored to your goals.
+                Attach a reel using the paperclip button below to start chatting.
               </p>
               {analyses.slice(0, 3).map((a) => (
                 <button
@@ -649,23 +572,29 @@ function ChatContent() {
         </div>
 
         {/* Input */}
-        {selectedId && (
-          <div style={{
-            padding: "12px 16px", paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-            borderTop: "1px solid #e7e2d9", background: "#fff", flexShrink: 0,
-          }}>
-            <div style={{ maxWidth: 720, margin: "0 auto" }}>
-              <ChatInput
-                value={input}
-                onChange={setInput}
-                onSend={() => sendMessage(input)}
-                isStreaming={isLoading}
-                isLocked={dailyLimitReached}
-                abortRef={abortRef}
-              />
-            </div>
+        <div style={{
+          padding: "12px 16px", paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+          borderTop: "1px solid #e7e2d9", background: "#fff", flexShrink: 0,
+          overflow: "visible",
+        }}>
+          <div style={{ maxWidth: 720, margin: "0 auto", overflow: "visible" }}>
+            <ChatInput
+              value={input}
+              onChange={setInput}
+              onSend={() => sendMessage(input)}
+              isStreaming={isLoading}
+              isLocked={dailyLimitReached}
+              abortRef={abortRef}
+              analyses={analyses}
+              selectedId={selectedId}
+              onSelectAnalysis={(id) => id === null ? setSelectedId(null) : handleSelectAnalysis(id)}
+              platformIcons={PLATFORM_ICONS}
+              parseTitle={parseTitle}
+              chatHistory={chatHistory}
+              loadingAnalyses={loadingAnalyses}
+            />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
