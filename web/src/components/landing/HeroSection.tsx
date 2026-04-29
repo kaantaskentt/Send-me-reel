@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const ROTATING_WORDS = ["actioned.", "summarised.", "tried.", "understood."];
+const ROTATING_WORDS = ["summarized.", "understood.", "clarified.", "actioned.", "finally useful."];
 
 const HERO_CARDS = [
   {
@@ -109,7 +109,7 @@ export default function HeroSection() {
               lineHeight: 1.05,
             }}
           >
-            <span className="block text-white">Your feed.</span>
+            <span className="block text-white">Your feed,</span>
             <span className="block" style={{ minHeight: "1.1em", overflow: "hidden" }}>
               <AnimatePresence mode="wait">
                 <motion.span
