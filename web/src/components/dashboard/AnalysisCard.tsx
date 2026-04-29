@@ -155,10 +155,18 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: 
   };
 
   // ── Theme-aware colors ────────────────────────────────────────────────────
+  const PLATFORM_ACCENT: Record<string, string> = {
+    instagram: "#E1306C",
+    tiktok: "#69C9D0",
+    x: "#a1a1aa",
+    linkedin: "#0A66C2",
+    youtube: "#FF0000",
+    article: "#60A5FA",
+  };
+  const platformAccent = PLATFORM_ACCENT[analysis.platform] ?? "#e7e2d9";
+
   const cardBg = isDark ? "#111111" : "#fff";
-  const cardBorder = isOpen
-    ? "1.5px solid #f97316"
-    : isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e7e2d9";
+  const normalBorder = isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9";
   const dividerColor = isDark ? "rgba(255,255,255,0.07)" : "#f0ebe4";
   const titleColor = isDark ? "#fafafa" : "#1c1917";
   const timeColor = isDark ? "#52525b" : "#c4bdb5";
@@ -176,7 +184,15 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: 
       transition={{ duration: 0.2 }}
       style={{
         background: cardBg,
-        border: cardBorder,
+        ...(isOpen
+          ? { border: "1.5px solid #f97316" }
+          : {
+              borderTop: `1px solid ${normalBorder}`,
+              borderRight: `1px solid ${normalBorder}`,
+              borderBottom: `1px solid ${normalBorder}`,
+              borderLeft: `3px solid ${platformAccent}`,
+            }
+        ),
         borderRadius: 16,
         overflow: "hidden",
         transition: "border-color 0.2s, box-shadow 0.2s",
@@ -200,7 +216,13 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted }: 
           <PlatformIcon platform={analysis.platform} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: titleColor, lineHeight: 1.35, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "0 0 4px 0" }}>
+          <h3 style={{
+            fontSize: 14, fontWeight: 700, color: titleColor, lineHeight: 1.4,
+            display: "-webkit-box", WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as const,
+            overflow: "hidden",
+            margin: "0 0 4px 0",
+          }}>
             {parsed?.title || "Untitled"}
           </h3>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
