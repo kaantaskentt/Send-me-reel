@@ -101,7 +101,6 @@ export default function HeroSection() {
           className="mb-6"
         >
           <h1
-            className="text-white"
             style={{
               fontFamily: "'Inter', sans-serif",
               fontWeight: 800,
@@ -110,21 +109,22 @@ export default function HeroSection() {
               lineHeight: 1.05,
             }}
           >
-            Your feed.
-            <br />
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={wordIndex}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="inline-block"
-                style={{ color: "#F97316" }}
-              >
-                {ROTATING_WORDS[wordIndex]}
-              </motion.span>
-            </AnimatePresence>
+            <span className="block text-white">Your feed.</span>
+            <span className="block" style={{ minHeight: "1.1em", overflow: "hidden" }}>
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={wordIndex}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                  className="inline-block"
+                  style={{ color: "#F97316" }}
+                >
+                  {ROTATING_WORDS[wordIndex]}
+                </motion.span>
+              </AnimatePresence>
+            </span>
           </h1>
         </motion.div>
 
