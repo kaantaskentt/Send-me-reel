@@ -109,7 +109,7 @@ export default function HeroSection() {
               lineHeight: 1.05,
             }}
           >
-            <span className="block text-white">Your feed,</span>
+            <span className="block text-white">Your feed</span>
             <span className="block" style={{ minHeight: "1.1em", overflow: "hidden" }}>
               <AnimatePresence mode="wait">
                 <motion.span
