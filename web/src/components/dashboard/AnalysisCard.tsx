@@ -238,36 +238,44 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
         onClick={onToggle}
         style={{
           width: "100%", textAlign: "left", padding: "14px 16px",
-          display: "flex", alignItems: "flex-start", gap: 12,
+          display: "flex", flexDirection: "column", gap: 6,
           cursor: "pointer", background: "none", border: "none",
           fontFamily: "'DM Sans', sans-serif",
         }}
       >
-        <div style={{ marginTop: 2, flexShrink: 0 }}>
-          <PlatformIcon platform={analysis.platform} />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{
-            fontSize: 14, fontWeight: 700, color: titleColor, lineHeight: 1.4,
-            display: "-webkit-box", WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical" as const,
-            overflow: "hidden",
-            margin: "0 0 4px 0",
-          }}>
-            {parsed?.title || "Untitled"}
-          </h3>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        {/* Top row: icon + platform name · badge + time + chevron */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <PlatformIcon platform={analysis.platform} />
+            <span style={{
+              fontSize: 10, fontWeight: 700, color: timeColor,
+              letterSpacing: "0.08em", textTransform: "uppercase",
+            }}>
+              {analysis.platform}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <StateBadge state={localState} />
             <span style={{ fontSize: 11, color: timeColor }}>{timeAgo}</span>
+            <motion.div
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ color: timeColor, display: "flex" }}
+            >
+              <ChevronDown style={{ width: 14, height: 14 }} />
+            </motion.div>
           </div>
         </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ flexShrink: 0, marginTop: 4, color: timeColor }}
-        >
-          <ChevronDown style={{ width: 16, height: 16 }} />
-        </motion.div>
+        {/* Title row */}
+        <h3 style={{
+          fontSize: 14, fontWeight: 700, color: titleColor, lineHeight: 1.4,
+          display: "-webkit-box", WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical" as const,
+          overflow: "hidden",
+          margin: 0, textAlign: "left",
+        }}>
+          {parsed?.title || "Untitled"}
+        </h3>
       </button>
 
       {/* ── Expanded content ── */}
