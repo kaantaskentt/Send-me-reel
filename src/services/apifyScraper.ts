@@ -235,7 +235,7 @@ export async function downloadFromCdn(
   const filePath = path.join(dir, "video.mp4");
 
   const appUrl = config.appUrl;
-  const proxySecret = process.env.JWT_SECRET || "";
+  const proxySecret = (process.env.JWT_SECRET || "").trim();
 
   console.log(`[apify] Downloading video via proxy: ${videoUrl.slice(0, 80)}...`);
 
