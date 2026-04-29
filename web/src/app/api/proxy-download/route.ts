@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("x-proxy-secret");
-  if (secret !== (process.env.JWT_SECRET || "").trim()) {
+  if (secret !== (process.env.JWT_SECRET || "").replace(/\s+/g, "")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

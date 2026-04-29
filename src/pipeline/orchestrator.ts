@@ -473,10 +473,11 @@ export async function executePipeline(
         await executeVideoPipeline(userId, analysisId, url, platform, userNote);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
-        // Only fall back to article for NOT_A_VIDEO (image posts with captions).
-        // Scraping failures on social media URLs also fail via Jina and produce junk verdicts.
-        if (errCode === "NOT_A_VIDEO") {
-          console.log(`[pipeline] Image post (NOT_A_VIDEO), falling back to article pipeline: ${url}`);
+        // Fall back to article pipeline for image posts (NOT_A_VIDEO) and
+        // video download failures (DOWNLOAD_FAILED — e.g. CDN unavailable after Apify scrape).
+        // Login wall detector in executeArticlePipeline catches social URLs that Jina can't read.
+        if (errCode === "NOT_A_VIDEO" || errCode === "DOWNLOAD_FAILED") {
+          console.log(`[pipeline] Video unavailable (${errCode}), falling back to article pipeline: ${url}`);
           await executeArticlePipeline(userId, analysisId, url, userNote);
         } else {
           throw videoErr;
