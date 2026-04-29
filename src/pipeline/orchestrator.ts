@@ -261,9 +261,23 @@ export async function executeVideoPipeline(
         );
       }
     } else {
-      // No Apify video URL — this is likely an image post. Fall back to article pipeline.
-      console.log(`[pipeline] No video URL available (image post?), falling back to article pipeline`);
-      throw new ServiceError("NOT_A_VIDEO", "No video URL available from any source", false);
+      // Distinguish two cases:
+      // 1. source=apify, no videoUrl → genuine image post (Apify scraped it, no video present)
+      //    → NOT_A_VIDEO triggers article pipeline (caption analysis)
+      // 2. source=yt-dlp, download failed → IS a video but undownloadable from Railway IP
+      //    → DOWNLOAD_FAILED hard-fails with refund; do not fall back to Jina junk
+      const scrapeSource = String(scraped.metadata?.source ?? "yt-dlp");
+      if (scrapeSource === "apify") {
+        console.log(`[pipeline] Apify returned no video URL — image post, falling back to article pipeline`);
+        throw new ServiceError("NOT_A_VIDEO", "No video URL available from Apify (image post)", false);
+      } else {
+        console.log(`[pipeline] yt-dlp metadata succeeded but download failed with no CDN fallback`);
+        throw new ServiceError(
+          "DOWNLOAD_FAILED",
+          "Could not download video — likely blocked by Instagram CDN. Try again in a minute.",
+          false,
+        );
+      }
     }
   }
 
