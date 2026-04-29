@@ -155,11 +155,17 @@ export default function Dashboard() {
     const params = new URLSearchParams({ page: String(pageNum), limit: "50" });
     if (platform !== "all") params.set("platform", platform);
     if (search) params.set("search", search);
-    const res = await fetch(`/api/analyses?${params}`);
-    const data: AnalysisFeedResponse = await res.json();
-    setAnalyses((prev) => append ? [...prev, ...data.analyses] : data.analyses);
-    setTotal(data.total);
-    setHasMore(data.hasMore);
+    try {
+      const res = await fetch(`/api/analyses?${params}`);
+      const data = await res.json();
+      if (data.analyses) {
+        setAnalyses((prev) => append ? [...prev, ...data.analyses] : data.analyses);
+        setTotal(data.total ?? 0);
+        setHasMore(data.hasMore ?? false);
+      }
+    } catch {
+      // ignore — empty state renders naturally
+    }
     setLoading(false);
   }, [platform, search]);
 
