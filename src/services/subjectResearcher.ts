@@ -45,50 +45,61 @@ export async function researchSubject(
 ): Promise<SubjectResearch | null> {
   const query = buildSearchQuery(subject);
 
-  try {
-    const response = await openai.responses.create({
-      model: "gpt-4.1",
-      tools: [{ type: "web_search" }],
-      input: [
-        { role: "system", content: RESEARCHER_PROMPT },
-        { role: "user", content: query },
-      ],
-      max_output_tokens: 600,
-    });
+  async function attempt(): Promise<SubjectResearch | null> {
+    try {
+      const response = await openai.responses.create({
+        model: "gpt-4.1",
+        tools: [{ type: "web_search" }],
+        input: [
+          { role: "system", content: RESEARCHER_PROMPT },
+          { role: "user", content: query },
+        ],
+        max_output_tokens: 600,
+      });
 
-    const text = extractOutputText(response);
-    if (!text) return null;
+      const text = extractOutputText(response);
+      if (!text) return null;
 
-    const parsed = parseJsonLoose(text);
-    if (!parsed) return null;
+      const parsed = parseJsonLoose(text);
+      if (!parsed) return null;
 
-    const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
-    const canonicalUrl = typeof parsed.canonicalUrl === "string" ? parsed.canonicalUrl : null;
-    const sourceUrls = Array.isArray(parsed.sourceUrls)
-      ? parsed.sourceUrls.filter((u): u is string => typeof u === "string").slice(0, 3)
-      : [];
-    const snippets = Array.isArray(parsed.snippets)
-      ? parsed.snippets.filter((s): s is string => typeof s === "string").slice(0, 3)
-      : [];
+      const summary = typeof parsed.summary === "string" ? parsed.summary.trim() : "";
+      const canonicalUrl = typeof parsed.canonicalUrl === "string" ? parsed.canonicalUrl : null;
+      const sourceUrls = Array.isArray(parsed.sourceUrls)
+        ? parsed.sourceUrls.filter((u): u is string => typeof u === "string").slice(0, 3)
+        : [];
+      const snippets = Array.isArray(parsed.snippets)
+        ? parsed.snippets.filter((s): s is string => typeof s === "string").slice(0, 3)
+        : [];
 
-    if (!summary && !canonicalUrl && sourceUrls.length === 0) {
-      // Search returned nothing useful
+      if (!summary && !canonicalUrl && sourceUrls.length === 0) {
+        return null;
+      }
+
+      return {
+        subject: subject.name,
+        type: subject.type,
+        summary,
+        canonicalUrl,
+        sourceUrls,
+        snippets,
+        fetchedAt: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.error("[subjectResearcher] failed:", err instanceof Error ? err.message : err);
       return null;
     }
-
-    return {
-      subject: subject.name,
-      type: subject.type,
-      summary,
-      canonicalUrl,
-      sourceUrls,
-      snippets,
-      fetchedAt: new Date().toISOString(),
-    };
-  } catch (err) {
-    console.error("[subjectResearcher] failed:", err instanceof Error ? err.message : err);
-    return null;
   }
+
+  let result = await attempt();
+  if (!result?.canonicalUrl) {
+    console.log(`[subjectResearcher] no canonicalUrl on first attempt, retrying...`);
+    result = await attempt();
+  }
+  if (!result?.canonicalUrl) {
+    console.log(`[subjectResearcher] canonicalUrl still null after retry for: ${subject.name}`);
+  }
+  return result;
 }
 
 function buildSearchQuery(subject: ExtractedSubject): string {

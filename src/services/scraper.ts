@@ -184,9 +184,16 @@ export async function scrapeVideoWithFallback(
       throw ytdlpErr;
     }
 
-    // No Apify actors for YouTube/LinkedIn — skip straight to article fallback
-    if (platform === "youtube" || platform === "linkedin") {
-      console.log(`[scraper] yt-dlp failed for ${platform} — no Apify fallback, routing to article pipeline`);
+    // LinkedIn posts are articles — yt-dlp failure is expected. Signal NOT_A_VIDEO so
+    // orchestrator routes to article pipeline.
+    if (platform === "linkedin") {
+      console.log(`[scraper] yt-dlp failed for linkedin — routing to article pipeline`);
+      throw new ServiceError("NOT_A_VIDEO", "LinkedIn post — no video content");
+    }
+
+    // No Apify actors for YouTube — skip straight to article fallback
+    if (platform === "youtube") {
+      console.log(`[scraper] yt-dlp failed for youtube — no Apify fallback`);
       throw ytdlpErr;
     }
 
