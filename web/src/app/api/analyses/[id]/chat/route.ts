@@ -211,7 +211,7 @@ export async function POST(
 
       try {
         const result = await openai.responses.create({
-          model: "gpt-5.4",
+          model: "gpt-5.5",
           tools: [{ type: "web_search" }],
           input,
           max_output_tokens: 1200,

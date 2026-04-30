@@ -58,15 +58,36 @@ export default function ChatSidebar({
 
   return (
     <>
+      <style>{`
+        @media (max-width: 767px) {
+          .cd-chat-sidebar-panel {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            height: 100dvh !important;
+            width: 280px !important;
+            transform: translateX(-100%);
+            transition: transform 0.25s ease !important;
+            z-index: 60;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+          }
+          .cd-chat-sidebar-panel.open { transform: translateX(0) !important; }
+          .cd-chat-toggle { left: 12px !important; transition: none !important; }
+        }
+        @media (min-width: 768px) {
+          .cd-chat-backdrop { display: none !important; }
+        }
+      `}</style>
+
       {/* Toggle button — always visible */}
       <button
+        className="cd-chat-toggle"
         onClick={onToggle}
         title={open ? "Close sidebar" : "Open sidebar"}
         style={{
           position: "fixed",
           top: 16,
           left: open ? 252 : 12,
-          zIndex: 50,
+          zIndex: 61,
           width: 32,
           height: 32,
           borderRadius: 8,
@@ -84,8 +105,18 @@ export default function ChatSidebar({
         <PanelLeft size={14} />
       </button>
 
+      {/* Mobile backdrop */}
+      {open && (
+        <div
+          className="cd-chat-backdrop"
+          onClick={onToggle}
+          style={{ display: "block", position: "fixed", inset: 0, background: "rgba(0,0,0,0.25)", zIndex: 55 }}
+        />
+      )}
+
       {/* Sidebar panel */}
       <div
+        className={`cd-chat-sidebar-panel${open ? " open" : ""}`}
         style={{
           width: open ? 240 : 0,
           overflow: "hidden",
@@ -95,7 +126,7 @@ export default function ChatSidebar({
           background: "#faf8f5",
           display: "flex",
           flexDirection: "column",
-          height: "100vh",
+          height: "100dvh",
           position: "sticky",
           top: 0,
         }}

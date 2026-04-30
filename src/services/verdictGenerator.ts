@@ -157,7 +157,7 @@ async function generateContentVerdict(input: VerdictInput): Promise<ContentVerdi
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.5",
       max_tokens: 400,
       temperature: 0.3,
       messages: [
@@ -198,7 +198,7 @@ async function generateActionLine(args: {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.5",
       max_tokens: 120,
       temperature: 0.3,
       messages: [

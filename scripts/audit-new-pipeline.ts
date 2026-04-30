@@ -114,7 +114,7 @@ async function simulateChatTurn(
   let answer = "";
 
   const result = await openai.responses.create({
-    model: "gpt-5.4",
+    model: "gpt-5.5",
     tools: [{ type: "web_search" }],
     input: [
       { role: "system", content: `${CHAT_SYSTEM_PROMPT}\n\n${contextParts.join("\n")}` },
