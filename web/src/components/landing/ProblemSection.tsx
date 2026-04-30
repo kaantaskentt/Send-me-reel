@@ -205,9 +205,8 @@ export default function ProblemSection() {
               lineHeight: 1.7,
             }}
           >
-            ContextDrop turns every link into a{" "}
-            <span className="text-white font-semibold">30-second decision</span>{" "}
-            — act on it, or move on.
+            ContextDrop turns every link into a decision.{" "}
+            Act on it — or move on.
           </p>
         </motion.div>
       </div>

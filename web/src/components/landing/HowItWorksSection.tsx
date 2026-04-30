@@ -12,7 +12,7 @@ const STEPS = [
   {
     num: "01",
     title: "Send a link",
-    desc: "Drop any URL into Mr Context on Telegram — Instagram, TikTok, X, LinkedIn, YouTube, or any article.",
+    desc: "Drop anything you'd normally save.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
@@ -22,7 +22,7 @@ const STEPS = [
   {
     num: "02",
     title: "Get the signal",
-    desc: "Mr Context reads it, strips the noise, and sends back a sharp summary + the one thing worth doing.",
+    desc: "We strip the noise and show what matters.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="3" />
@@ -32,8 +32,8 @@ const STEPS = [
   },
   {
     num: "03",
-    title: "Act on it",
-    desc: "One tap to add the action to your dashboard. Your feed becomes a to-do list — not a graveyard.",
+    title: "Know what to do",
+    desc: "One clear action. No overthinking.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 11l3 3L22 4" />
