@@ -432,7 +432,7 @@ function ChatContent() {
   const greeting = firstName ? `Hi ${firstName} —` : "Ask anything —";
 
   return (
-    <div style={{ height: "100dvh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif", display: "flex", overflow: "hidden" }}>
+    <div style={{ position: "fixed", inset: 0, background: "#faf8f5", fontFamily: "'DM Sans', sans-serif", display: "flex", overflow: "hidden" }}>
       {/* Sidebar */}
       <ChatSidebar
         open={sidebarOpen}
@@ -461,7 +461,7 @@ function ChatContent() {
         />
 
         {/* Messages Area */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px", position: "relative" }}>
+        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 8px", position: "relative" }}>
           {dailyLimitReached && (
             <div style={{
               position: "absolute", inset: 0, zIndex: 10,
@@ -672,10 +672,19 @@ function ChatHeader({
 }) {
   return (
     <header style={{
-      display: "flex", alignItems: "center", gap: 12, padding: "0 16px 0 52px", height: 56,
+      display: "flex", alignItems: "center", gap: 12,
+      padding: "0 16px 0 52px",
+      paddingTop: "env(safe-area-inset-top)",
+      minHeight: 56,
       borderBottom: "1px solid #e7e2d9", background: "rgba(250,248,245,0.88)",
       backdropFilter: "blur(16px)", flexShrink: 0,
     }}>
+      <style>{`
+        @media (max-width: 767px) {
+          .cd-chat-header-logo { display: none !important; }
+          .cd-chat-header-back-text { display: none !important; }
+        }
+      `}</style>
       <button onClick={onBack} style={{
         padding: 8, background: "none", border: "1px solid #e7e2d9",
         borderRadius: 10, cursor: "pointer", color: "#78716c",
@@ -685,7 +694,7 @@ function ChatHeader({
           <polyline points="15 18 9 12 15 6" />
         </svg>
       </button>
-      <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+      <a className="cd-chat-header-logo" href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
@@ -693,10 +702,10 @@ function ChatHeader({
           Context<span style={{ color: "#f97316" }}>Drop</span>
         </span>
       </a>
-      <span style={{ fontSize: 13, color: "#c4bdb5" }}>/</span>
-      <span style={{ fontSize: 14, fontWeight: 600, color: "#78716c" }}>Chat</span>
+      <span className="cd-chat-header-logo" style={{ fontSize: 13, color: "#c4bdb5" }}>/</span>
+      <span className="cd-chat-header-logo" style={{ fontSize: 14, fontWeight: 600, color: "#78716c" }}>Chat</span>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-        <button onClick={onBack} style={{
+        <button className="cd-chat-header-back-text" onClick={onBack} style={{
           background: "none", border: "none", cursor: "pointer",
           fontSize: 12, fontWeight: 500, color: "#a8a29e",
           fontFamily: "'DM Sans', sans-serif", padding: "4px 8px",
