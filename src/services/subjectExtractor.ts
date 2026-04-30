@@ -97,7 +97,7 @@ export async function extractSubject(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       max_tokens: 200,
       temperature: 0,
       response_format: { type: "json_object" },

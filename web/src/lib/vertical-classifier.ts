@@ -52,7 +52,7 @@ export async function classifyUrl(
 
   try {
     const response = await client().chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-5.4-nano",
       max_tokens: 80,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },

@@ -63,7 +63,7 @@ Then open [@contextdrop2027bot](https://t.me/contextdrop2027bot) on Telegram and
 | Layer | Technology |
 |---|---|
 | Bot runtime | Node.js + TypeScript + Telegraf |
-| AI pipeline | OpenAI Whisper · GPT-4o Vision · GPT-4o |
+| AI pipeline | OpenAI Whisper · GPT-5.4-mini Vision · GPT-5.4 |
 | Database | Supabase (PostgreSQL) |
 | Storage | Supabase Storage |
 | Landing page | Next.js 15 · Tailwind CSS 4 · React 19 |

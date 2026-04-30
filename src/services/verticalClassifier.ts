@@ -37,7 +37,7 @@ export async function classifyUrl(url: string, captionHint?: string): Promise<Ve
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+      model: "gpt-5.4-nano",
       max_tokens: 80,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },

@@ -78,7 +78,7 @@ async function analyzeBatch(
   }
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5.4-mini",
     messages: [
       { role: "system", content: FRAME_ANALYSIS_PROMPT },
       { role: "user", content },
@@ -113,7 +113,7 @@ export async function summarizeVisuals(
     .join("\n");
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5.4-mini",
     messages: [
       {
         role: "system",

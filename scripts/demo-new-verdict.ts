@@ -39,7 +39,7 @@ async function main() {
   console.log(`Caption:   ${KIMI_INPUT.caption}`);
 
   // STEP 1 — subject extraction
-  console.log(sep("STEP 1 — subjectExtractor (gpt-4o-mini, ~$0.001)"));
+  console.log(sep("STEP 1 — subjectExtractor (gpt-5.4-nano, ~$0.001)"));
   const t1 = Date.now();
   const subject = await extractSubject(KIMI_INPUT);
   console.log(`(took ${Date.now() - t1}ms)`);
@@ -58,7 +58,7 @@ async function main() {
   console.log(JSON.stringify(research, null, 2));
 
   // STEP 3 — full verdict pipeline
-  console.log(sep("STEP 3 — generateVerdict (Pass 1 + Pass 2, gpt-4.1)"));
+  console.log(sep("STEP 3 — generateVerdict (Pass 1 + Pass 2, gpt-5.4)"));
   const t3 = Date.now();
   const verdict = await generateVerdict({
     transcript: KIMI_INPUT.transcript,

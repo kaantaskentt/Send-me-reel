@@ -78,7 +78,7 @@ export async function evaluateContent(input: QualityInput): Promise<QualityDecis
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5.4-nano",
       max_tokens: 80,
       temperature: 0,
       messages: [

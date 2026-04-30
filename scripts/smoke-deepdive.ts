@@ -67,7 +67,7 @@ async function main() {
     const userMsg = parts.join("\n");
 
     const resp = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-5.4",
       max_tokens: 1200,
       messages: [
         { role: "system", content: prompt },
