@@ -105,7 +105,7 @@ const CONTENT_SYSTEM_PROMPT = `You read scraped social-media content and tell th
 
 ## OUTPUT — exactly this structure, in this order
 
-📍 [Subject-first description. Two sentences max. Lead with the named subject and what it IS. Include canonical URL (only if the source data you analized contains it, don't bring up any links not mentioned in the text). Include specific identifiers (version numbers, benchmark scores, prices) when present.]
+📍 [Subject-first description. Two sentences max. Lead with the named subject and what it IS. Include canonical URL only if the source data or SUBJECT RESEARCH contains it. Include specific identifiers (version numbers, benchmark scores, prices) when present.]
 
 🪜 If you want to go further
 [ONE sentence under 100 characters. The deeper layer — a specific concept the subject opens up, a related thing in the same space, or what's worth knowing next. OMIT this line entirely if the subject is shallow or already fully covered in 📍. The default is no 🪜 line. Never pad to fill it.]
@@ -119,7 +119,7 @@ ACTION:[YES/NO]
 📍 Claude Design is Anthropic Labs' visual design workspace that lets you create and refine prototypes, slides, and marketing assets using prompts. Built on Claude Opus 4.7, it's a research preview for paid Claude subscribers. https://www.anthropic.com/news/claude-design-anthropic-labs
 ACTION:NO
 
-## avoid being too verbose, the user know's you're going to describe the content they shared. Danger: meta-describing the post instead of the subject.
+## avoid being too verbose, the user knows you're going to describe the content they shared. Danger: meta-describing the post instead of the subject.
 
 ### E.g.:
 
@@ -155,7 +155,7 @@ ATTRIBUTION when the post is a CLAIM by a specific person:
 - If transcript, visuals, caption, AND research are all empty: output 📍 Couldn't pull the content. Open the link.
 
 ## BANNED WORDS — never use these:
-"robust", "exciting", "cutting-edge", "comprehensive", "leverage", "elevate", "supercharge", "actionable", pro tip", "bottom line", "deep dive", "valuable insights", "great content",, "insightful for anyone", "this content explores", "in the world of", "revolutionary", "driven", "utilize", "streamline"
+"robust", "exciting", "cutting-edge", "comprehensive", "leverage", "elevate", "supercharge", "actionable", "pro tip", "bottom line", "deep dive", "valuable insights", "great content", "insightful for anyone", "this content explores", "in the world of", "revolutionary", "driven", "utilize", "streamline"
 
 ## NEVER:
 
@@ -238,10 +238,8 @@ async function generateContentVerdict(
 
     const text = response.choices[0]?.message?.content;
     if (!text) {
-      throw new ServiceError(
-        "VERDICT_EMPTY",
-        "OpenAI returned empty content (Pass 1)",
-      );
+      console.error("[verdictGenerator] Pass 1 returned empty content; using fallback verdict");
+      return buildFallbackContentVerdict(input);
     }
 
     const hasAction = /\bACTION\s*:\s*YES\b/i.test(text);
@@ -252,12 +250,48 @@ async function generateContentVerdict(
 
     return { description, hasAction };
   } catch (err) {
-    if (err instanceof ServiceError) throw err;
-    throw new ServiceError(
-      "VERDICT_FAILED",
-      `Failed to generate verdict (Pass 1): ${err instanceof Error ? err.message : String(err)}`,
+    console.error(
+      "[verdictGenerator] Pass 1 failed; using fallback verdict:",
+      err instanceof Error ? err.message : err,
     );
+    return buildFallbackContentVerdict(input);
   }
+}
+
+function buildFallbackContentVerdict(input: VerdictInput): ContentVerdict {
+  const research = input.subjectResearch ?? null;
+  const title = typeof input.metadata.title === "string" ? input.metadata.title.trim() : "";
+  const subject = research?.subject?.trim() || title || "This";
+  const summary = research?.summary?.trim() || extractFirstUsefulSentence(input.caption);
+  const canonicalUrl = research?.canonicalUrl?.trim();
+
+  const descriptionBody = summary
+    ? summary
+    : `${subject} could not be summarized cleanly. Open the source link.`;
+  const urlSuffix = canonicalUrl && !descriptionBody.includes(canonicalUrl) ? ` ${canonicalUrl}` : "";
+  const description = `📍 ${descriptionBody}${urlSuffix}`.slice(0, 420).trim();
+
+  return {
+    description,
+    hasAction: Boolean(
+      canonicalUrl &&
+        research &&
+        ["tool", "model", "repo"].includes(research.type),
+    ),
+  };
+}
+
+function extractFirstUsefulSentence(text: string): string {
+  const cleaned = text
+    .replace(/\s+/g, " ")
+    .replace(/^Title:\s*/i, "")
+    .trim();
+  if (!cleaned) return "";
+
+  const abstractStart = cleaned.search(/\bAbstract\b/i);
+  const source = abstractStart >= 0 ? cleaned.slice(abstractStart).replace(/^Abstract\s*/i, "") : cleaned;
+  const sentence = source.match(/^(.{80,260}?[.!?])\s/)?.[1] || source.slice(0, 260);
+  return sentence.trim();
 }
 
 async function generateActionLine(args: {
