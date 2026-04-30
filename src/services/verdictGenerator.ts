@@ -75,10 +75,11 @@ VOICE RULES:
 - Total length: 📍 ≤ 220 chars. 🪜 ≤ 100 chars when present.
 
 USE SUBJECT RESEARCH WHEN PROVIDED:
-- If a "--- SUBJECT RESEARCH ---" block is in the user message, treat it as authoritative for naming the thing and citing canonical URLs. The post is one mention; the subject is the thing itself.
+- Use research to correctly name the subject and cite its canonical URL and specific identifiers (version, scores, prices).
+- But the creator's transcript and demonstration are the actual content — research is background context, not the story. If the creator is making an argument or showing a technique, that argument or technique is the verdict, not a definition of the subject.
 - Pull the canonical URL from research into 📍 when it exists.
-- Pull specific identifiers (version, scores, prices) from research into 📍 when they're more authoritative than what the post said.
-- If research and post disagree on a fact, prefer research — but never cite research as a source ("according to..."), just state the fact.
+- Pull specific identifiers (version, scores, prices) from research into 📍 when they add precision the post lacked.
+- If research and post disagree on a fact, prefer research for naming and identifiers — but never let research replace the creator's actual content.
 - If no research is provided, work from post content alone — never invent URLs or facts.
 
 ANTI-HALLUCINATION:
