@@ -135,7 +135,7 @@ export default function HeroSection() {
           className="max-w-xl mb-10 leading-relaxed"
           style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)", color: "#A1A1AA" }}
         >
-          Send anything you'd normally save. Get what matters and what to do next.
+          Send anything you'd normally save.<br />Get what matters and what to do next.
         </motion.p>
 
         <motion.div

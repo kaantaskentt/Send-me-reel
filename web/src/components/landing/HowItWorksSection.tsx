@@ -89,7 +89,7 @@ export default function HowItWorksSection() {
               lineHeight: 1.1,
             }}
           >
-            Three steps. Thirty seconds.
+            From link to action.
           </h2>
         </motion.div>
 
