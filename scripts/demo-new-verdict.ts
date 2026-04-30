@@ -58,7 +58,7 @@ async function main() {
   console.log(JSON.stringify(research, null, 2));
 
   // STEP 3 — full verdict pipeline
-  console.log(sep("STEP 3 — generateVerdict (Pass 1 + Pass 2, gpt-5.5)"));
+  console.log(sep("STEP 3 — generateVerdict (Pass 1 + Pass 2, gpt-5.4)"));
   const t3 = Date.now();
   const verdict = await generateVerdict({
     transcript: KIMI_INPUT.transcript,
