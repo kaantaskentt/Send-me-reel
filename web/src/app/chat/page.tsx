@@ -183,7 +183,9 @@ function ChatContent() {
   const [chatUsage, setChatUsage] = useState<ChatUsage | null>(null);
   const [loadingAnalyses, setLoadingAnalyses] = useState(true);
   const [firstName, setFirstName] = useState<string>("");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true
+  );
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(false);
 

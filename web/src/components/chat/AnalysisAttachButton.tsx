@@ -96,8 +96,7 @@ export default function AnalysisAttachButton({
               maxHeight: 280,
               overflowY: "auto",
               zIndex: 40,
-              minWidth: 280,
-              maxWidth: 320,
+              width: "min(280px, calc(100vw - 32px))",
             }}
           >
             {loadingAnalyses ? (
