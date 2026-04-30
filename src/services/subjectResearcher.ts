@@ -112,11 +112,15 @@ function buildSearchQuery(subject: ExtractedSubject): string {
     repo: "GitHub repository",
   }[subject.type];
 
-  const hint = subject.suggestedUrls.length > 0
-    ? `\nThe post mentioned these URLs (treat as authoritative): ${subject.suggestedUrls.join(", ")}`
-    : "";
+  // When the extractor found an explicit URL in the source content, anchor the
+  // search to it. Generic name-based searches can find homonymous products
+  // (e.g. "auto-browser" → Chrome extension instead of the creator's repo).
+  if (subject.suggestedUrls.length > 0) {
+    const urls = subject.suggestedUrls.join(", ");
+    return `Research this specific URL from the source content: ${urls}\nThis is the canonical identifier provided by the creator — do NOT search for other products named "${subject.name}". Use web_search to fetch what this project actually is and confirm its canonical URL. Return the JSON object as specified.`;
+  }
 
-  return `Research this subject: "${subject.name}" (${typeHint})${hint}\n\nUse web_search to find canonical context. Return the JSON object as specified.`;
+  return `Research this subject: "${subject.name}" (${typeHint})\n\nUse web_search to find canonical context. Return the JSON object as specified.`;
 }
 
 function extractOutputText(response: { output_text?: string; output?: unknown }): string {
