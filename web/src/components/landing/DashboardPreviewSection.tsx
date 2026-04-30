@@ -17,7 +17,7 @@ const FEED_ITEMS = [
     platformColor: "#E1306C",
     title: "Kimi K2.6 — Moonshot AI's new coding model",
     summary: "SWE-Bench Pro 58.6. Top-ranked on agentic coding benchmarks. Free tier available.",
-    action: "Try it at kimi.com — drop a bug and see if it catches what Cursor misses.",
+    action: "Try it at kimi.com — drop a bug and see what it catches.",
     tags: ["AI Tools", "Coding"],
     time: "just now",
     isNew: true,
@@ -936,7 +936,7 @@ export default function DashboardPreviewSection() {
               lineHeight: 1.1,
             }}
           >
-            Send a link. Get a card.
+            Send a link. Get clarity.
             <br />
             <span style={{ color: "#A1A1AA" }}>It really is that fast.</span>
           </h2>

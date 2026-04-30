@@ -57,7 +57,7 @@ export default function FinalCTASection() {
               className="text-[11px] font-semibold uppercase tracking-widest mb-6"
               style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
             >
-              Ready?
+              Start with one link.
             </p>
             <h2
               className="text-white mb-4"

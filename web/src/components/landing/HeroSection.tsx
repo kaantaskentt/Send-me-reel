@@ -17,7 +17,7 @@ const HERO_CARDS = [
     platformColor: "#E1306C",
     title: "Kimi K2.6 — Moonshot AI's coding model",
     summary: "SWE-Bench Pro 58.6. Top-ranked on agentic coding benchmarks. Free tier available.",
-    action: "Try it at kimi.com — drop a bug and see if it catches what Cursor misses.",
+    action: "Try it at kimi.com — drop a bug and see what it catches.",
     tags: ["AI Tools", "Coding"],
     time: "2h ago",
   },
@@ -135,7 +135,7 @@ export default function HeroSection() {
           className="max-w-xl mb-10 leading-relaxed"
           style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)", color: "#A1A1AA" }}
         >
-          Send any link to Mr Context on Telegram. Get back the one thing worth doing — in 30 seconds.
+          Send anything you'd normally save.<br />Get what matters and what to do next.
         </motion.p>
 
         <motion.div
