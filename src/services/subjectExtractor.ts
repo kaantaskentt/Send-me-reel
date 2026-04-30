@@ -65,6 +65,7 @@ Output JSON with this exact shape:
 When to return null (confidence 0, name ""):
 - The post is generic motivational content or vague advice with no named thing.
 - The post is news, event coverage, or a creative/visual piece (recipe, art, sport, athletic, music, ticket page) where any named brand or person is just BACKDROP — not the subject as a tool/product/concept.
+- The post is a method or technique walkthrough that uses multiple named tools or platforms as props — where the value is in the combination or workflow, not in any single one of them. Examples: "How I use Claude + Nautilus to bet on Polymarket" (the technique is the point; Claude, Nautilus, and Polymarket are all props — return null), "My 3-tool automation stack for outreach" (the stack is the value, not any individual tool — return null).
 - Examples that should return null: a food show called "Square Sambos" (the post is the recipe, not Square the fintech), a warehouse-fire news clip mentioning Kimberly-Clark, a yo-yo trick video, a climbing video, a ticket-sale page.
 
 Examples:
