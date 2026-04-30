@@ -228,7 +228,7 @@ async function generateContentVerdict(
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.4",
-      max_tokens: 400,
+      max_completion_tokens: 400,
       temperature: 0.3,
       messages: [
         { role: "system", content: CONTENT_SYSTEM_PROMPT },
@@ -306,7 +306,7 @@ async function generateActionLine(args: {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.4",
-      max_tokens: 120,
+      max_completion_tokens: 120,
       temperature: 0.3,
       messages: [
         { role: "system", content: ACTION_SYSTEM_PROMPT },

@@ -83,7 +83,7 @@ async function analyzeBatch(
       { role: "system", content: FRAME_ANALYSIS_PROMPT },
       { role: "user", content },
     ],
-    max_tokens: 500,
+    max_completion_tokens: 500,
   });
 
   const text = response.choices[0]?.message?.content || "";
@@ -122,7 +122,7 @@ export async function summarizeVisuals(
       },
       { role: "user", content: descriptions },
     ],
-    max_tokens: 200,
+    max_completion_tokens: 200,
   });
 
   return response.choices[0]?.message?.content || "";
