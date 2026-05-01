@@ -39,6 +39,8 @@ export async function updateResult(
     errorMessage?: string;
     status: string;
     subjectResearch?: Record<string, unknown> | null;
+    contentType?: string | null;
+    actionLane?: string | null;
   },
 ): Promise<void> {
   const payload: Record<string, unknown> = {
@@ -59,12 +61,16 @@ export async function updateResult(
   if (result.subjectResearch !== undefined) {
     payload.subject_research = result.subjectResearch;
   }
+  if (result.contentType !== undefined) {
+    payload.content_type = result.contentType;
+  }
+  if (result.actionLane !== undefined) {
+    payload.action_lane = result.actionLane;
+  }
 
   const { error } = await supabase.from("analyses").update(payload).eq("id", id);
 
   if (error && /subject_research/.test(error.message)) {
-    // Migration not yet applied — retry without the new column so the analysis
-    // still completes. Logged so we notice if 016 hasn't been deployed.
     console.warn("[analyses.updateResult] subject_research column missing — retrying without it. Run migration 016_subject_research.sql.");
     delete payload.subject_research;
     await supabase.from("analyses").update(payload).eq("id", id);

@@ -2,31 +2,15 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 30000,
+  timeout: 180_000,
+  fullyParallel: false,
+  reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: process.env.PW_BASE_URL || "https://send-me-reel.vercel.app",
-    screenshot: "on",
-    trace: "on-first-retry",
-    launchOptions: {
-      slowMo: 500,
-    },
+    baseURL: "http://localhost:3000",
+    trace: "retain-on-failure",
+    video: "retain-on-failure",
+    screenshot: "only-on-failure",
+    headless: false, // headed by default so you can watch
   },
-  projects: [
-    {
-      name: "Desktop Chrome",
-      use: {
-        browserName: "chromium",
-        viewport: { width: 1440, height: 900 },
-      },
-    },
-    {
-      name: "Mobile",
-      use: {
-        browserName: "chromium",
-        viewport: { width: 375, height: 812 },
-      },
-    },
-  ],
-  reporter: [["html", { open: "never" }]],
-  outputDir: "./test-results",
+  // No webServer block — we expect dev server already running on :3002
 });

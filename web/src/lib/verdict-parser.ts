@@ -64,22 +64,25 @@ function parseNewFormat(raw: string, lines: string[]): ParsedVerdict {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  // Title: take the first sentence of the description, clipped at a natural
-  // clause boundary (comma, em-dash) or last word within ~72 chars — never
-  // mid-word. 72 chars ≈ 2 clean lines at 15px bold on a 600px card.
+  // Title: subject name + descriptor, clipped at a natural boundary within
+  // ~72 chars. We replace the first " is a?n? " with " — " so "webclaw is
+  // an open-source toolkit" becomes "webclaw — open-source toolkit".
+  // Dash is not used as a clip boundary (we generate it ourselves).
   const firstSentence = description.split(/[.!?]/)[0]?.trim() ?? "";
-  function clampTitle(text: string, max = 72): string {
+  const titleText = firstSentence
+    .replace(/^Per the creator:\s*/i, "")
+    .replace(/ is an? /, " — ")
+    .replace(/ is /, " — ");
+  function clampTitle(text: string, max = 69): string {
     if (text.length <= max) return text;
     const slice = text.slice(0, max);
     const comma = slice.lastIndexOf(", ");
-    const dash = slice.lastIndexOf(" — ");
-    const ndash = slice.lastIndexOf(" – ");
-    const candidates = [comma, dash, ndash].filter((i) => i >= 28);
+    const candidates = [comma].filter((i) => i >= 28);
     if (candidates.length) return text.slice(0, Math.max(...candidates)).trimEnd();
     const space = slice.lastIndexOf(" ");
     return space >= 28 ? text.slice(0, space) : slice;
   }
-  const title = firstSentence ? clampTitle(firstSentence) : "Untitled";
+  const title = titleText ? clampTitle(titleText) : "Untitled";
 
   return {
     title,

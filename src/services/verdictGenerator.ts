@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { config } from "../config.js";
 import { ServiceError } from "../pipeline/types.js";
-import type { Platform, UserContext } from "../pipeline/types.js";
+import type { Platform, UserContext, ClassifierResult } from "../pipeline/types.js";
 import { HUMANIZER_RULES } from "./humanizerRules.js";
 import {
   formatResearchForPrompt,
@@ -24,6 +24,8 @@ export interface VerdictInput {
    *  verdict treats it as authoritative for naming the thing and giving its
    *  canonical link. The post is one mention; the subject is the thing itself. */
   subjectResearch?: SubjectResearch | null;
+  /** Ticket B — classifier output. Category + action lane selected before verdict generation. */
+  contentType?: ClassifierResult | null;
 }
 
 export type UserStance =
@@ -35,6 +37,7 @@ export type UserStance =
 interface ContentVerdict {
   description: string;
   hasAction: boolean;
+  isNoContent?: boolean;
 }
 
 const CONTENT_SYSTEM_PROMPT = `You read scraped social-media content and tell the reader what the SUBJECT is — the actual tool, model, person, company, or concept the post is about. The reader doesn't need a play-by-play of the post. They need to know what the thing IS, what it does, and where to find it.
@@ -101,70 +104,169 @@ NEVER:
 
 ${HUMANIZER_RULES}`;
 
-// const CONTENT_SYSTEM_PROMPT = `You read scraped social-media content and tell the reader what the SUBJECT is.
+// --- Category-specific Pass 1 prompts ---
 
-// ## OUTPUT — exactly this structure, in this order
+const CONTENT_PROMPT_TAKEAWAY = `You read scraped social-media content and extract the argument, take, or lesson — the thing worth holding.
 
-// 📍 [Subject-first description. Two sentences max. Lead with the named subject and what it IS. Include canonical URL only if the source data or SUBJECT RESEARCH contains it. Include specific identifiers (version numbers, benchmark scores, prices) when present.]
+This content is someone's opinion or a personal story. Describe it accurately. Do not name a product or tool unless one is the explicit subject and has a canonical pointer.
 
-// 🪜 If you want to go further
-// [ONE sentence under 100 characters. The deeper layer — a specific concept the subject opens up, a related thing in the same space, or what's worth knowing next. OMIT this line entirely if the subject is shallow or already fully covered in 📍. The default is no 🪜 line. Never pad to fill it.]
+OUTPUT — exactly this structure, nothing else:
 
-// ACTION:[YES/NO]
-// [After 🪜 (or after 📍 if no 🪜), output one final line: ACTION:YES if the subject is a thing the reader could try once — a tool to install/use, a model to test, a prompt to copy, a setting to change, a script to run, a repo to clone, an app to download. Otherwise ACTION:NO. The reader will never see this line; it's a signal for the next step.]
+📍 [Two sentences max. Total under 220 characters.
+- Opinion/argument: lead with the claim. "Per [Creator]: [the argument]." If the content centres on a named tool or subject and a URL exists, name it and include the URL.
+- Story: what happened, then the lesson the creator drew from it.
+- Attribution always: say whose take this is. Use "Per [Name]:" shorthand — never "X argues that..."
+- [Name] must be a real person's name (e.g. "Alex Hormozi") or a recognised organisation (e.g. "Anthropic", "OpenAI"). Never use an account handle, username, or domain (e.g. evolving.ai, @techuser) as [Name]. If no real name is identifiable from the content, write "Per the creator:" instead.]
 
+No ACTION line. No 🪜 line. Just 📍 and nothing else.
 
-// ## A good example
+Voice: plain and direct. No hype. Short sentences.
 
-// 📍 Claude Design is Anthropic Labs' visual design workspace that lets you create and refine prototypes, slides, and marketing assets using prompts. Built on Claude Opus 4.7, it's a research preview for paid Claude subscribers. https://www.anthropic.com/news/claude-design-anthropic-labs
-// ACTION:NO
+ANTI-HALLUCINATION: only name subjects, tools, or URLs that appear in the source or research.
 
-// ## avoid being too verbose, the user knows you're going to describe the content they shared. Danger: meta-describing the post instead of the subject.
+NEVER: meta-describe. "Per Hormozi: business owners who wait will fall behind." not "Hormozi argues that business owners who wait will fall behind."
 
-// ### E.g.:
+${HUMANIZER_RULES}`;
 
-// - The content introduces ...
-// - The blog discusses the ...
+const CONTENT_PROMPT_SAVE = `You read scraped social-media content and describe the practical thing — the dish, the place, the drill.
 
-// ### Good examples are instead:
+OUTPUT — exactly this structure, nothing else:
 
-// - "Kimi K2.6 is Moonshot AI's coding model. SWE-Bench Pro 58.6, BrowseComp 83.2. Open-source. Try it at kimi.com or via API."
-// - "Caveman is a Claude Code skill that strips agent output to short tokens, ~75% fewer tokens. github.com/JuliusBrussee/caveman."
-// - "Vibeyard is an open-source live-browser for Claude Code — click any element to edit it instantly. github.com/elirantutia/vibeyard."
+📍 [Two sentences max. Total under 220 characters.
+- Recipe: name the dish, then the one technique or trick that makes it work.
+- Place: name the place, then what makes it worth going.
+- Practice: name the drill, then what it builds.
+Do not mention a named tool or brand unless it is the dish, place, or drill itself. Describe the thing, not the creator's opinion of it.]
 
-// ## Special cases
+No ACTION line. No 🪜 line. Just 📍 and nothing else.
 
-// ATTRIBUTION when the post is a CLAIM by a specific person:
+Voice: plain. Specific. No enthusiasm markers.
 
-// - "Per Sam Altman: best way to start an AI startup is X, Y, Z."
-// - "Karpathy says vibe-coding works until you stop reading the diff."
+ANTI-HALLUCINATION: only name dishes, places, prices, or techniques that appear in the source.
 
-// ## USE SUBJECT RESEARCH WHEN PROVIDED:
+${HUMANIZER_RULES}`;
 
-// - Use research to correctly name the subject and cite its canonical URL and specific identifiers (version, scores, prices).
-// - But the creator's transcript and demonstration are the actual content — research is background context, not the story. If the creator is making an argument or showing a technique, that argument or technique is the verdict, not a definition of the subject.
-// - Pull the canonical URL from research into 📍 when it exists.
-// - Pull specific identifiers (version, scores, prices) from research into 📍 when they add precision the post lacked.
-// - If research and post disagree on a fact, prefer research for naming and identifiers — but never let research replace the creator's actual content.
-// - If no research is provided, work from post content alone — never invent URLs or facts.
+const CONTENT_PROMPT_SHOP = `You read scraped social-media content and describe the product — what it is, what it costs, where to get it.
 
-// ## ANTI-HALLUCINATION:
+OUTPUT — exactly this structure, nothing else:
 
-// - Only mention tools, prices, links, names that appear in the source material OR in the SUBJECT RESEARCH block.
-// - Never guess URLs or prices.
-// - If transcript, visuals, caption, AND research are all empty: output 📍 Couldn't pull the content. Open the link.
+📍 [Two sentences max. Total under 220 characters.
+Name the product. Include price if mentioned. Include where to buy if mentioned. Describe the object — not the creator's take, not their enthusiasm.]
 
-// ## BANNED WORDS — never use these:
-// "robust", "exciting", "cutting-edge", "comprehensive", "leverage", "elevate", "supercharge", "actionable", "pro tip", "bottom line", "deep dive", "valuable insights", "great content", "insightful for anyone", "this content explores", "in the world of", "revolutionary", "driven", "utilize", "streamline"
+No ACTION line. No 🪜 line. Just 📍 and nothing else.
 
-// ## NEVER:
+Voice: factual. Specific. No adjectives that could be cut.
 
-// - Rate the content ("Worth your time", "Skim it", "Skip"). The rating system is gone.
-// - Reference the reader's job, role, focus, profession, or interests. You don't know any of that.
-// - Write a "this is relevant to your work because..." line. That line doesn't exist.
-// - Use "you should" or "you must." The reader is overwhelmed; don't add to it.
+ANTI-HALLUCINATION: only name prices and URLs that appear in the source or research.
 
-// ${HUMANIZER_RULES}`;
+${HUMANIZER_RULES}`;
+
+// --- Category-specific Pass 2 action prompts ---
+
+const SHOP_ACTION_PROMPT = `You produce ONE action line for a product the reader might buy. That's your entire job.
+
+OUTPUT — exactly this format, nothing else:
+🛍 Shop this
+[ONE sentence. Under 20 words. The simplest next step toward buying.
+Good: "Open the product page and see if it ships to you."
+Good: "Look at the photos — you'll know immediately."
+Good: "Search the name to find the current price."
+Bad: "Consider purchasing this item." (too generic)
+Bad: "This would make a great addition to your home." (not an action)]
+
+No inventing. If no URL was mentioned, tell them to search by name.
+Output format strict: "🛍 Shop this" on its own line, then the sentence on the next line. Nothing else.
+
+${HUMANIZER_RULES}`;
+
+const SAVE_ACTION_PROMPT = `You produce ONE action line for content the reader should come back to — a recipe, a place, a practice drill. That's your entire job.
+
+OUTPUT — exactly this format, nothing else:
+💾 Save for later
+[ONE sentence. Under 20 words. The smallest concrete step toward using this when the time is right.
+Good: "Screenshot the ingredient list."
+Good: "Add to your weekend cooking list."
+Good: "Save for a slow Sunday."
+Good: "Set a reminder for Saturday morning."
+Bad: "Try this sometime." (too vague)
+Bad: "This looks great!" (not an action)]
+
+Output format strict: "💾 Save for later" on its own line, then the sentence on the next line. Nothing else.
+
+${HUMANIZER_RULES}`;
+
+const CHAT_ACTION_PROMPT = `You produce ONE action line for content where the value is in applying ideas to the reader's own situation. That's your entire job.
+
+OUTPUT — exactly this format, nothing else:
+💬 Chat about this
+[ONE sentence. Under 20 words. Tells the reader what to bring to the chat — the specific question or context.
+Good: "Tell the bot what decision you're stuck on and apply the rule together."
+Good: "Ask it to apply JTBD to a product you're working on — that's where it clicks."
+Good: "Talk it through with your next 1:1 in mind."
+Bad: "Discuss this with the bot." (too vague)
+Bad: "Apply this to your situation." (says nothing)]
+
+Output format strict: "💬 Chat about this" on its own line, then the sentence on the next line. Nothing else.
+
+${HUMANIZER_RULES}`;
+
+const TAKEAWAY_PROMPT = `You produce ONE takeaway block for opinion or story content. That's your entire job.
+
+OUTPUT — exactly this format, nothing else:
+
+First line — pick exactly one label:
+💭 The take — for a prediction, claim, or argument. The creator is asserting something about how the world works or will go.
+💭 The point — for a lesson drawn from a story. Something happened; this is what it means.
+💭 What [Name] says — when the creator's real name is explicitly stated (a person's name like "Alex Hormozi", or a recognised org like "Anthropic"). Never use an account handle, username, or domain as [Name]. If no real name is known, use a different label.
+💭 Worth holding onto — for a principle or observation that isn't tied to a specific event or argument. Slower register. Something to sit with, not debate.
+
+Second line (third if needed): the substance. 1-2 short sentences. The argument itself. The lesson itself. Not "X argues that..." — just the thing.
+
+Good:
+💭 The take
+Business owners who don't adopt will get separated from the ones who do. The downside of going slow is bigger than the downside of going wrong.
+
+Good:
+💭 The point
+Comfort kills more dreams than failure does.
+
+Good:
+💭 The take
+Training compute spend is outpacing AI revenue 4x. The counter on inference efficiency isn't addressed.
+
+Bad:
+💭 The take
+Hormozi argues that business owners who fail to adopt AI risk falling behind. (meta — just state the thing)
+
+Voice: calm. No urgency. Attribution goes in the label, not the body.
+Output format strict: label line first, then the substance. Nothing else.
+
+${HUMANIZER_RULES}`;
+
+const LOGIN_WALL_PATTERNS = [
+  "see everyday moments from your close friends",
+  "log into instagram",
+  "log in to see",
+  "log in to view",
+  "sign up or log in",
+  "log in or sign up",
+  "sign up to continue",
+  "mobile number, usern",
+  "please enable javascript",
+  "you need to be signed in",
+  "join now to see who you know",
+  "sign in to linkedin",
+];
+
+function isLoginWallContent(input: VerdictInput): boolean {
+  const hasRealContent =
+    (input.transcript?.trim().length ?? 0) > 5 ||
+    (input.visualSummary?.trim().length ?? 0) > 20 ||
+    Boolean(input.subjectResearch);
+  if (hasRealContent) return false;
+  const captionLower = (input.caption || "").toLowerCase();
+  return LOGIN_WALL_PATTERNS.some((p) => captionLower.includes(p));
+}
 
 const ACTION_SYSTEM_PROMPT = `You produce ONE action line. That's your entire job.
 
@@ -209,21 +311,36 @@ ${HUMANIZER_RULES}`;
 
 export async function generateVerdict(input: VerdictInput): Promise<string> {
   const content = await generateContentVerdict(input);
+  if (content.isNoContent) return content.description;
   const action = await generateActionLine({
     description: content.description,
     hasAction: content.hasAction,
     userNote: input.userNote,
     stance: input.stance,
     subjectResearch: input.subjectResearch ?? null,
+    contentType: input.contentType,
   });
 
   return assembleVerdict(content.description, action);
 }
 
+function selectContentPrompt(contentType?: ClassifierResult | null): string {
+  const cat = contentType?.category;
+  if (cat === "commentary" || cat === "story")           return CONTENT_PROMPT_TAKEAWAY;
+  if (cat === "recipe" || cat === "place" || cat === "practice") return CONTENT_PROMPT_SAVE;
+  if (cat === "product")                                 return CONTENT_PROMPT_SHOP;
+  return CONTENT_SYSTEM_PROMPT;
+}
+
 async function generateContentVerdict(
   input: VerdictInput,
 ): Promise<ContentVerdict> {
+  if (isLoginWallContent(input)) {
+    return { description: "📍 Couldn't pull the content. Open the link.", hasAction: false, isNoContent: true };
+  }
+
   const userPrompt = buildContentPrompt(input);
+  const systemPrompt = selectContentPrompt(input.contentType);
 
   try {
     const response = await openai.chat.completions.create({
@@ -231,7 +348,7 @@ async function generateContentVerdict(
       max_completion_tokens: 400,
       temperature: 0.3,
       messages: [
-        { role: "system", content: CONTENT_SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
     });
@@ -242,6 +359,8 @@ async function generateContentVerdict(
       return buildFallbackContentVerdict(input);
     }
 
+    // Specialized prompts (takeaway/save/shop) don't emit ACTION:YES/NO.
+    // For those, hasAction is unused — the lane drives Pass 2 regardless.
     const hasAction = /\bACTION\s*:\s*YES\b/i.test(text);
     const description = text
       .replace(/\n?\s*ACTION\s*:\s*(YES|NO)\b.*$/i, "")
@@ -300,9 +419,22 @@ async function generateActionLine(args: {
   userNote?: string;
   stance?: UserStance;
   subjectResearch?: SubjectResearch | null;
+  contentType?: ClassifierResult | null;
 }): Promise<string> {
-  const userPrompt = buildActionPrompt(args);
+  const lane = args.contentType?.action_lane;
+  const cat = args.contentType?.category;
 
+  // Entertainment: no third line at all.
+  if (cat === "entertainment") return "";
+
+  // Route to category-specific action prompts.
+  if (lane === "shop_this")     return callActionModel(SHOP_ACTION_PROMPT,  args);
+  if (lane === "save_for_later") return callActionModel(SAVE_ACTION_PROMPT, args);
+  if (lane === "chat_about")    return callActionModel(CHAT_ACTION_PROMPT,  args);
+  if (lane === "the_takeaway")  return callActionModel(TAKEAWAY_PROMPT,     args);
+
+  // open_it (and unclassified fallback): existing behaviour.
+  const userPrompt = buildActionPrompt(args);
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.4",
@@ -315,22 +447,55 @@ async function generateActionLine(args: {
     });
 
     const text = response.choices[0]?.message?.content?.trim();
-    if (!text) {
-      // Pass 2 failed — default to no homework. Never fabricate.
-      return "🍵 Just a watch";
-    }
-
-    // Sanity guard: if the model produced something that doesn't start with one
-    // of the two valid prefixes, fall back to no homework.
-    if (!/^(🌱|🍵)/u.test(text)) {
-      return "🍵 Just a watch";
-    }
-
+    if (!text) return "🍵 Just a watch";
+    if (!/^(🌱|🍵)/u.test(text)) return "🍵 Just a watch";
     return text;
   } catch {
-    // If Pass 2 throws, we still want to return a complete verdict (the content
-    // description is fine on its own). Default to no homework.
     return "🍵 Just a watch";
+  }
+}
+
+async function callActionModel(
+  systemPrompt: string,
+  args: {
+    description: string;
+    hasAction: boolean;
+    userNote?: string;
+    stance?: UserStance;
+    subjectResearch?: SubjectResearch | null;
+    contentType?: ClassifierResult | null;
+  },
+): Promise<string> {
+  const userPrompt = buildActionPrompt(args);
+  const lane = args.contentType?.action_lane;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 120,
+      temperature: 0.3,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+
+    const text = response.choices[0]?.message?.content?.trim();
+    if (!text) return laneDefaultFallback(lane);
+    if (!/^(🌱|🍵|🛍|💾|💬|💭)/u.test(text)) return laneDefaultFallback(lane);
+    return text;
+  } catch {
+    return laneDefaultFallback(lane);
+  }
+}
+
+function laneDefaultFallback(lane: string | undefined): string {
+  switch (lane) {
+    case "shop_this":     return "🛍 Shop this\nSearch the name to find the product page.";
+    case "save_for_later": return "💾 Save for later\nAdd to your list.";
+    case "chat_about":    return "💬 Chat about this\nTalk it through with the bot.";
+    case "the_takeaway":  return "";
+    default:              return "🍵 Just a watch";
   }
 }
 
@@ -379,17 +544,59 @@ function buildActionPrompt(args: {
   userNote?: string;
   stance?: UserStance;
   subjectResearch?: SubjectResearch | null;
+  contentType?: ClassifierResult | null;
 }): string {
   const parts: string[] = [];
+  const lane = args.contentType?.action_lane;
 
   parts.push(`--- DESCRIPTION ---`);
   parts.push(args.description);
+
+  // For non-open_it lanes the system prompt fully specifies the output shape.
+  // Just give the model the description (+ note if present) and a minimal cue.
+  if (lane === "the_takeaway") {
+    if (args.userNote) {
+      parts.push(`\n--- READER'S NOTE ---`);
+      parts.push(args.userNote);
+    }
+    parts.push(`\nProduce the 💭 takeaway block as instructed.`);
+    return parts.join("\n");
+  }
+
+  if (lane === "shop_this") {
+    const research = formatResearchForPrompt(args.subjectResearch ?? null);
+    if (research) parts.push(`\n${research}`);
+    if (args.userNote) {
+      parts.push(`\n--- READER'S NOTE ---`);
+      parts.push(args.userNote);
+    }
+    parts.push(`\nProduce the 🛍 Shop this line as instructed.`);
+    return parts.join("\n");
+  }
+
+  if (lane === "save_for_later") {
+    if (args.userNote) {
+      parts.push(`\n--- READER'S NOTE ---`);
+      parts.push(args.userNote);
+    }
+    parts.push(`\nProduce the 💾 Save for later line as instructed.`);
+    return parts.join("\n");
+  }
+
+  if (lane === "chat_about") {
+    if (args.userNote) {
+      parts.push(`\n--- READER'S NOTE ---`);
+      parts.push(args.userNote);
+    }
+    parts.push(`\nProduce the 💬 Chat about this line as instructed.`);
+    return parts.join("\n");
+  }
+
+  // open_it (and unclassified fallback): full existing behaviour.
   parts.push(
     `\nHas concrete action in the content? ${args.hasAction ? "YES" : "NO"}`,
   );
 
-  // Pass 2 also gets the research — it's what lets the 🌱 line cite a real
-  // install path or canonical URL instead of a vague "try the tool."
   const research = formatResearchForPrompt(args.subjectResearch ?? null);
   if (research) {
     parts.push(`\n${research}`);
@@ -434,6 +641,7 @@ function stanceCue(stance: UserStance): string {
 }
 
 function assembleVerdict(description: string, action: string): string {
+  if (!action) return description.trim();
   return `${description}\n\n${action}`.trim();
 }
 
@@ -462,6 +670,10 @@ export function renderForTelegram(fullVerdict: string): string {
       if (
         trimmed.startsWith("🌱") ||
         trimmed.startsWith("🍵") ||
+        trimmed.startsWith("🛍") ||
+        trimmed.startsWith("💾") ||
+        trimmed.startsWith("💬") ||
+        trimmed.startsWith("💭") ||
         trimmed.startsWith("📍")
       ) {
         inDeeper = false;

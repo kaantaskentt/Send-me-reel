@@ -6,13 +6,14 @@ import * as users from "../db/users.js";
 import * as credits from "../db/credits.js";
 import * as analyses from "../db/analyses.js";
 import * as scraper from "../services/scraper.js";
-import { scrapeWithApify, downloadFromCdn } from "../services/apifyScraper.js";
+import { downloadFromCdn } from "../services/apifyScraper.js";
 import * as storage from "../services/storage.js";
 import * as transcriber from "../services/transcriber.js";
 import * as frameExtractor from "../services/frameExtractor.js";
 import * as visualAnalyzer from "../services/visualAnalyzer.js";
 import * as verdictGenerator from "../services/verdictGenerator.js";
 import * as qualityGate from "../services/qualityGate.js";
+import { classifyContent } from "../services/contentClassifier.js";
 import { extractSubject } from "../services/subjectExtractor.js";
 import { researchSubject, type SubjectResearch } from "../services/subjectResearcher.js";
 import { InlineKeyboard } from "grammy";
@@ -320,19 +321,24 @@ export async function executeVideoPipeline(
     users.getStance(userId),
   ]);
 
-  // Apr 26 — agentic understanding layer. Identify the named subject of the
-  // post (Kimi, Vibeyard, Sam Altman…) and look it up on the web BEFORE
-  // generating the verdict. This is what lets the verdict say what the
-  // SUBJECT is, not just what was IN the post. Skips silently if no clear
-  // subject (extractor returns null) or the search fails.
-  const subjectResearch = await enrichSubject({
+  const contentType = await classifyContent({
     transcript,
-    visualSummary,
     caption: scraped.caption,
-    metadata: scraped.metadata,
+    visualSummary,
     platform,
     sourceUrl: url,
   });
+
+  const subjectResearch = contentType.needs_search
+    ? await enrichSubject({
+        transcript,
+        visualSummary,
+        caption: scraped.caption,
+        metadata: scraped.metadata,
+        platform,
+        sourceUrl: url,
+      })
+    : null;
 
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
@@ -346,6 +352,7 @@ export async function executeVideoPipeline(
     userNote,
     stance: stance ?? undefined,
     subjectResearch,
+    contentType,
   });
 
   await analyses.updateResult(analysisId, {
@@ -357,6 +364,8 @@ export async function executeVideoPipeline(
     verdict,
     status: "done",
     subjectResearch: subjectResearch as Record<string, unknown> | null,
+    contentType: contentType.category,
+    actionLane: contentType.action_lane,
   });
 
   return verdict;
@@ -387,6 +396,9 @@ export async function executeArticlePipeline(
       "log in to see",
       "sign in to see",
       "create an account",
+      "see everyday moments from your close friends",
+      "log into instagram",
+      "mobile number, usern",
     ];
     if (loginWallPatterns.some((p) => textLower.includes(p))) {
       throw new ServiceError(
@@ -416,17 +428,24 @@ export async function executeArticlePipeline(
     users.getStance(userId),
   ]);
 
-  // Apr 26 — same agentic understanding step for articles. The subject of
-  // an article ("Show HN: Caveman", "Kimi K2.6 release post") is just as
-  // worth grounding as a video.
-  const subjectResearch = await enrichSubject({
+  const contentType = await classifyContent({
     transcript: null,
-    visualSummary: "",
     caption: article.text.slice(0, 3000),
-    metadata: { title: article.title, ...article.metadata },
+    visualSummary: "",
     platform: "article",
     sourceUrl: url,
   });
+
+  const subjectResearch = contentType.needs_search
+    ? await enrichSubject({
+        transcript: null,
+        visualSummary: "",
+        caption: article.text.slice(0, 3000),
+        metadata: { title: article.title, ...article.metadata },
+        platform: "article",
+        sourceUrl: url,
+      })
+    : null;
 
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
@@ -440,6 +459,7 @@ export async function executeArticlePipeline(
     userNote,
     stance: stance ?? undefined,
     subjectResearch,
+    contentType,
   });
 
   await analyses.updateResult(analysisId, {
@@ -449,6 +469,8 @@ export async function executeArticlePipeline(
     verdict,
     status: "done",
     subjectResearch: subjectResearch as Record<string, unknown> | null,
+    contentType: contentType.category,
+    actionLane: contentType.action_lane,
   });
 
   return verdict;

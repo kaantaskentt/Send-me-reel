@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Analysis, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
@@ -8,6 +8,29 @@ import { parseVerdict } from "@/lib/verdict-parser";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ExternalLink, Share2, Trash2, Check } from "lucide-react";
 import { useTheme } from "@/lib/theme";
+
+// ── URL linkifier ─────────────────────────────────────────────────────────────
+function linkifyText(text: string): ReactNode[] {
+  const URL_RE = /https?:\/\/[^\s]+|(?:[a-zA-Z0-9][-a-zA-Z0-9]*\.)+(?:com|io|ai|org|net|dev|app|im|me|so|co|gg)(?:\/[^\s]*)?/g;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = URL_RE.exec(text)) !== null) {
+    const raw = match[0].replace(/[.,!?;:)]+$/, "");
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    const href = raw.startsWith("http") ? raw : `https://${raw}`;
+    parts.push(
+      <a key={match.index} href={href} target="_blank" rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        style={{ color: "#f97316", textDecoration: "underline", textDecorationColor: "rgba(249,115,22,0.4)", wordBreak: "break-all" }}>
+        {raw}
+      </a>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts.length ? parts : [text];
+}
 
 // ── Platform icons ────────────────────────────────────────────────────────────
 function InstagramIcon({ size = 16 }: { size?: number }) {
@@ -338,7 +361,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                       letterSpacing: -0.1,
                       fontWeight: 400,
                     }}>
-                      {parsed.description}
+                      {linkifyText(parsed.description)}
                     </p>
                     {parsed.deeper && (
                       <details style={{ marginTop: 10 }}>
@@ -346,7 +369,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                           + a layer deeper
                         </summary>
                         <p style={{ fontSize: 13, color: deeperColor, lineHeight: 1.6, margin: "6px 0 0 0", fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: "italic" }}>
-                          {parsed.deeper}
+                          {linkifyText(parsed.deeper)}
                         </p>
                       </details>
                     )}
@@ -374,7 +397,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                         fontFamily: "'Instrument Serif', Georgia, serif",
                         fontWeight: 400, letterSpacing: -0.1,
                       }}>
-                        {parsed.action}
+                        {linkifyText(parsed.action)}
                       </p>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
                         <button

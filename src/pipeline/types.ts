@@ -50,3 +50,34 @@ export class ServiceError extends Error {
     this.name = "ServiceError";
   }
 }
+
+export type ContentCategory =
+  | "named_tool"
+  | "creator_review"
+  | "tutorial"
+  | "technique"
+  | "product"
+  | "recipe"
+  | "place"
+  | "exercise"
+  | "practice"
+  | "advice"
+  | "concept"
+  | "commentary"
+  | "story"
+  | "entertainment";
+
+export type ActionLane =
+  | "open_it"
+  | "shop_this"
+  | "save_for_later"
+  | "chat_about"
+  | "just_a_watch"
+  | "the_takeaway";
+
+export interface ClassifierResult {
+  category: ContentCategory;
+  action_lane: ActionLane;
+  confidence: number;
+  needs_search: boolean;
+}

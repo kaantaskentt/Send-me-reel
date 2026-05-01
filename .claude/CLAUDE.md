@@ -6,6 +6,18 @@ The user saves an AI reel. We translate it into the smallest next thing they cou
 
 > "The product is the same. The entry point is User A. The purpose is User B. The honest version of what you are building is not a content analyser. It is a bridge between where people are and where they know they could be." — Kaan/Claude pivot conversation, Apr 24
 
+## Confirm Before Acting — Always
+
+Before executing ANY request, pause and confirm your interpretation:
+
+- **For any instruction:** "Just making sure I'm getting this right — do you mean [restate in your own words]?"
+- **For any code/content change:** Show a before/after:
+  > Before: [current state]
+  > After: [what it would become]
+  > Want me to proceed?
+- Keep confirmations short and concrete. One sentence of interpretation, one before/after if relevant, one yes/no ask.
+- Only skip this if the user has explicitly said "just do it" or "proceed without checking" in the same message.
+
 ## Strategic Source of Truth — READ FIRST
 
 **[`.claude/strategy.md`](.claude/strategy.md)** is the source of truth for every product, design, copy, and code decision. Built from a research drop of 31+ verbatim quotes across 8 communities (Reddit, IH, HN, ProductHunt, Threads, Instagram, Twitter, YouTube comments) plus a competitor positioning audit.

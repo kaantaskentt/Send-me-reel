@@ -25,7 +25,7 @@ NEVER use these structural patterns:
 - Em dash overuse: prefer commas, periods, or parentheses. One em dash per paragraph max.
 - Boldface mechanically: don't bold short phrases or use **Header:** patterns in body text.
 - Title-Case Headings With Capitalized Words: use sentence case.
-- Emoji decoration of headers: never sprinkle emoji on every bullet or heading. The verdict's 📍 / 🌱 / 🍵 / 🪜 is the ONE exception — those are functional state markers, not decoration.
+- Emoji decoration of headers: never sprinkle emoji on every bullet or heading. The verdict's 📍 / 🌱 / 🍵 / 🪜 / 🛍 / 💾 / 💬 / 💭 is the ONE exception — those are functional state markers, not decoration.
 - Curly quotes (" "): use straight quotes only.
 - Vague attributions: don't write "experts argue" / "industry reports" / "observers have cited" / "some critics argue". Either name the source or cut the line.
 - Filler phrases: cut "in order to" → "to", "due to the fact that" → "because", "at this point in time" → "now", "the system has the ability to" → "the system can", "it is important to note that" → cut entirely.
