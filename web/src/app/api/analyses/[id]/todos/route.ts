@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { enqueueTodoCreated } from "@/lib/wiki/source-builder";
 
 // GET — list todos for an analysis
 export async function GET(
@@ -66,6 +67,12 @@ export async function POST(
   if (error) {
     console.error("Todo create error:", error);
     return NextResponse.json({ error: "Failed to create" }, { status: 500 });
+  }
+
+  if (data?.id) {
+    enqueueTodoCreated(supabase, session.sub, analysisId, data.id, data.title).catch(
+      (err) => console.error("[wiki] todo enqueue failed:", err),
+    );
   }
 
   return NextResponse.json({ todo: data });

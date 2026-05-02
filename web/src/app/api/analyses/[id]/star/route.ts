@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { enqueueAnalysisStarred } from "@/lib/wiki/source-builder";
 
 export async function POST(
   _request: NextRequest,
@@ -38,6 +39,10 @@ export async function POST(
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
+
+  enqueueAnalysisStarred(supabase, session.sub, id, !!newStarredAt).catch((err) =>
+    console.error("[wiki] star enqueue failed:", err),
+  );
 
   return NextResponse.json({ starred: !!newStarredAt, starred_at: newStarredAt });
 }

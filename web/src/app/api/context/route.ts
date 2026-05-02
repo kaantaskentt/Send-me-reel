@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { enqueueProfileUpdated } from "@/lib/wiki/source-builder";
 
 export async function GET() {
   const session = await getSession();
@@ -74,6 +75,10 @@ export async function PUT(request: NextRequest) {
     .from("users")
     .update({ onboarded: true })
     .eq("id", session.sub);
+
+  enqueueProfileUpdated(supabase, session.sub).catch((err) =>
+    console.error("[wiki] profile enqueue failed:", err),
+  );
 
   return NextResponse.json({ success: true });
 }

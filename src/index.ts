@@ -1,5 +1,6 @@
 import { createBot } from "./bot/bot.js";
 import { startQueueWorker } from "./pipeline/queueWorker.js";
+import { startWikiWorker } from "./pipeline/wikiWorker.js";
 
 // Catch unhandled rejections so network errors don't crash the bot
 process.on("unhandledRejection", (err) => {
@@ -13,5 +14,6 @@ bot.start({
   onStart: () => {
     console.log("ContextDrop bot is running!");
     startQueueWorker();
+    startWikiWorker();
   },
 });

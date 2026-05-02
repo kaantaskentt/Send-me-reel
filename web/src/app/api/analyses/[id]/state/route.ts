@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { pushToNotion } from "@/lib/notion-push";
+import { enqueueAnalysisStateChanged } from "@/lib/wiki/source-builder";
 
 type StateValue = "saved" | "tried" | "set_aside";
 
@@ -68,6 +69,11 @@ export async function POST(
   if (updateErr) {
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
+
+  // Sidecar wiki snapshot — best-effort.
+  enqueueAnalysisStateChanged(supabase, session.sub, id, target).catch((err) =>
+    console.error("[wiki] state enqueue failed:", err),
+  );
 
   // Phase 5: auto-push to Notion on transition to "tried" — but only when this
   // is the first time this analysis goes to tried (no prior tried_at). This

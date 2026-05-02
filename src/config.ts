@@ -19,4 +19,7 @@ export const config = {
   supabaseServiceKey: required("SUPABASE_SERVICE_KEY"),
   jwtSecret: optional("JWT_SECRET"),
   appUrl: optional("APP_URL") || "https://contextdrop.app",
+  // Per-user LLM Wiki sidecar. When false, source enqueue helpers are no-ops
+  // and no rows land in user_wiki_*. Default off until PR3+ ships the worker.
+  wikiCompilerEnabled: optional("WIKI_COMPILER_ENABLED") === "true",
 } as const;

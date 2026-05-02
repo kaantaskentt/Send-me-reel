@@ -15,6 +15,7 @@ import * as verdictGenerator from "../services/verdictGenerator.js";
 import * as qualityGate from "../services/qualityGate.js";
 import { extractSubject } from "../services/subjectExtractor.js";
 import { researchSubject, type SubjectResearch } from "../services/subjectResearcher.js";
+import { enqueueAnalysisCompleted } from "../services/wiki/sourceBuilder.js";
 import { InlineKeyboard } from "grammy";
 import { SignJWT } from "jose";
 import { config } from "../config.js";
@@ -359,6 +360,11 @@ export async function executeVideoPipeline(
     subjectResearch: subjectResearch as Record<string, unknown> | null,
   });
 
+  // Sidecar: enqueue a wiki source snapshot. Best-effort, never blocks.
+  enqueueAnalysisCompleted(userId, analysisId).catch((err) =>
+    console.error("[wiki] video pipeline enqueue failed:", err),
+  );
+
   return verdict;
 }
 
@@ -450,6 +456,11 @@ export async function executeArticlePipeline(
     status: "done",
     subjectResearch: subjectResearch as Record<string, unknown> | null,
   });
+
+  // Sidecar: enqueue a wiki source snapshot. Best-effort, never blocks.
+  enqueueAnalysisCompleted(userId, analysisId).catch((err) =>
+    console.error("[wiki] article pipeline enqueue failed:", err),
+  );
 
   return verdict;
 }

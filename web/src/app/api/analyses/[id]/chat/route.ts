@@ -5,6 +5,11 @@ import OpenAI from "openai";
 import { HUMANIZER_RULES } from "@/lib/humanizer-rules";
 import { formatSubjectResearchForPrompt, type SubjectResearch } from "@/lib/subject-research";
 import { consumeChatMessage, FREE_DAILY_CHAT_LIMIT } from "@/lib/chat-usage";
+import {
+  enqueueChatUserMessage,
+  enqueueChatAssistantAnswer,
+} from "@/lib/wiki/source-builder";
+import { retrievePersonalWikiContext } from "@/lib/wiki/retrieval";
 
 const CHAT_SYSTEM_PROMPT = `You're a friend who's already watched the reel and can look things up if the question goes past it.
 
@@ -159,9 +164,21 @@ export async function POST(
   // will enforce that contract.
   const latestUserMsg = messages[messages.length - 1];
   if (latestUserMsg && latestUserMsg.role === "user" && latestUserMsg.content.trim()) {
-    await db
+    const { data: savedUserMsg } = await db
       .from("chat_messages")
-      .insert({ thread_id: threadId, role: "user", content: latestUserMsg.content });
+      .insert({ thread_id: threadId, role: "user", content: latestUserMsg.content })
+      .select("id")
+      .single();
+    if (savedUserMsg?.id) {
+      enqueueChatUserMessage(
+        db,
+        session.sub,
+        threadId!,
+        savedUserMsg.id,
+        id,
+        latestUserMsg.content,
+      ).catch((err) => console.error("[wiki] chat user enqueue failed:", err));
+    }
   }
 
   const contextParts: string[] = [];
@@ -185,6 +202,14 @@ export async function POST(
   // the model rarely needs to search for the canonical URL — it's already there.
   const research = formatSubjectResearchForPrompt(analysis.subject_research);
   if (research) contextParts.push(`\n${research}`);
+
+  const wikiContext = await retrievePersonalWikiContext(db, {
+    userId: session.sub,
+    analysisId: id,
+    latestUserMessage: latestUserMsg?.role === "user" ? latestUserMsg.content : "",
+    sourceUrl: analysis.source_url,
+  });
+  if (wikiContext) contextParts.push(`\n${wikiContext}`);
 
   const systemMessage = `${CHAT_SYSTEM_PROMPT}\n\n${contextParts.join("\n")}`;
 
@@ -247,9 +272,21 @@ export async function POST(
           }
           if (event.type === "response.completed") {
             if (fullText.trim()) {
-              await db
+              const { data: savedAsstMsg } = await db
                 .from("chat_messages")
-                .insert({ thread_id: threadId, role: "assistant", content: fullText });
+                .insert({ thread_id: threadId, role: "assistant", content: fullText })
+                .select("id")
+                .single();
+              if (savedAsstMsg?.id) {
+                enqueueChatAssistantAnswer(
+                  db,
+                  session.sub,
+                  threadId!,
+                  savedAsstMsg.id,
+                  id,
+                  fullText,
+                ).catch((err) => console.error("[wiki] chat asst enqueue failed:", err));
+              }
             }
             send("done", { text: fullText, thread_id: threadId });
             controller.close();
@@ -258,9 +295,21 @@ export async function POST(
         }
         // Stream ended without explicit completed event — emit done anyway
         if (fullText.trim()) {
-          await db
+          const { data: savedAsstMsg } = await db
             .from("chat_messages")
-            .insert({ thread_id: threadId, role: "assistant", content: fullText });
+            .insert({ thread_id: threadId, role: "assistant", content: fullText })
+            .select("id")
+            .single();
+          if (savedAsstMsg?.id) {
+            enqueueChatAssistantAnswer(
+              db,
+              session.sub,
+              threadId!,
+              savedAsstMsg.id,
+              id,
+              fullText,
+            ).catch((err) => console.error("[wiki] chat asst enqueue failed:", err));
+          }
         }
         send("done", { text: fullText, thread_id: threadId });
         controller.close();
