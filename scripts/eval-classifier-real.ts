@@ -65,7 +65,7 @@ const CASES: RealCase[] = [
     urlPattern: "DXZafdkglig",
     expectedCategory: "named_tool",
     expectedLane: "open_it",
-    verdictNote: "Correct at 0.96. 🍵 fires (not 🌱) — model correctly judged multi-agent IDE too complex for one-step action. Anti-fabrication rule working as intended.",
+    verdictNote: "Correct at 0.96. 🍵 fires (not 🌱) — model correctly judged multi-agent IDE too complex for one-step action. Anti-fabrication rule working as intended. TODO: after rule 10 addition, single run showed 0.84 (was 0.96) — still named_tool, likely single-run variance on image post with weaker signal. Re-check next session.",
   },
   {
     label: "Higgsfield — AI video stack open-source reel",
@@ -125,6 +125,14 @@ const CASES: RealCase[] = [
     expectedCategory: "exercise",
     expectedLane: "open_it",
     verdictNote: "Correct at 0.98 via visual (transcript garbage). Cleanest verdict in the run — specific 🌱 step, real 🪜 depth hint.",
+  },
+
+  {
+    label: "OpenBook — free open-source VC database misclassified as product",
+    urlPattern: "DXaIqwpki7o",
+    expectedCategory: "named_tool",
+    expectedLane: "open_it",
+    verdictNote: "product→named_tool fix. Creator shares free GitHub repo (iloveitaly/openbook) with marketplace-like framing ('I put together a list of 5000+ VCs'). Price test: no price, no checkout → named_tool. Regression for framing-over-content bug class. Note: subject extractor returns generic description (creator never named the tool), so researcher hits are non-deterministic — separate known issue.",
   },
 
   // --- [real] Pending URL — sourced from production DB but URL not captured in scripts ---

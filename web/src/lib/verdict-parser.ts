@@ -80,7 +80,10 @@ function parseNewFormat(raw: string, lines: string[]): ParsedVerdict {
     const candidates = [comma].filter((i) => i >= 28);
     if (candidates.length) return text.slice(0, Math.max(...candidates)).trimEnd();
     const space = slice.lastIndexOf(" ");
-    return space >= 28 ? text.slice(0, space) : slice;
+    const clipped = space >= 28 ? text.slice(0, space) : slice;
+    // Strip trailing dangling words (relative pronouns, articles, conjunctions, mid-sentence verbs)
+    const trimmed = clipped.replace(/(\s+(?:that|which|who|whose|whom|and|or|but|a|an|the|is|are|has|can|will|uses|as|its|their))+$/i, "").trimEnd();
+    return trimmed.length >= 28 ? trimmed : clipped;
   }
   const title = titleText ? clampTitle(titleText) : "Untitled";
 

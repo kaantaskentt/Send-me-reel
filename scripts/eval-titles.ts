@@ -37,7 +37,9 @@ function extractTitle(verdictRaw: string): string {
     const candidates = [comma].filter((i) => i >= 28);
     if (candidates.length) return text.slice(0, Math.max(...candidates)).trimEnd();
     const space = slice.lastIndexOf(" ");
-    return space >= 28 ? text.slice(0, space) : slice;
+    const clipped = space >= 28 ? text.slice(0, space) : slice;
+    const trimmed = clipped.replace(/(\s+(?:that|which|who|whose|whom|and|or|but|a|an|the|is|are|has|can|will|uses|as|its|their))+$/i, "").trimEnd();
+    return trimmed.length >= 28 ? trimmed : clipped;
   }
 
   return titleText ? clampTitle(titleText) : "Untitled";
@@ -76,9 +78,14 @@ const CASES: TitleCase[] = [
     expected: "Per Even Realities: Even G2 smart glasses now have Terminal Mode",
   },
   {
+    label: "named_tool — dangling 'that uses' trimmed after space-clip",
+    verdict: `📍 Playwright MCP is a browser-control bridge for Claude that uses screenshots so the model can act on web pages. This clip argues for raw Playwright as a Claude Code skill instead, with text output and no MCP server.\n\n🌱 Try this once\nOpen Claude Code and use raw Playwright on one page instead of the MCP server.`,
+    expected: "Playwright MCP — browser-control bridge for Claude",
+  },
+  {
     label: "commentary — 'Per the creator:' stripped from title",
     verdict: `📍 Per the creator: OpenClaw and ClawBot will split business owners into adopters and laggards, because anything done on a computer may soon be automated.\n\n💭 What they argue\nThe bigger risk is waiting too long and ending up behind the ones who adopt early.`,
-    expected: "OpenClaw and ClawBot will split business owners into adopters and",
+    expected: "OpenClaw and ClawBot will split business owners into adopters",
   },
 ];
 

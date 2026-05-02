@@ -66,7 +66,7 @@ named_tool — Content centred on a named software tool, AI model, framework, li
 creator_review — Someone trying, comparing, or reviewing one or more named tools. Their take IS the content. ("I used X for 30 days", "X vs Y", "honest review of X")
 tutorial — Step-by-step instructions to build, set up, or accomplish a specific outcome. Has a clear sequence the viewer can follow.
 technique — A method, prompt pattern, framework, or approach that doesn't centre on one named tool. The viewer can apply it with their existing setup.
-product — A physical or digital product the viewer might buy. Has a price and somewhere to buy it.
+product — A physical or digital product the viewer would spend money to acquire. The content must explicitly mention a price or a place to purchase (store, website checkout, link to buy). If neither a price nor a purchase mechanism is stated in the content, it is NOT a product — classify as named_tool instead.
 recipe — Food. A specific dish, cooking method, or food prep technique.
 place — A specific physical location: restaurant, cafe, bar, neighbourhood, travel destination.
 exercise — Physical movement: workout, stretch, mobility drill, breathing technique. The action is the viewer's body.
@@ -94,6 +94,10 @@ DISAMBIGUATION RULES — read these carefully before classifying:
 7. A lifestyle routine (morning routine, evening wind-down, productivity stack) that describes a lifestyle rather than a replicable step-by-step sequence: classify as "advice", not "tutorial".
 
 8. "commentary" is the safe fallback when no category clearly wins.
+
+9. Creator sharing something they built or found ("I put together", "I built", "I made", "here's a resource I found") with no price or checkout in the content — classify as "named_tool", not "product". Product requires a stated price or a stated purchase step. A database, list, tool, or resource shared without a payment mechanism is named_tool regardless of how commercial it looks.
+
+10. A named tool, skill, or automation that also implements a technique or method: classify as "named_tool" if the reel's value is the tool's existence — the viewer's next step is to open, install, or clone the specific thing, not to apply a method using their existing setup. The test: could the viewer get the same outcome with a different tool or with no tool at all? If yes, the named tool is incidental and this is "technique" (see rule 6). If no — there is a specific named artifact the viewer needs — classify as "named_tool".
 
 NEEDS_SEARCH FIELD:
 Only matters when your category is "tutorial" or "concept". For all other categories the caller ignores this field — but still include it.
