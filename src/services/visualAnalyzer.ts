@@ -118,11 +118,11 @@ export async function summarizeVisuals(
       {
         role: "system",
         content:
-          "Summarize the visual content of this video based on frame-by-frame descriptions. Focus on: what tools/software are shown, what's being demonstrated, and what key information appears on screen. 2-3 sentences max.",
+          "Summarize the visual content of this video based on frame-by-frame descriptions. Focus on: what tools/software are shown, what's being demonstrated, and what key information appears on screen. If the video shows a list of items (YouTube recommendations, products, tips, steps), enumerate ALL of them — do not truncate. Otherwise 2-3 sentences max.",
       },
       { role: "user", content: descriptions },
     ],
-    max_completion_tokens: 200,
+    max_completion_tokens: 400,
   });
 
   return response.choices[0]?.message?.content || "";

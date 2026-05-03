@@ -20,8 +20,7 @@ export function getVideoDuration(videoPath: string): Promise<number> {
 
 export async function extractFrames(
   videoPath: string,
-  intervalSec: number = 3,
-): Promise<string[]> {
+): Promise<{ paths: string[]; intervalUsed: number }> {
   const dir = path.dirname(videoPath);
   const framesDir = path.join(dir, "frames");
   await fs.mkdir(framesDir, { recursive: true });
@@ -32,11 +31,14 @@ export async function extractFrames(
       throw new ServiceError("NO_DURATION", "Could not determine video duration");
     }
 
+    // Adaptive sampling: short reels get 1s intervals to catch rapid-cut content
+    const intervalUsed = duration <= 30 ? 1 : duration <= 60 ? 2 : 3;
+
     // Extract frames at interval using ffmpeg
     const rawPattern = path.join(framesDir, "raw_%04d.jpg");
     await new Promise<void>((resolve, reject) => {
       ffmpeg(videoPath)
-        .outputOptions([`-vf fps=1/${intervalSec}`, "-q:v 2"])
+        .outputOptions([`-vf fps=1/${intervalUsed}`, "-q:v 2"])
         .output(rawPattern)
         .on("end", () => resolve())
         .on("error", (err) => reject(err))
@@ -65,7 +67,7 @@ export async function extractFrames(
       await fs.unlink(rawPath);
     }
 
-    return resizedPaths;
+    return { paths: resizedPaths, intervalUsed };
   } catch (err) {
     if (err instanceof ServiceError) throw err;
     throw new ServiceError(

@@ -20,6 +20,15 @@ import { InlineKeyboard } from "grammy";
 import { SignJWT } from "jose";
 import { config } from "../config.js";
 
+// Per-step cost estimates (USD). Real data accumulates in analyses.cost_usd.
+const COST_APIFY_SCRAPE     = 0.003;
+const COST_WHISPER_PER_MIN  = 0.006;
+const COST_VISION_PER_FRAME = 0.00015;
+const COST_VISUAL_SUMMARY   = 0.00005;
+const COST_CLASSIFIER       = 0.00008;
+const COST_SUBJECT_RESEARCH = 0.001;
+const COST_VERDICT          = 0.003;
+
 /**
  * Helper to reply in the right context — in groups, replies to the original message.
  */
@@ -217,6 +226,8 @@ export async function executeVideoPipeline(
 ): Promise<string> {
   await analyses.updateStatus(analysisId, "scraping");
 
+  let costUsd = COST_APIFY_SCRAPE;
+
   // Step 1: Get metadata — yt-dlp first, Apify fallback
   const scraped = await scraper.scrapeVideoWithFallback(platform, url);
 
@@ -285,20 +296,23 @@ export async function executeVideoPipeline(
   await analyses.updateStatus(analysisId, "transcribing");
 
   // Wrap transcription and frame extraction so one failing doesn't kill the other
-  const [transcript, framePaths] = await Promise.all([
+  const [transcript, frameResult] = await Promise.all([
     transcriber.transcribe(videoPath).catch((err) => {
       console.error(`[pipeline] Transcription failed (continuing with empty):`, err instanceof Error ? err.message : err);
       return "";
     }),
     frameExtractor.extractFrames(videoPath).catch((err) => {
       console.error(`[pipeline] Frame extraction failed (continuing with empty):`, err instanceof Error ? err.message : err);
-      return [] as string[];
+      return { paths: [] as string[], intervalUsed: 3 };
     }),
   ]);
 
+  if (duration) costUsd += COST_WHISPER_PER_MIN * (duration / 60);
+
   await analyses.updateStatus(analysisId, "analyzing");
-  const frameAnalyses = await visualAnalyzer.analyzeFrames(framePaths);
+  const frameAnalyses = await visualAnalyzer.analyzeFrames(frameResult.paths, frameResult.intervalUsed);
   const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
+  costUsd += COST_VISION_PER_FRAME * frameResult.paths.length + COST_VISUAL_SUMMARY;
 
   // Quality gate — AI decides if content is real and how to route it
   const decision = await qualityGate.evaluateContent({
@@ -328,6 +342,7 @@ export async function executeVideoPipeline(
     platform,
     sourceUrl: url,
   });
+  costUsd += COST_CLASSIFIER;
 
   const subjectResearch = contentType.needs_search
     ? await enrichSubject({
@@ -339,6 +354,7 @@ export async function executeVideoPipeline(
         sourceUrl: url,
       })
     : null;
+  if (subjectResearch) costUsd += COST_SUBJECT_RESEARCH;
 
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
@@ -355,6 +371,8 @@ export async function executeVideoPipeline(
     contentType,
   });
 
+  costUsd += COST_VERDICT;
+
   await analyses.updateResult(analysisId, {
     transcript,
     frameDescriptions: frameAnalyses,
@@ -366,6 +384,7 @@ export async function executeVideoPipeline(
     subjectResearch: subjectResearch as Record<string, unknown> | null,
     contentType: contentType.category,
     actionLane: contentType.action_lane,
+    costUsd: Math.round(costUsd * 100000) / 100000,
   });
 
   return verdict;

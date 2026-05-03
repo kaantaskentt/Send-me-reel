@@ -41,6 +41,7 @@ export async function updateResult(
     subjectResearch?: Record<string, unknown> | null;
     contentType?: string | null;
     actionLane?: string | null;
+    costUsd?: number | null;
   },
 ): Promise<void> {
   const payload: Record<string, unknown> = {
@@ -54,6 +55,10 @@ export async function updateResult(
     status: result.status,
     completed_at: result.status === "done" ? new Date().toISOString() : undefined,
   };
+
+  if (result.costUsd !== undefined) {
+    payload.cost_usd = result.costUsd;
+  }
 
   // Apr 26 — subject_research column was added in migration 016. If the
   // migration hasn't been applied yet (or the field is undefined), don't
