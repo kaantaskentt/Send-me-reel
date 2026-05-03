@@ -30,7 +30,7 @@ async function loginAs(page: import("@playwright/test").Page) {
     {
       name: "cd_session",
       value: token,
-      domain: "send-me-reel.vercel.app",
+      domain: "contextdrop.ai",
       path: "/",
       httpOnly: true,
       secure: true,
