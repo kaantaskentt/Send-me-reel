@@ -8,14 +8,20 @@ import { Plus, Trash2 } from "lucide-react";
 interface Props {
   analysisId: string;
   initialTodos?: Todo[];
+  prefillTitle?: string;
+  onFirstTodoAdded?: () => void;
 }
 
-export default function TodoList({ analysisId, initialTodos }: Props) {
+export default function TodoList({ analysisId, initialTodos, prefillTitle, onFirstTodoAdded }: Props) {
   const [todos, setTodos] = useState<Todo[]>(initialTodos || []);
-  const [newTitle, setNewTitle] = useState("");
+  const [newTitle, setNewTitle] = useState(prefillTitle || "");
   const [adding, setAdding] = useState(false);
-  const [showInput, setShowInput] = useState(false);
+  const [showInput, setShowInput] = useState(!!(prefillTitle));
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const editRef = useRef<HTMLInputElement>(null);
 
   // Load todos on mount if not provided
   useEffect(() => {
@@ -26,16 +32,22 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
       .catch(() => {});
   }, [analysisId, initialTodos]);
 
-  // Focus input when shown
+  // Focus add input when shown
   useEffect(() => {
     if (showInput && inputRef.current) inputRef.current.focus();
   }, [showInput]);
+
+  // Focus edit input when editing starts
+  useEffect(() => {
+    if (editingId && editRef.current) editRef.current.focus();
+  }, [editingId]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!newTitle.trim() || adding) return;
 
+    const wasEmpty = todos.length === 0;
     setAdding(true);
     try {
       const res = await fetch(`/api/analyses/${analysisId}/todos`, {
@@ -47,6 +59,8 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
       if (data.todo) {
         setTodos((prev) => [...prev, data.todo]);
         setNewTitle("");
+        setShowInput(false);
+        if (wasEmpty) onFirstTodoAdded?.();
       }
     } catch {
       // Keep input for retry
@@ -55,7 +69,6 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
   };
 
   const handleToggle = async (todo: Todo) => {
-    // Optimistic update
     const newCompleted = !todo.completed;
     setTodos((prev) =>
       prev.map((t) =>
@@ -64,7 +77,6 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
           : t,
       ),
     );
-
     try {
       await fetch(`/api/analyses/${analysisId}/todos`, {
         method: "PATCH",
@@ -72,7 +84,6 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
         body: JSON.stringify({ todoId: todo.id, completed: newCompleted }),
       });
     } catch {
-      // Revert on error
       setTodos((prev) =>
         prev.map((t) => (t.id === todo.id ? { ...t, completed: todo.completed, completed_at: todo.completed_at } : t)),
       );
@@ -82,16 +93,30 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
   const handleDelete = async (e: React.MouseEvent, todoId: string) => {
     e.stopPropagation();
     setTodos((prev) => prev.filter((t) => t.id !== todoId));
-
     try {
       await fetch(`/api/analyses/${analysisId}/todos`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ todoId }),
       });
-    } catch {
-      // Already removed visually — acceptable trade-off
-    }
+    } catch {}
+  };
+
+  const handleEdit = async (todoId: string, title: string) => {
+    if (!title.trim()) return;
+    setTodos((prev) => prev.map((t) => t.id === todoId ? { ...t, title: title.trim() } : t));
+    setEditingId(null);
+    await fetch(`/api/analyses/${analysisId}/todos`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ todoId, title: title.trim() }),
+    }).catch(() => {});
+  };
+
+  const commitEdit = (todoId: string, originalTitle: string) => {
+    const trimmed = editText.trim();
+    if (trimmed && trimmed !== originalTitle) handleEdit(todoId, trimmed);
+    else { setEditingId(null); setEditText(""); }
   };
 
   const completedCount = todos.filter((t) => t.completed).length;
@@ -136,73 +161,133 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "6px 0",
+                gap: 8,
+                padding: "4px 0",
               }}
             >
-              {/* Checkbox */}
+              {/* Checkbox — 44px touch target for mobile */}
               <button
                 onClick={() => handleToggle(todo)}
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 5,
-                  border: todo.completed ? "none" : "1.5px solid #d6d3d1",
-                  background: todo.completed ? "#f97316" : "transparent",
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  border: "none",
+                  background: "none",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
-                  transition: "all 0.15s",
                   padding: 0,
+                  margin: "-4px -4px -4px -4px",
                 }}
               >
-                {todo.completed && (
-                  <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                    <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+                <div style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 5,
+                  border: todo.completed ? "none" : "1.5px solid #d6d3d1",
+                  background: todo.completed ? "#f97316" : "transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.15s",
+                  flexShrink: 0,
+                }}>
+                  {todo.completed && (
+                    <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                      <path d="M2.5 6L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
               </button>
 
-              {/* Title */}
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  color: todo.completed ? "#c4bdb5" : "#44403c",
-                  textDecoration: todo.completed ? "line-through" : "none",
-                  lineHeight: 1.4,
-                  transition: "all 0.15s",
-                }}
-              >
-                {todo.title}
-              </span>
+              {/* Title — click to edit (not allowed when completed) */}
+              {editingId === todo.id ? (
+                <input
+                  ref={editRef}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  onBlur={() => commitEdit(todo.id, todo.title)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { e.preventDefault(); commitEdit(todo.id, todo.title); }
+                    if (e.key === "Escape") { setEditingId(null); setEditText(""); }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    flex: 1,
+                    fontSize: 16, // 16px prevents iOS Safari auto-zoom
+                    color: "#1c1917",
+                    border: "1.5px solid #f97316",
+                    borderRadius: 7,
+                    padding: "3px 8px",
+                    outline: "none",
+                    fontFamily: "'DM Sans', sans-serif",
+                    background: "#fff",
+                    boxShadow: "0 0 0 3px rgba(249,115,22,0.10)",
+                    lineHeight: 1.4,
+                  }}
+                />
+              ) : (
+                <span
+                  onClick={() => {
+                    if (!todo.completed) {
+                      setEditingId(todo.id);
+                      setEditText(todo.title);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    fontSize: 13,
+                    color: todo.completed ? "#c4bdb5" : "#44403c",
+                    textDecoration: todo.completed ? "line-through" : "none",
+                    lineHeight: 1.4,
+                    transition: "all 0.15s",
+                    cursor: todo.completed ? "default" : "text",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {todo.title}
+                </span>
+              )}
 
-              {/* Delete — always visible on mobile (no hover) */}
+              {/* Delete — 36px touch target */}
               <button
                 onClick={(e) => handleDelete(e, todo.id)}
                 style={{
-                  padding: 4,
+                  width: 36,
+                  height: 36,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   color: "#d6d3d1",
                   flexShrink: 0,
-                  opacity: 0.4,
-                  transition: "opacity 0.15s, color 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 8,
+                  transition: "color 0.15s",
+                  margin: "-4px -8px -4px 0",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.color = "#ef4444"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.4"; e.currentTarget.style.color = "#d6d3d1"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#d6d3d1"; }}
               >
-                <Trash2 style={{ width: 12, height: 12 }} />
+                <Trash2 style={{ width: 13, height: 13 }} />
               </button>
             </div>
           </motion.div>
         ))}
       </AnimatePresence>
 
-      {/* Add input — always visible when toggled or no todos yet */}
+      {/* Zero-tasks prompt when prefillTitle is set */}
+      {!hasAny && prefillTitle && (
+        <p style={{ fontSize: 11, color: "#a8a29e", margin: "0 0 8px 0", lineHeight: 1.5 }}>
+          ↳ Add the action above as a task, or write your own:
+        </p>
+      )}
+
+      {/* Add input — show when toggled or no todos yet */}
       {showInput || !hasAny ? (
         <form
           onSubmit={handleAdd}
@@ -221,7 +306,7 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
             style={{
               flex: 1,
               padding: "8px 12px",
-              fontSize: 13,
+              fontSize: 16, // 16px prevents iOS Safari auto-zoom
               border: "1px solid #e7e2d9",
               borderRadius: 10,
               outline: "none",
@@ -240,12 +325,13 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
               background: adding || !newTitle.trim() ? "#e7e2d9" : "#f97316",
               color: adding || !newTitle.trim() ? "#a8a29e" : "#fff",
               fontWeight: 600,
-              fontSize: 12,
+              fontSize: 13,
               borderRadius: 10,
               border: "none",
               cursor: adding || !newTitle.trim() ? "not-allowed" : "pointer",
               fontFamily: "'DM Sans', sans-serif",
               flexShrink: 0,
+              minHeight: 44,
             }}
           >
             {adding ? "..." : "Add"}
@@ -259,13 +345,14 @@ export default function TodoList({ analysisId, initialTodos }: Props) {
             alignItems: "center",
             gap: 4,
             marginTop: 8,
-            padding: 0,
+            padding: "8px 0",
             background: "none",
             border: "none",
             fontSize: 12,
             color: "#a8a29e",
             cursor: "pointer",
             fontFamily: "'DM Sans', sans-serif",
+            minHeight: 44,
           }}
         >
           <Plus style={{ width: 12, height: 12 }} /> Add task

@@ -16,6 +16,7 @@ function shortLabel(text: string, max: number): string {
 
 export default function ProfileSidebar({ profile }: Props) {
   const { user, context, credits } = profile;
+  if (!user) return null;
   const initials = (user.first_name || user.telegram_username || "U").slice(0, 2).toUpperCase();
   const creditsUsed = credits?.lifetime_used ?? 0;
   const creditsTotal = (credits?.balance ?? 0) + creditsUsed;

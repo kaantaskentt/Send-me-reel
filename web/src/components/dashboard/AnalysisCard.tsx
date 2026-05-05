@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Analysis, AnalysisState } from "@/lib/types";
+import type { Analysis, AnalysisState, Todo } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
+import TodoList from "./TodoList";
 import { parseVerdict } from "@/lib/verdict-parser";
 import { formatDistanceToNow } from "date-fns";
 import { ChevronDown, ExternalLink, Share2, Trash2, Check } from "lucide-react";
@@ -147,14 +148,25 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
 
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [deleteState, setDeleteState] = useState<"idle" | "confirm" | "deleting">("idle");
-  const [taskAdded, setTaskAdded] = useState(false);
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todosLoaded, setTodosLoaded] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
+  const [listKey, setListKey] = useState(0);
   const [localState, setLocalState] = useState<AnalysisState>(getAnalysisState(analysis));
   const [stateBusy, setStateBusy] = useState(false);
   const [starred, setStarred] = useState(!!analysis.starred_at);
 
   const parsed = analysis.verdict ? parseVerdict(analysis.verdict) : null;
   const timeAgo = formatDistanceToNow(new Date(analysis.created_at), { addSuffix: true });
+
+  // Lazy-fetch todos on first card open
+  useEffect(() => {
+    if (!isOpen || todosLoaded) return;
+    fetch(`/api/analyses/${analysis.id}/todos`)
+      .then((r) => r.json())
+      .then((data) => { if (data.todos) setTodos(data.todos); setTodosLoaded(true); })
+      .catch(() => setTodosLoaded(true));
+  }, [isOpen, todosLoaded, analysis.id]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleShare = async (e: React.MouseEvent) => {
@@ -209,7 +221,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
 
   const addActionAsTask = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (addingTask || taskAdded || !parsed?.action) return;
+    if (addingTask || todos.length > 0 || !parsed?.action) return;
     setAddingTask(true);
     try {
       const res = await fetch(`/api/analyses/${analysis.id}/todos`, {
@@ -217,10 +229,12 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: parsed.action.slice(0, 200) }),
       });
-      if (res.ok) setTaskAdded(true);
-    } catch {
-      // ignore
-    }
+      const data = await res.json();
+      if (data.todo) {
+        setTodos((prev) => [...prev, data.todo]);
+        setListKey((k) => k + 1);
+      }
+    } catch {}
     setAddingTask(false);
   };
 
@@ -402,20 +416,20 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
                         <button
                           onClick={addActionAsTask}
-                          disabled={addingTask || taskAdded}
+                          disabled={addingTask || todos.length > 0}
                           style={{
                             padding: "6px 14px",
                             fontSize: 12, fontWeight: 600,
                             color: "#15803d",
-                            background: taskAdded ? "#fff" : "rgba(255,255,255,0.8)",
+                            background: todos.length > 0 ? "#fff" : "rgba(255,255,255,0.8)",
                             border: "1px solid #bbf7d0",
                             borderRadius: 100,
-                            cursor: addingTask || taskAdded ? "default" : "pointer",
+                            cursor: addingTask || todos.length > 0 ? "default" : "pointer",
                             fontFamily: "'DM Sans', sans-serif",
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {taskAdded ? "✓ Added to tasks" : addingTask ? "Adding…" : "+ Add to tasks"}
+                          {todos.length > 0 ? "✓ Added to tasks" : addingTask ? "Adding…" : "+ Add to tasks"}
                         </button>
                         <a
                           href={analysis.source_url}
@@ -431,22 +445,6 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                         >
                           View source ↗
                         </a>
-                        {taskAdded && (
-                          <a
-                            href="/tasks"
-                            onClick={(e) => e.stopPropagation()}
-                            style={{
-                              marginLeft: "auto",
-                              fontSize: 12,
-                              color: "#f97316",
-                              textDecoration: "none",
-                              fontWeight: 600,
-                              opacity: 0.75,
-                            }}
-                          >
-                            View all tasks →
-                          </a>
-                        )}
                       </div>
                     </div>
                   )}
@@ -461,6 +459,16 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                     <p style={{ fontSize: 13, color: isDark ? "#a1a1aa" : "#44403c", lineHeight: 1.65, margin: 0, whiteSpace: "pre-wrap" }}>{parsed.body}</p>
                   </div>
                 )
+              )}
+
+              {/* ── Inline task panel ── */}
+              {todosLoaded && (
+                <TodoList
+                  key={listKey}
+                  analysisId={analysis.id}
+                  initialTodos={todos}
+                  prefillTitle={todos.length === 0 && parsed?.action ? parsed.action.slice(0, 200) : undefined}
+                />
               )}
 
               {/* ── Compact footer — always visible ── */}
