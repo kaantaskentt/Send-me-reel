@@ -72,10 +72,10 @@ export default function WeekHero({ analysis }: Props) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
           <span style={{
-            fontSize: 10, fontWeight: 700,
-            letterSpacing: "0.08em", textTransform: "uppercase",
+            fontSize: 11, fontWeight: 700,
+            letterSpacing: "0.06em", textTransform: "uppercase",
             color: "#f97316",
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: "'DM Sans', sans-serif",
           }}>
             This week&apos;s one thing
           </span>
@@ -96,13 +96,12 @@ export default function WeekHero({ analysis }: Props) {
         {/* Description */}
         {description && (
           <p style={{
-            fontSize: 17,
+            fontSize: 14,
             color: descColor,
-            lineHeight: 1.5,
+            lineHeight: 1.6,
             margin: "0 0 18px 0",
-            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontFamily: "'DM Sans', sans-serif",
             fontWeight: 400,
-            letterSpacing: -0.15,
           }}>
             {description}
           </p>
@@ -118,22 +117,21 @@ export default function WeekHero({ analysis }: Props) {
             marginBottom: 0,
           }}>
             <div style={{
-              fontSize: 10, fontWeight: 700,
-              letterSpacing: "0.08em", textTransform: "uppercase",
+              fontSize: 11, fontWeight: 700,
+              letterSpacing: "0.06em", textTransform: "uppercase",
               color: "#f97316",
-              fontFamily: "'JetBrains Mono', monospace",
+              fontFamily: "'DM Sans', sans-serif",
               marginBottom: 10,
             }}>
               TRY THIS ONCE
             </div>
             <p style={{
-              fontSize: 18,
+              fontSize: 13,
               color: isDark ? "#d4d4d8" : "#0f1d12",
-              lineHeight: 1.45,
+              lineHeight: 1.6,
               margin: 0,
-              fontFamily: "'Instrument Serif', Georgia, serif",
+              fontFamily: "'JetBrains Mono', monospace",
               fontWeight: 400,
-              letterSpacing: -0.15,
             }}>
               {action}
             </p>
@@ -173,7 +171,7 @@ export default function WeekHero({ analysis }: Props) {
             fontSize: 14,
             color: isDark ? "#71717A" : "#a8a29e",
             margin: 0,
-            fontFamily: "'Instrument Serif', Georgia, serif",
+            fontFamily: "'DM Sans', sans-serif",
             fontStyle: "italic",
           }}>
             No homework here. Just a watch.
