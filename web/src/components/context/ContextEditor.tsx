@@ -17,8 +17,6 @@ interface ParsedProfile {
   extended: string;
 }
 
-const EXTENDED_KEYS = ["short-term goal", "audience", "tools", "learning priorities", "content that clicks", "style preferences"];
-
 function parseAIProfile(raw: string): ParsedProfile | null {
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
   const map: Record<string, string> = {};
@@ -33,48 +31,38 @@ function parseAIProfile(raw: string): ParsedProfile | null {
 
   if (Object.keys(map).length === 0) return null;
 
-  const extendedParts: string[] = [];
-  for (const k of EXTENDED_KEYS) {
-    if (map[k]) extendedParts.push(`${k.charAt(0).toUpperCase() + k.slice(1)}: ${map[k]}`);
-  }
-
   return {
     role: map["role"] ?? "",
     goal: map["focus"] ?? map["current focus"] ?? "",
     preferences: map["interests"] ?? map["interests & topics"] ?? "",
-    extended: extendedParts.join("\n"),
+    extended: map["context"] ?? "",
   };
 }
 
-// Restored from pre-Phase-4c. The 8-field profile output produces richer
-// context than the 3-field reflection version did — Kaan flagged Apr 25.
-// One small addition vs the original: an optional "Short-term goal" field
-// (this month / next 2 weeks). Profile is the user's self-portrait — it is
-// NOT injected into the verdict / Deep Dive / Ask / Chat prompts (those stay
-// profile-blind per the pivot). It lives on the user's own dashboard.
-const AI_PROMPT = `Hey — you know me well from our past conversations. I'm setting up a profile on a tool called ContextDrop, which helps me actually try things from the AI / tech / business stuff I save instead of just watching reels.
+const AI_PROMPT = `Hey — I'm setting up a profile on a tool called ContextDrop. It helps me actually try things from the AI / tech / business content I save.
 
-Use everything you already know about me from our chat history — my work, my interests, the projects I've talked about, the tools I use, what I'm building, what I'm curious about, the kind of content that actually clicks for me — and write me a profile in the format below.
+Use everything you know about me from our conversation history — what I do, what I'm focused on, what topics I follow, how I think about things — and write me a short profile in the format below.
 
-Don't ask me questions. Just write it. Go on what you remember.
+If you have enough history with me, fill it in directly. If this is a fresh session with no history at all, ask me 3 quick questions first:
+1. What do you do day-to-day? (job, study, side project — anything)
+2. What are you focused on right now?
+3. What topics or ideas do you follow?
 
-Output format (fill in based on what you know about me):
+Then write the profile using my answers.
+
+Output format:
 
 ---
-Role: [my actual role + the world I work in, in 1-2 sentences. Include seniority if you know it.]
-Focus: [what I'm currently building, working on, or learning right now]
-Short-term goal: [one specific thing I'm aiming at over the next 2 weeks or this month — keep it concrete, not "get better at AI"]
-Audience: [who my work serves — clients, users, my team, myself]
-Interests: [the topics, fields, and ideas I'm actually drawn to — be specific to me, not generic categories]
-Tools: [the tools, platforms, and AI models I actually use day-to-day]
-Learning priorities: [what I'm actively trying to get better at]
-Content that clicks for me: [the kinds of content that actually help me — case studies, tool walkthroughs, opinion pieces, frameworks, etc.]
-Style preferences: [how I like information delivered — concise vs detailed, technical vs accessible, examples vs theory]
+Role: [10 words max — what you do + context. "Marketing manager at a tech startup" / "CS student exploring agentic systems" / "Freelance designer curious about AI tools"]
+Focus: [10 words max — what you're on right now. "Figuring out what AI means for my career" / "Launching a newsletter, learning Notion"]
+Interests: [comma-separated list of specific topics — not generic categories. "AI tools, startup culture, content strategy, no-code" not "technology, business"]
+Context: [2–3 sentences. Written like a friend describing me — what kind of person am I, what do I actually care about, what does a good week look like for me. No buzzwords, no recruiter language.]
 ---
 
-Be factual and specific. Skip filler words like "passionate" or "innovative." If you don't actually know something about me, leave that line as [unknown — I'll fill in] rather than guessing.
-
-If this is a fresh chat with no memory of me at all, say so honestly and produce the format above with [bracketed placeholders] I can fill in myself.`;
+Hard rules:
+- Role and Focus must be 10 words or fewer. No full sentences.
+- If you genuinely don't know something, write [I don't know — fill this in] rather than guessing.
+- No words like "passionate", "innovative", "leverage", "synergy".`;
 
 export default function ContextEditor() {
   const router = useRouter();
@@ -255,28 +243,36 @@ export default function ContextEditor() {
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>Role</label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>Who you are</label>
               <input
                 type="text"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                placeholder="e.g. AI Engineer, Product Manager, CS Student..."
+                placeholder="Marketing manager at a startup · 10 words max"
+                maxLength={80}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
               />
+              <p style={{ fontSize: 11, margin: "4px 0 0 2px", color: role.length >= 65 ? "#f97316" : "#c4bdb5" }}>
+                {role.length} / 80
+              </p>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>Current Focus</label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>What you&apos;re working on</label>
               <input
                 type="text"
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
-                placeholder="e.g. Building an AI-powered SaaS, Learning React..."
+                placeholder="Learning how AI fits my career · 10 words max"
+                maxLength={80}
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
               />
+              <p style={{ fontSize: 11, margin: "4px 0 0 2px", color: goal.length >= 65 ? "#f97316" : "#c4bdb5" }}>
+                {goal.length} / 80
+              </p>
             </div>
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#44403c", marginBottom: 6 }}>
@@ -286,7 +282,7 @@ export default function ContextEditor() {
                 type="text"
                 value={preferences}
                 onChange={(e) => setPreferences(e.target.value)}
-                placeholder="e.g. AI research, philosophy, no-code tools, startup culture..."
+                placeholder="AI, marketing, startups, design — comma-separated"
                 style={inputStyle}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
