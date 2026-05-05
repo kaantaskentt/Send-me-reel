@@ -33,10 +33,9 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   "Everything in Free",
   "Unlimited analyses",
-  "Notion sync",
-  "WhatsApp support (coming soon)",
-  "Priority processing",
-  "Ask AI follow-up questions",
+  "Unlimited AI chat",
+  "Connectors — Notion (Google Calendar coming soon)",
+  "Early access to new channels — WhatsApp, Instagram DM",
 ];
 
 function CheckIcon() {

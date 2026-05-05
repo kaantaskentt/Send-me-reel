@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
 import { ExternalLink, LogOut, Home, CheckSquare, MessageSquare, Link2, ChevronUp, ChevronDown } from "lucide-react";
+import PremiumModal, { type PremiumModalSource } from "@/components/PremiumModal";
 
 interface Props { profile: UserProfile; }
 
@@ -22,6 +23,14 @@ export default function ProfileSidebar({ profile }: Props) {
   const creditsTotal = (credits?.balance ?? 0) + creditsUsed;
   const creditsPct = creditsTotal > 0 ? Math.min(100, Math.round((creditsUsed / creditsTotal) * 100)) : 0;
   const notionConnected = !!user.notion_access_token;
+
+  const [premiumOpen, setPremiumOpen] = useState(false);
+  const [triggerSource, setTriggerSource] = useState<PremiumModalSource>("sidebar_upgrade_card");
+
+  function openPremium(source: PremiumModalSource) {
+    setTriggerSource(source);
+    setPremiumOpen(true);
+  }
 
   const handleManageSubscription = () => {
     fetch("/api/stripe/portal", { method: "POST" })
@@ -97,7 +106,7 @@ export default function ProfileSidebar({ profile }: Props) {
         </div>
         <p style={{ fontSize: 11, color: "#c4bdb5", margin: "6px 0 0 0" }}>1 credit = 1 analysis</p>
         {!user.premium && (
-          <a href="/pricing" style={{ display: "block", fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600, marginTop: 6 }}>Get more credits →</a>
+          <button onClick={() => openPremium("sidebar_credits")} style={{ display: "block", fontSize: 12, color: "#f97316", fontWeight: 600, marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Get more credits →</button>
         )}
       </div>
 
@@ -109,7 +118,7 @@ export default function ProfileSidebar({ profile }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={{ fontSize: 11, fontWeight: 700, background: "linear-gradient(135deg, #fbbf24, #f97316)", color: "#fff", padding: "3px 12px", borderRadius: 100 }}>Premium</span>
           </div>
-          <p style={{ fontSize: 11, color: "#a8a29e", margin: "0 0 4px 0" }}>Unlimited analyses, AI Q&A, action items</p>
+          <p style={{ fontSize: 11, color: "#a8a29e", margin: "0 0 4px 0" }}>Unlimited analyses, unlimited AI chat, Notion connector</p>
           <button
             onClick={handleManageSubscription}
             style={{ fontSize: 11, color: "#78716c", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textDecoration: "underline", textUnderlineOffset: 2 }}
@@ -118,18 +127,18 @@ export default function ProfileSidebar({ profile }: Props) {
           </button>
         </div>
       ) : (
-        <a href="/pricing" style={{ display: "block", textDecoration: "none", marginBottom: 14 }}>
+        <button onClick={() => openPremium("sidebar_upgrade_card")} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", marginBottom: 14, fontFamily: "'DM Sans', sans-serif" }}>
           <div style={{ background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 12, padding: "12px 14px" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#1c1917", margin: "0 0 4px 0" }}>Upgrade to Premium</p>
-            <p style={{ fontSize: 11, color: "#a8a29e", margin: 0 }}>AI Q&A, 200 credits/mo, priority support</p>
+            <p style={{ fontSize: 11, color: "#a8a29e", margin: 0 }}>Unlimited analyses, AI chat, Notion + more</p>
           </div>
-        </a>
+        </button>
       )}
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
       {/* Connectors */}
-      <ConnectorsSection notionConnected={notionConnected} />
+      <ConnectorsSection notionConnected={notionConnected} isPremium={!!user.premium} onUpgrade={openPremium} />
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
@@ -150,11 +159,13 @@ export default function ProfileSidebar({ profile }: Props) {
           <LogOut style={{ width: 14, height: 14 }} /> Sign out
         </button>
       </div>
+
+      <PremiumModal open={premiumOpen} onClose={() => setPremiumOpen(false)} source={triggerSource} />
     </div>
   );
 }
 
-function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
+function ConnectorsSection({ notionConnected, isPremium, onUpgrade }: { notionConnected: boolean; isPremium: boolean; onUpgrade: (source: PremiumModalSource) => void }) {
   const [open, setOpen] = useState(false);
   const connectedCount = notionConnected ? 1 : 0;
 
@@ -191,8 +202,11 @@ function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
               <span style={{ fontSize: 10, fontWeight: 600, color: "#10b981", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block" }} /> On
               </span>
-            ) : (
+            ) : isPremium ? (
               <a href="/connect-notion" style={{ fontSize: 10, fontWeight: 700, color: "#f97316", textDecoration: "none" }}>Connect</a>
+            ) : (
+              // Notion is a Pro feature — free users without an existing connection see the upgrade modal
+              <button onClick={() => onUpgrade("sidebar_notion")} style={{ fontSize: 10, fontWeight: 700, color: "#f97316", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Unlock</button>
             )}
           </div>
 
@@ -205,7 +219,7 @@ function ConnectorsSection({ notionConnected }: { notionConnected: boolean }) {
               <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Google Calendar</p>
               <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Schedule tasks from...</p>
             </div>
-            <span style={{ fontSize: 10, fontWeight: 600, color: "#a8a29e" }}>Soon</span>
+            <button onClick={() => onUpgrade("sidebar_gcal")} style={{ fontSize: 10, fontWeight: 700, color: "#a8a29e", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Soon</button>
           </div>
 
           {/* Linear */}

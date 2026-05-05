@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sun, Moon } from "lucide-react";
+import { X, Sun, Moon } from "lucide-react";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { useTheme } from "@/lib/theme";
 import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
@@ -41,7 +42,8 @@ function FilterChips({
             key={o.value}
             onClick={() => onChange(o.value)}
             style={{
-              padding: `5px ${px}px`,
+              padding: size === "sm" ? `7px ${px}px` : `9px ${px}px`,
+              minHeight: 36,
               fontSize: fz,
               fontWeight: 600,
               color: active ? (isDark ? "#fafafa" : "#1c1917") : (isDark ? "#71717A" : "#a8a29e"),
@@ -146,6 +148,20 @@ export default function Dashboard() {
 
   const isFiltered = platform !== "all" || search !== "" || activeFilter !== "all";
 
+  const [notionBannerDismissed, setNotionBannerDismissed] = useState(true);
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("cd_notion_grandfathered_dismissed");
+      if (!dismissed && profile?.user?.notion_access_token && !profile?.user?.premium) {
+        setNotionBannerDismissed(false);
+      }
+    } catch { /* ignore */ }
+  }, [profile]);
+  const dismissNotionBanner = () => {
+    setNotionBannerDismissed(true);
+    try { localStorage.setItem("cd_notion_grandfathered_dismissed", "1"); } catch { /* ignore */ }
+  };
+
   useEffect(() => {
     fetch("/api/user").then((r) => r.json()).then(setProfile).catch(console.error);
   }, []);
@@ -243,10 +259,9 @@ export default function Dashboard() {
         @media (max-width: 1023px) {
           .cd-sidebar { display: none !important; }
           .cd-sidebar.open { display: block !important; position: fixed !important; top: 56px !important; left: 0 !important; bottom: 0 !important; z-index: 40 !important; width: 280px !important; box-shadow: 8px 0 24px rgba(0,0,0,0.1) !important; }
-          .cd-menu-btn { display: flex !important; }
           .cd-overlay { display: block !important; }
         }
-        @media (min-width: 1024px) { .cd-sidebar { display: block !important; } .cd-menu-btn { display: none !important; } }
+        @media (min-width: 1024px) { .cd-sidebar { display: block !important; } }
       `}</style>
 
       <header style={{
@@ -256,10 +271,6 @@ export default function Dashboard() {
         borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 1.25rem", height: 56, maxWidth: 1280, margin: "0 auto" }}>
-          <button className="cd-menu-btn" onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ display: "none", padding: 8, background: "none", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "#e7e2d9"}`, borderRadius: 10, cursor: "pointer", color: isDark ? "#71717A" : "#78716c", alignItems: "center", flexShrink: 0 }}>
-            {sidebarOpen ? <X style={{ width: 18, height: 18 }} /> : <Menu style={{ width: 18, height: 18 }} />}
-          </button>
           <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -324,8 +335,17 @@ export default function Dashboard() {
           )}
         </aside>
 
-        <main style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 720 }}>
+        <main className="cd-main-content cd-main-mobile-pad" style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 860 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            {!notionBannerDismissed && (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "10px 14px" }}>
+                <span style={{ fontSize: 15 }}>🎉</span>
+                <p style={{ fontSize: 12, color: "#92400e", margin: 0, flex: 1, lineHeight: 1.5 }}>
+                  You were grandfathered into the Notion connector — thanks for being here early.
+                </p>
+                <button onClick={dismissNotionBanner} style={{ background: "none", border: "none", fontSize: 13, color: "#a8a29e", cursor: "pointer", flexShrink: 0, padding: 0 }}>✕</button>
+              </div>
+            )}
             <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} />
 
             <AnimatePresence initial={false} mode="wait">
@@ -484,6 +504,10 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+      <MobileBottomNav
+        onProfileTap={() => setSidebarOpen(true)}
+        isPremium={!!profile?.user?.premium}
+      />
     </div>
   );
 }

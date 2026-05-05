@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 interface TaskWithSource {
   id: string;
@@ -159,7 +160,7 @@ export default function TasksPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 760, margin: "0 auto", padding: "32px 20px 64px" }}>
+      <main style={{ maxWidth: 760, margin: "0 auto", padding: "32px 20px calc(68px + env(safe-area-inset-bottom))" }}>
 
         {/* Hero stat bar */}
         <div style={{
@@ -352,6 +353,7 @@ export default function TasksPage() {
           </div>
         )}
       </main>
+      <MobileBottomNav onProfileTap={() => { window.location.href = "/context"; }} />
     </div>
   );
 }

@@ -305,7 +305,7 @@ export default function TodoList({ analysisId, initialTodos, prefillTitle, onFir
             placeholder="Add a task..."
             style={{
               flex: 1,
-              padding: "8px 12px",
+              padding: "5px 10px",
               fontSize: 16, // 16px prevents iOS Safari auto-zoom
               border: "1px solid #e7e2d9",
               borderRadius: 10,
@@ -321,11 +321,11 @@ export default function TodoList({ analysisId, initialTodos, prefillTitle, onFir
             type="submit"
             disabled={adding || !newTitle.trim()}
             style={{
-              padding: "8px 14px",
+              padding: "5px 12px",
               background: adding || !newTitle.trim() ? "#e7e2d9" : "#f97316",
               color: adding || !newTitle.trim() ? "#a8a29e" : "#fff",
               fontWeight: 600,
-              fontSize: 13,
+              fontSize: 15,
               borderRadius: 10,
               border: "none",
               cursor: adding || !newTitle.trim() ? "not-allowed" : "pointer",

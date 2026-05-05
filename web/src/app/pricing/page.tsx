@@ -1,20 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import PremiumModal from "@/components/PremiumModal";
 
 export default function PricingPage() {
-  const [loading, setLoading] = useState(false);
-
-  const handleUpgrade = async () => {
-    setLoading(true);
-    const res = await fetch("/api/stripe/checkout", { method: "POST" });
-    const data = await res.json();
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      setLoading(false);
-    }
-  };
+  const [premiumOpen, setPremiumOpen] = useState(false);
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
@@ -42,7 +32,7 @@ export default function PricingPage() {
             <p style={{ fontSize: 13, color: "#a8a29e", margin: "0 0 24px 0" }}>To get started</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-              {["50 free credits", "AI-powered verdicts", "Action items", "Notion integration", "Telegram + Web dashboard"].map((item) => (
+              {["50 analyses to start", "All platforms (Instagram, TikTok, X, YouTube, LinkedIn, articles)", "Summary + action item per link", "Personal dashboard", "Telegram bot"].map((item) => (
                 <div key={item} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ color: "#10b981", fontSize: 14 }}>✓</span>
                   <span style={{ fontSize: 13, color: "#44403c" }}>{item}</span>
@@ -61,11 +51,11 @@ export default function PricingPage() {
               Most popular
             </div>
             <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#f97316", margin: "0 0 8px 0" }}>Premium</p>
-            <p style={{ fontSize: 32, fontWeight: 800, color: "#1c1917", margin: "0 0 4px 0" }}>$9.99<span style={{ fontSize: 14, fontWeight: 500, color: "#a8a29e" }}>/mo</span></p>
-            <p style={{ fontSize: 13, color: "#a8a29e", margin: "0 0 24px 0" }}>For power users</p>
+            <p style={{ fontSize: 32, fontWeight: 800, color: "#1c1917", margin: "0 0 4px 0" }}>$9<span style={{ fontSize: 14, fontWeight: 500, color: "#a8a29e" }}>/mo</span></p>
+            <p style={{ fontSize: 13, color: "#a8a29e", margin: "0 0 24px 0" }}>Payments coming soon — request access below</p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
-              {["200 credits/month", "Everything in Free", "AI chat per analysis", "Cross-analysis insights", "Priority support"].map((item) => (
+              {["Everything in Free", "Unlimited analyses", "Unlimited AI chat", "Connectors — Notion (Google Calendar coming soon)", "Early access to new channels — WhatsApp, Instagram DM"].map((item) => (
                 <div key={item} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ color: "#f97316", fontSize: 14 }}>✓</span>
                   <span style={{ fontSize: 13, color: "#44403c" }}>{item}</span>
@@ -74,26 +64,26 @@ export default function PricingPage() {
             </div>
 
             <button
-              onClick={handleUpgrade}
-              disabled={loading}
+              onClick={() => setPremiumOpen(true)}
               style={{
                 padding: "13px 24px", marginTop: 24,
-                background: loading ? "#fb923c" : "#f97316",
+                background: "#f97316",
                 color: "#fff", fontWeight: 700, fontSize: 14,
                 borderRadius: 100, border: "none",
-                cursor: loading ? "wait" : "pointer",
+                cursor: "pointer",
                 fontFamily: "'DM Sans', sans-serif",
               }}
             >
-              {loading ? "Redirecting..." : "Get Premium"}
+              Request access
             </button>
           </div>
         </div>
 
         <p style={{ textAlign: "center", fontSize: 12, color: "#c4bdb5", marginTop: 32 }}>
-          Cancel anytime. Credits don&apos;t expire.
+          No card needed to request. We&apos;ll reach out personally.
         </p>
       </main>
+      <PremiumModal open={premiumOpen} onClose={() => setPremiumOpen(false)} source="pricing_page" />
     </div>
   );
 }

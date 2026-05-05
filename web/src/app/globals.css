@@ -497,3 +497,13 @@
 
 /* Smooth-scroll for anchor jumps */
 html { scroll-behavior: smooth; }
+
+/* Dashboard mobile responsive overrides */
+@media (max-width: 1023px) {
+  .cd-main-content {
+    padding: 1rem !important;
+  }
+  .cd-main-mobile-pad {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom)) !important;
+  }
+}

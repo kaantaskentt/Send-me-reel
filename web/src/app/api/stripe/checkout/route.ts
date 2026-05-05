@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
           currency: "usd",
           product_data: {
             name: "ContextDrop Premium",
-            description: "Unlimited analyses, AI chat, action items, and more",
+            description: "Unlimited analyses, unlimited AI chat, Notion connector, early access to WhatsApp & Instagram DM",
           },
-          unit_amount: 999, // $9.99
+          unit_amount: 900, // $9/mo
           recurring: { interval: "month" },
         },
         quantity: 1,
