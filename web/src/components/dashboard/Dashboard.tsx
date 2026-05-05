@@ -152,20 +152,6 @@ export default function Dashboard() {
 
   const isFiltered = platform !== "all" || search !== "" || activeFilter !== "all";
 
-  const [notionBannerDismissed, setNotionBannerDismissed] = useState(true);
-  useEffect(() => {
-    try {
-      const dismissed = localStorage.getItem("cd_notion_grandfathered_dismissed");
-      if (!dismissed && profile?.user?.notion_access_token && !profile?.user?.premium) {
-        setNotionBannerDismissed(false);
-      }
-    } catch { /* ignore */ }
-  }, [profile]);
-  const dismissNotionBanner = () => {
-    setNotionBannerDismissed(true);
-    try { localStorage.setItem("cd_notion_grandfathered_dismissed", "1"); } catch { /* ignore */ }
-  };
-
   useEffect(() => {
     fetch("/api/user").then((r) => r.json()).then(setProfile).catch(console.error);
   }, []);
@@ -341,15 +327,6 @@ export default function Dashboard() {
 
         <main className="cd-main-content cd-main-mobile-pad" style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 860 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {!notionBannerDismissed && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 12, padding: "10px 14px" }}>
-                <span style={{ fontSize: 15 }}>🎉</span>
-                <p style={{ fontSize: 12, color: "#92400e", margin: 0, flex: 1, lineHeight: 1.5 }}>
-                  You were grandfathered into the Notion connector — thanks for being here early.
-                </p>
-                <button onClick={dismissNotionBanner} style={{ background: "none", border: "none", fontSize: 13, color: "#a8a29e", cursor: "pointer", flexShrink: 0, padding: 0 }}>✕</button>
-              </div>
-            )}
             <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} />
 
             <AnimatePresence initial={false} mode="wait">

@@ -180,25 +180,16 @@ function ConnectorsSection({ notionConnected, isPremium, onUpgrade }: { notionCo
 
       {open && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10 }}>
-          {/* Notion */}
+          {/* Notion — coming soon, gated as premium */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", background: "#faf8f5", borderRadius: 10, border: "1px solid #f0ebe4" }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "#1c1917", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <span style={{ color: "white", fontSize: 14, fontWeight: 700 }}>N</span>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: "#1c1917", margin: 0 }}>Notion</p>
-              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>{notionConnected ? "My Workspace" : "Save analyses to Notion"}</p>
+              <p style={{ fontSize: 10, color: "#a8a29e", margin: 0 }}>Save analyses to Notion</p>
             </div>
-            {notionConnected ? (
-              <span style={{ fontSize: 10, fontWeight: 600, color: "#10b981", display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block" }} /> On
-              </span>
-            ) : isPremium ? (
-              <a href="/connect-notion" style={{ fontSize: 10, fontWeight: 700, color: "#f97316", textDecoration: "none" }}>Connect</a>
-            ) : (
-              // Notion is a Pro feature — free users without an existing connection see the upgrade modal
-              <button onClick={() => onUpgrade("sidebar_notion")} style={{ fontSize: 10, fontWeight: 700, color: "#f97316", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Unlock</button>
-            )}
+            <button onClick={() => onUpgrade("sidebar_notion")} style={{ fontSize: 10, fontWeight: 700, color: "#a8a29e", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Soon</button>
           </div>
 
           {/* Google Calendar */}
