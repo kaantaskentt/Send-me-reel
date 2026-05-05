@@ -359,20 +359,19 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                   {/* WHAT IS IT — label above description */}
                   <div style={{ paddingTop: 4 }}>
                     <div style={{
-                      fontSize: 10, fontWeight: 700, color: labelColor,
-                      textTransform: "uppercase", letterSpacing: "0.08em",
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 11, fontWeight: 700, color: labelColor,
+                      textTransform: "uppercase", letterSpacing: "0.06em",
+                      fontFamily: "'DM Sans', sans-serif",
                       marginBottom: 8,
                     }}>
                       WHAT IS IT?
                     </div>
                     <p style={{
-                      fontSize: 15.5,
+                      fontSize: 14,
                       color: descColor,
-                      lineHeight: 1.55,
+                      lineHeight: 1.6,
                       margin: 0,
-                      fontFamily: "'Instrument Serif', Georgia, serif",
-                      letterSpacing: -0.1,
+                      fontFamily: "'DM Sans', sans-serif",
                       fontWeight: 400,
                     }}>
                       {linkifyText(parsed.description)}
@@ -382,7 +381,7 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                         <summary style={{ fontSize: 11, fontWeight: 500, color: isDark ? "#71717A" : "#a8a29e", cursor: "pointer", listStyle: "none" }}>
                           + a layer deeper
                         </summary>
-                        <p style={{ fontSize: 13, color: deeperColor, lineHeight: 1.6, margin: "6px 0 0 0", fontFamily: "'Instrument Serif', Georgia, serif", fontStyle: "italic" }}>
+                        <p style={{ fontSize: 13, color: deeperColor, lineHeight: 1.6, margin: "6px 0 0 0", fontFamily: "'DM Sans', sans-serif", fontStyle: "italic" }}>
                           {linkifyText(parsed.deeper)}
                         </p>
                       </details>
@@ -398,18 +397,18 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                       padding: "16px 18px",
                     }}>
                       <div style={{
-                        fontSize: 10, fontWeight: 700, color: labelColor,
-                        textTransform: "uppercase", letterSpacing: "0.08em",
-                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 11, fontWeight: 700, color: labelColor,
+                        textTransform: "uppercase", letterSpacing: "0.06em",
+                        fontFamily: "'DM Sans', sans-serif",
                         marginBottom: 8,
                       }}>
                         TRY THIS ONCE
                       </div>
                       <p style={{
-                        fontSize: 16, color: isDark ? "#d4d4d8" : "#0f1d12",
-                        lineHeight: 1.55, margin: 0,
-                        fontFamily: "'Instrument Serif', Georgia, serif",
-                        fontWeight: 400, letterSpacing: -0.1,
+                        fontSize: 13, color: isDark ? "#d4d4d8" : "#0f1d12",
+                        lineHeight: 1.6, margin: 0,
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontWeight: 400,
                       }}>
                         {linkifyText(parsed.action)}
                       </p>
