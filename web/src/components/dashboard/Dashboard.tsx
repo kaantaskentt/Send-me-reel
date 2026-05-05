@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Sun, Moon } from "lucide-react";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import PremiumModal, { type PremiumModalSource } from "@/components/PremiumModal";
 import { useTheme } from "@/lib/theme";
 import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
@@ -109,6 +110,9 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [premiumOpen, setPremiumOpen] = useState(false);
+  const [premiumSource, setPremiumSource] = useState<PremiumModalSource>("sidebar_upgrade_card");
+  function openPremium(source: PremiumModalSource) { setPremiumSource(source); setPremiumOpen(true); }
 
   useEffect(() => {
     if (expandId && analyses.some((a) => a.id === expandId)) {
@@ -320,7 +324,7 @@ export default function Dashboard() {
             position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto",
             background: isDark ? "#111111" : "#fff",
           }}>
-          {profile ? <ProfileSidebar profile={profile} /> : (
+          {profile ? <ProfileSidebar profile={profile} onUpgrade={openPremium} /> : (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: isDark ? "rgba(255,255,255,0.06)" : "#f0ebe4" }} />
@@ -508,6 +512,7 @@ export default function Dashboard() {
         onProfileTap={() => setSidebarOpen(true)}
         isPremium={!!profile?.user?.premium}
       />
+      <PremiumModal open={premiumOpen} onClose={() => setPremiumOpen(false)} source={premiumSource} />
     </div>
   );
 }

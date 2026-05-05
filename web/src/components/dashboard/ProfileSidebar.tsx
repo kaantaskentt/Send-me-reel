@@ -3,9 +3,9 @@
 import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
 import { ExternalLink, LogOut, Home, CheckSquare, MessageSquare, Link2, ChevronUp, ChevronDown } from "lucide-react";
-import PremiumModal, { type PremiumModalSource } from "@/components/PremiumModal";
+import { type PremiumModalSource } from "@/components/PremiumModal";
 
-interface Props { profile: UserProfile; }
+interface Props { profile: UserProfile; onUpgrade: (source: PremiumModalSource) => void; }
 
 // Extract a clean short label from potentially long text
 function shortLabel(text: string, max: number): string {
@@ -15,7 +15,7 @@ function shortLabel(text: string, max: number): string {
   return firstLine.slice(0, max).trim() + "...";
 }
 
-export default function ProfileSidebar({ profile }: Props) {
+export default function ProfileSidebar({ profile, onUpgrade }: Props) {
   const { user, context, credits } = profile;
   if (!user) return null;
   const initials = (user.first_name || user.telegram_username || "U").slice(0, 2).toUpperCase();
@@ -23,14 +23,6 @@ export default function ProfileSidebar({ profile }: Props) {
   const creditsTotal = (credits?.balance ?? 0) + creditsUsed;
   const creditsPct = creditsTotal > 0 ? Math.min(100, Math.round((creditsUsed / creditsTotal) * 100)) : 0;
   const notionConnected = !!user.notion_access_token;
-
-  const [premiumOpen, setPremiumOpen] = useState(false);
-  const [triggerSource, setTriggerSource] = useState<PremiumModalSource>("sidebar_upgrade_card");
-
-  function openPremium(source: PremiumModalSource) {
-    setTriggerSource(source);
-    setPremiumOpen(true);
-  }
 
   const handleManageSubscription = () => {
     fetch("/api/stripe/portal", { method: "POST" })
@@ -106,7 +98,7 @@ export default function ProfileSidebar({ profile }: Props) {
         </div>
         <p style={{ fontSize: 11, color: "#c4bdb5", margin: "6px 0 0 0" }}>1 credit = 1 analysis</p>
         {!user.premium && (
-          <button onClick={() => openPremium("sidebar_credits")} style={{ display: "block", fontSize: 12, color: "#f97316", fontWeight: 600, marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Get more credits →</button>
+          <button onClick={() => onUpgrade("sidebar_credits")} style={{ display: "block", fontSize: 12, color: "#f97316", fontWeight: 600, marginTop: 6, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>Get more credits →</button>
         )}
       </div>
 
@@ -127,7 +119,7 @@ export default function ProfileSidebar({ profile }: Props) {
           </button>
         </div>
       ) : (
-        <button onClick={() => openPremium("sidebar_upgrade_card")} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", marginBottom: 14, fontFamily: "'DM Sans', sans-serif" }}>
+        <button onClick={() => onUpgrade("sidebar_upgrade_card")} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: 0, cursor: "pointer", marginBottom: 14, fontFamily: "'DM Sans', sans-serif" }}>
           <div style={{ background: "#faf8f5", border: "1px solid #e7e2d9", borderRadius: 12, padding: "12px 14px" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#1c1917", margin: "0 0 4px 0" }}>Upgrade to Premium</p>
             <p style={{ fontSize: 11, color: "#a8a29e", margin: 0 }}>Unlimited analyses, AI chat, Notion + more</p>
@@ -138,7 +130,7 @@ export default function ProfileSidebar({ profile }: Props) {
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
       {/* Connectors */}
-      <ConnectorsSection notionConnected={notionConnected} isPremium={!!user.premium} onUpgrade={openPremium} />
+      <ConnectorsSection notionConnected={notionConnected} isPremium={!!user.premium} onUpgrade={onUpgrade} />
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
@@ -160,7 +152,6 @@ export default function ProfileSidebar({ profile }: Props) {
         </button>
       </div>
 
-      <PremiumModal open={premiumOpen} onClose={() => setPremiumOpen(false)} source={triggerSource} />
     </div>
   );
 }
