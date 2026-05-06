@@ -9,7 +9,6 @@ import HeroSection from "@/components/landing/HeroSection";
 import ProblemSection from "@/components/landing/ProblemSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import PersonasSection from "@/components/landing/PersonasSection";
-import PersonalizationSection from "@/components/landing/PersonalizationSection";
 import PricingSection from "@/components/landing/PricingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
@@ -21,7 +20,6 @@ export default function Home() {
       <ProblemSection />
       <HowItWorksSection />
       <PersonasSection />
-      <PersonalizationSection />
       <PricingSection />
       <FinalCTASection />
     </div>
