@@ -163,7 +163,7 @@ function VerdictCard({ card, delay = 0 }: { card: typeof ALL_VERDICTS[0]; delay?
   );
 }
 
-const LOOP_MS = 4500 + 2 * 1200 + 4000;
+const LOOP_MS = 4500 + ALL_VERDICTS.length * 1200 + 4000;
 
 export default function HeroDemoAnimation() {
   const [phase, setPhase] = useState<"pile" | "processing" | "cards">("pile");
@@ -181,7 +181,7 @@ export default function HeroDemoAnimation() {
       t1 = setTimeout(() => setPhase("processing"), 2500);
       t2 = setTimeout(() => {
         setPhase("cards");
-        ALL_VERDICTS.slice(0, 2).forEach((_, i) => {
+        ALL_VERDICTS.forEach((_, i) => {
           const timer = setTimeout(() => {
             setVisibleCards((prev) => [...prev, i]);
           }, i * 1200);
@@ -206,7 +206,7 @@ export default function HeroDemoAnimation() {
   }, []);
 
   return (
-    <div className="w-full max-w-3xl mx-auto" style={{ minHeight: "380px" }}>
+    <div className="w-full max-w-3xl mx-auto" style={{ minHeight: "260px" }}>
       <AnimatePresence mode="wait">
         {phase === "pile" && (
           <motion.div
@@ -216,7 +216,7 @@ export default function HeroDemoAnimation() {
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.3 }}
             className="relative w-full flex items-center justify-center overflow-hidden"
-            style={{ height: "380px" }}
+            style={{ height: "260px" }}
           >
             {PILE_CARDS.map((card, i) => {
               const rotations = [-4, 2.5, -1.5, 3, -2];
@@ -283,7 +283,7 @@ export default function HeroDemoAnimation() {
             exit={{ opacity: 0, scale: 1.02 }}
             transition={{ duration: 0.3 }}
             className="w-full flex flex-col items-center justify-center"
-            style={{ height: "380px" }}
+            style={{ height: "260px" }}
           >
             <div className="relative mb-5">
               <div
@@ -320,7 +320,7 @@ export default function HeroDemoAnimation() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
             className="w-full grid grid-cols-1 md:grid-cols-2 gap-3"
-            style={{ minHeight: "380px", alignContent: "start" }}
+            style={{ alignContent: "start" }}
           >
             {visibleCards.map((cardIndex) => (
               <VerdictCard key={cardIndex} card={ALL_VERDICTS[cardIndex]} delay={0} />

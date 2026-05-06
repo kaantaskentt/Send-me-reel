@@ -318,7 +318,7 @@ export default function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2, duration: 0.5 }}
-          className="mt-14 flex flex-col items-center gap-2"
+          className="mt-6 flex flex-col items-center gap-2"
         >
           <span className="text-xs" style={{ color: "#52525B" }}>scroll to see how it works</span>
           <motion.div animate={{ y: [0, 6, 0] }} transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}>
