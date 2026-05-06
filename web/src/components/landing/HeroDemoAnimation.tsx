@@ -235,18 +235,10 @@ export default function HeroDemoAnimation() {
               const cardWidth = isMobile ? 170 : 200;
 
               return PILE_CARDS.map((card, i) => {
-                const offsetX = isMobile
-                  ? (i - centerIdx) * 6          // tight x drift on mobile
-                  : (i - centerIdx) * spacingX;
-                const offsetY = isMobile
-                  ? (i - centerIdx) * 28         // vertical cascade on mobile
-                  : yOffsets[i];
-                const rotation = isMobile
-                  ? (i - centerIdx) * 2.5        // gentle rotation on mobile
-                  : rotations[i];
-                const zIdx = isMobile
-                  ? i + 1                        // last card on top on mobile
-                  : total - Math.round(Math.abs(i - centerIdx));
+                const offsetX = (i - centerIdx) * spacingX;
+                const offsetY = yOffsets[i];
+                const rotation = rotations[i];
+                const zIdx = total - Math.round(Math.abs(i - centerIdx));
 
                 return (
                   <motion.div
@@ -343,7 +335,7 @@ export default function HeroDemoAnimation() {
             transition={{ duration: 0.3 }}
             style={{ height: "300px", overflow: "hidden", position: "relative" }}
           >
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2" style={{ alignContent: "start" }}>
+            <div className="w-full grid grid-cols-2 gap-2" style={{ alignContent: "start" }}>
               {visibleCards.map((cardIndex) => (
                 <VerdictCard key={cardIndex} card={ALL_VERDICTS[cardIndex]} delay={0} />
               ))}
