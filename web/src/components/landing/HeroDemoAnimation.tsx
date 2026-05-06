@@ -232,13 +232,21 @@ export default function HeroDemoAnimation() {
               const rotations = [-8, -3, 3, 8];
               const yOffsets = [10, 3, 3, 10];
               const spacingX = isMobile ? 72 : 100;
-              const cardWidth = isMobile ? 150 : 200;
+              const cardWidth = isMobile ? 170 : 200;
 
               return PILE_CARDS.map((card, i) => {
-                const offsetX = (i - centerIdx) * spacingX;
-                const offsetY = yOffsets[i];
-                const rotation = rotations[i];
-                const zIdx = total - Math.round(Math.abs(i - centerIdx));
+                const offsetX = isMobile
+                  ? (i - centerIdx) * 6          // tight x drift on mobile
+                  : (i - centerIdx) * spacingX;
+                const offsetY = isMobile
+                  ? (i - centerIdx) * 28         // vertical cascade on mobile
+                  : yOffsets[i];
+                const rotation = isMobile
+                  ? (i - centerIdx) * 2.5        // gentle rotation on mobile
+                  : rotations[i];
+                const zIdx = isMobile
+                  ? i + 1                        // last card on top on mobile
+                  : total - Math.round(Math.abs(i - centerIdx));
 
                 return (
                   <motion.div
