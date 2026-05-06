@@ -168,6 +168,14 @@ const LOOP_MS = 4500 + ALL_VERDICTS.length * 1200 + 4000;
 export default function HeroDemoAnimation() {
   const [phase, setPhase] = useState<"pile" | "processing" | "cards">("pile");
   const [visibleCards, setVisibleCards] = useState<number[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   useEffect(() => {
     const cardTimers: ReturnType<typeof setTimeout>[] = [];
@@ -215,61 +223,67 @@ export default function HeroDemoAnimation() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.3 }}
-            className="relative w-full flex items-center justify-center overflow-hidden"
+            className="relative w-full flex items-center justify-center"
             style={{ height: "300px" }}
           >
-            {PILE_CARDS.map((card, i) => {
-              const rotations = [-4, 2.5, -1.5, 3, -2];
-              const offsets = [
-                { x: -8, y: -5 },
-                { x: 6, y: -12 },
-                { x: -3, y: 8 },
-                { x: 10, y: 2 },
-                { x: -6, y: -18 },
-              ];
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 30, rotate: 0 }}
-                  animate={{ opacity: 1, y: offsets[i].y, x: offsets[i].x, rotate: rotations[i] }}
-                  transition={{ duration: 0.45, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute rounded-xl px-4 py-3 text-left"
-                  style={{
-                    background: "rgba(18,18,18,0.95)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    backdropFilter: "blur(10px)",
-                    width: "min(280px, calc(100vw - 48px))",
-                    zIndex: PILE_CARDS.length - i,
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <PlatformIcon name={card.icon} size={12} />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#71717A" }}>
-                      {card.platform}
-                    </span>
-                  </div>
-                  <p className="text-white text-[13px] font-medium leading-snug mb-1.5">{card.title}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)", color: "#52525B" }}>
-                      {card.tag}
-                    </span>
-                    <span className="text-[9px] font-medium" style={{ color: "#F97316" }}>never opened</span>
-                  </div>
-                </motion.div>
-              );
-            })}
+            {(() => {
+              const total = PILE_CARDS.length;
+              const centerIdx = (total - 1) / 2;
+              const rotations = [-8, -3, 3, 8];
+              const yOffsets = [10, 3, 3, 10];
+              const spacingX = isMobile ? 72 : 100;
+              const cardWidth = isMobile ? 150 : 200;
+
+              return PILE_CARDS.map((card, i) => {
+                const offsetX = (i - centerIdx) * spacingX;
+                const offsetY = yOffsets[i];
+                const rotation = rotations[i];
+                const zIdx = total - Math.round(Math.abs(i - centerIdx));
+
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 40, rotate: 0 }}
+                    animate={{ opacity: 1, y: offsetY, x: offsetX, rotate: rotation }}
+                    transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute rounded-xl px-4 py-3 text-left"
+                    style={{
+                      background: "rgba(18,18,18,0.95)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      backdropFilter: "blur(10px)",
+                      width: cardWidth,
+                      zIndex: zIdx,
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <PlatformIcon name={card.icon} size={12} />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#71717A" }}>
+                        {card.platform}
+                      </span>
+                    </div>
+                    <p className="text-white text-[13px] font-medium leading-snug mb-1.5">{card.title}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)", color: "#52525B" }}>
+                        {card.tag}
+                      </span>
+                      <span className="text-[9px] font-medium" style={{ color: "#F97316" }}>never opened</span>
+                    </div>
+                  </motion.div>
+                );
+              });
+            })()}
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="absolute bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap"
             >
               <span
                 className="text-[11px] font-medium px-3 py-1.5 rounded-full"
                 style={{ background: "rgba(249,115,22,0.08)", color: "#F97316", border: "1px solid rgba(249,115,22,0.15)" }}
               >
-                5 links saved this week · 0 opened
+                4 links saved this week · 0 opened
               </span>
             </motion.div>
           </motion.div>
