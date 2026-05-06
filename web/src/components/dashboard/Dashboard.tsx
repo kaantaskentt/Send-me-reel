@@ -110,6 +110,16 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingUrl, setPendingUrl] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = sessionStorage.getItem("pendingLink");
+    if (stored) {
+      sessionStorage.removeItem("pendingLink");
+      setPendingUrl(stored);
+    }
+  }, []);
   const [premiumOpen, setPremiumOpen] = useState(false);
   const [premiumSource, setPremiumSource] = useState<PremiumModalSource>("sidebar_upgrade_card");
   function openPremium(source: PremiumModalSource) { setPremiumSource(source); setPremiumOpen(true); }
@@ -327,7 +337,7 @@ export default function Dashboard() {
 
         <main className="cd-main-content cd-main-mobile-pad" style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 860 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} />
+            <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} autoSubmitUrl={pendingUrl} />
 
             <AnimatePresence initial={false} mode="wait">
               {hero && !heroDismissed && (

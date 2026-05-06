@@ -21,7 +21,7 @@ const ALL_VERDICTS = [
     platform: "INSTAGRAM",
     icon: "instagram",
     time: "1h ago",
-    borderColor: "#E1306C",
+    borderColor: "rgba(225,48,108,0.55)",
     title: "3 NYC sushi spots nobody talks about 🍣",
     summary: "Spot 1: Tanoshi (UES) — omakase $60. Spot 2: Sushi on Me (EV) — open till 2am. Spot 3: Kissaki (LES) — hidden basement entrance.",
     tryThis: "Book Tanoshi for this Friday. It's omakase so no decisions needed — just show up.",
@@ -331,7 +331,7 @@ export default function HeroDemoAnimation() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
             className="w-full grid grid-cols-1 md:grid-cols-2 gap-3"
-            style={{ minHeight: "380px", maxHeight: "480px", overflow: "hidden", alignContent: "start" }}
+            style={{ minHeight: "380px", alignContent: "start" }}
           >
             {visibleCards.map((cardIndex) => (
               <VerdictCard key={cardIndex} card={ALL_VERDICTS[cardIndex]} delay={0} />

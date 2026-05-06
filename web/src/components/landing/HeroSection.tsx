@@ -60,15 +60,30 @@ function HeroSubheadline() {
   );
 }
 
+function isValidUrl(s: string) {
+  try {
+    const url = new URL(s.startsWith("http") ? s : `https://${s}`);
+    return url.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
 function HeroAnalysePanel() {
   const [link, setLink] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [focused, setFocused] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [urlError, setUrlError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async () => {
     if (!link.trim() || checking) return;
+    if (!isValidUrl(link.trim())) {
+      setUrlError(true);
+      return;
+    }
+    setUrlError(false);
     setChecking(true);
     try {
       const res = await fetch("/api/user");
@@ -115,7 +130,7 @@ function HeroAnalysePanel() {
                 type="text"
                 placeholder="Paste any link — YouTube, TikTok, X, Instagram, article..."
                 value={link}
-                onChange={(e) => setLink(e.target.value)}
+                onChange={(e) => { setLink(e.target.value); setUrlError(false); }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
@@ -137,6 +152,11 @@ function HeroAnalysePanel() {
                 )}
               </button>
             </div>
+            {urlError && (
+              <p className="mt-2 text-center text-xs" style={{ color: "#F97316" }}>
+                That doesn't look like a link — paste a URL (e.g. https://...)
+              </p>
+            )}
             <p className="mt-3 text-center text-xs" style={{ color: "#52525B" }}>
               Prefer Telegram?{" "}
               <a

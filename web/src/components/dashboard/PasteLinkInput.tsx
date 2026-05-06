@@ -13,7 +13,7 @@ const PROCESSING_LABELS: Record<string, string> = {
   generating: "Writing your verdict…",
 };
 
-export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void }) {
+export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyzed?: () => void; autoSubmitUrl?: string }) {
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
@@ -21,12 +21,22 @@ export default function PasteLinkInput({ onAnalyzed }: { onAnalyzed?: () => void
   const [statusText, setStatusText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSubmittedRef = useRef(false);
 
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (autoSubmitUrl && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
+      submit(autoSubmitUrl, "");
+    }
+    // submit is stable (defined in render body, only uses setters)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSubmitUrl]);
 
   async function submit(targetUrl: string, targetNote: string) {
     setStatus("submitting");
