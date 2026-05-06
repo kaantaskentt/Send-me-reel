@@ -13,7 +13,6 @@ const PILE_CARDS = [
   { platform: "X", icon: "x", title: "10 ChatGPT prompts that replace a $5k team", tag: "Marketing" },
   { platform: "LinkedIn", icon: "linkedin", title: "The exact DM I sent to get 3 warm VC intros", tag: "Fundraising" },
   { platform: "TikTok", icon: "tiktok", title: "Easy high-protein meals under 10 minutes", tag: "Health" },
-  { platform: "TikTok", icon: "tiktok", title: "Full UGC AI ad in 60 seconds. Higgsfield MCP", tag: "AI Video" },
 ];
 
 const ALL_VERDICTS = [
@@ -56,16 +55,6 @@ const ALL_VERDICTS = [
     summary: "Greek yogurt bowl (40g protein). Tuna rice bowl with soy + sriracha (38g). Egg wrap — 4 eggs scrambled in a tortilla with cheese (35g).",
     tryThis: "Buy Greek yogurt and granola today. Tomorrow morning: yogurt + scoop of protein powder + berries. 40g protein, 3 minutes, done.",
     tags: ["Health", "Meal Prep"],
-  },
-  {
-    platform: "TIKTOK",
-    icon: "tiktok",
-    time: "2h ago",
-    borderColor: "rgba(255,255,255,0.15)",
-    title: "Full UGC AI ad in 60 seconds. Higgsfield × OpenClaw MCP",
-    summary: "Connect Higgsfield's MCP to Claude via OpenClaw. Describe product + audience. Full UGC video ad — script, voiceover, b-roll, captions.",
-    tryThis: "Go to higgsfield.ai → Connect MCP → Prompt: 'Create a 30s UGC ad for a productivity app targeting founders.'",
-    tags: ["Video AI", "Ads"],
   },
 ];
 
@@ -174,7 +163,7 @@ function VerdictCard({ card, delay = 0 }: { card: typeof ALL_VERDICTS[0]; delay?
   );
 }
 
-const LOOP_MS = 4500 + ALL_VERDICTS.length * 1200 + 4000;
+const LOOP_MS = 4500 + 2 * 1200 + 4000;
 
 export default function HeroDemoAnimation() {
   const [phase, setPhase] = useState<"pile" | "processing" | "cards">("pile");
@@ -192,7 +181,7 @@ export default function HeroDemoAnimation() {
       t1 = setTimeout(() => setPhase("processing"), 2500);
       t2 = setTimeout(() => {
         setPhase("cards");
-        ALL_VERDICTS.forEach((_, i) => {
+        ALL_VERDICTS.slice(0, 2).forEach((_, i) => {
           const timer = setTimeout(() => {
             setVisibleCards((prev) => [...prev, i]);
           }, i * 1200);
