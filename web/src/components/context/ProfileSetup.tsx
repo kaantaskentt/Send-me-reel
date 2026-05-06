@@ -219,7 +219,15 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+            <circle cx="12" cy="12" r="2"/>
+            <rect x="11" y="2" width="2" height="5" rx="1"/>
+            <rect x="11" y="17" width="2" height="5" rx="1"/>
+            <rect x="17" y="11" width="5" height="2" rx="1"/>
+            <rect x="2" y="11" width="5" height="2" rx="1"/>
+            <rect x="16.95" y="3.64" width="2" height="5" rx="1" transform="rotate(45 17.95 4.64)"/>
+            <rect x="4.64" y="15.95" width="2" height="5" rx="1" transform="rotate(45 5.64 16.95)"/>
+            <rect x="15.95" y="16.95" width="5" height="2" rx="1" transform="rotate(45 18.45 17.95)"/>
+            <rect x="3.64" y="4.64" width="5" height="2" rx="1" transform="rotate(45 6.14 5.64)"/>
           </svg>
           <span>Open Claude</span>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
