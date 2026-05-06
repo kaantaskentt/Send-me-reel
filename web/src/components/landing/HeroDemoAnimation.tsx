@@ -116,7 +116,7 @@ function VerdictCard({ card, delay = 0 }: { card: typeof ALL_VERDICTS[0]; delay?
 
       <h3 className="text-white text-sm font-bold leading-tight mb-2">{card.title}</h3>
 
-      <p className="text-[12px] leading-relaxed mb-3" style={{ color: "#A1A1AA" }}>{card.summary}</p>
+      <p className="text-[12px] leading-relaxed mb-3 line-clamp-2" style={{ color: "#A1A1AA" }}>{card.summary}</p>
 
       <div
         className="rounded-lg p-3 mb-3 mt-auto"
@@ -206,7 +206,7 @@ export default function HeroDemoAnimation() {
   }, []);
 
   return (
-    <div className="w-full max-w-3xl mx-auto" style={{ minHeight: "260px" }}>
+    <div className="w-full max-w-3xl mx-auto" style={{ height: "300px", overflow: "hidden" }}>
       <AnimatePresence mode="wait">
         {phase === "pile" && (
           <motion.div
@@ -216,7 +216,7 @@ export default function HeroDemoAnimation() {
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.3 }}
             className="relative w-full flex items-center justify-center overflow-hidden"
-            style={{ height: "260px" }}
+            style={{ height: "300px" }}
           >
             {PILE_CARDS.map((card, i) => {
               const rotations = [-4, 2.5, -1.5, 3, -2];
@@ -283,7 +283,7 @@ export default function HeroDemoAnimation() {
             exit={{ opacity: 0, scale: 1.02 }}
             transition={{ duration: 0.3 }}
             className="w-full flex flex-col items-center justify-center"
-            style={{ height: "260px" }}
+            style={{ height: "300px" }}
           >
             <div className="relative mb-5">
               <div
@@ -319,12 +319,18 @@ export default function HeroDemoAnimation() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="w-full grid grid-cols-1 md:grid-cols-2 gap-3"
-            style={{ alignContent: "start" }}
+            style={{ height: "300px", overflow: "hidden", position: "relative" }}
           >
-            {visibleCards.map((cardIndex) => (
-              <VerdictCard key={cardIndex} card={ALL_VERDICTS[cardIndex]} delay={0} />
-            ))}
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-2" style={{ alignContent: "start" }}>
+              {visibleCards.map((cardIndex) => (
+                <VerdictCard key={cardIndex} card={ALL_VERDICTS[cardIndex]} delay={0} />
+              ))}
+            </div>
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0, height: "90px",
+              background: "linear-gradient(to bottom, transparent, #0a0a0a)",
+              pointerEvents: "none",
+            }} />
           </motion.div>
         )}
       </AnimatePresence>
