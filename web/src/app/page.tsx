@@ -8,8 +8,8 @@ import NavBar from "@/components/landing/NavBar";
 import HeroSection from "@/components/landing/HeroSection";
 import ProblemSection from "@/components/landing/ProblemSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import DashboardPreviewSection from "@/components/landing/DashboardPreviewSection";
 import PersonasSection from "@/components/landing/PersonasSection";
+import PersonalizationSection from "@/components/landing/PersonalizationSection";
 import PricingSection from "@/components/landing/PricingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 
@@ -20,8 +20,8 @@ export default function Home() {
       <HeroSection />
       <ProblemSection />
       <HowItWorksSection />
-      <DashboardPreviewSection />
       <PersonasSection />
+      <PersonalizationSection />
       <PricingSection />
       <FinalCTASection />
     </div>

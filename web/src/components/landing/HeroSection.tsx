@@ -3,51 +3,196 @@
 /*
  * HeroSection — Manus "Dark Signal" port (Apr 26)
  * Dark #0a0a0a + dot grid + orange radial glow.
- * Rotating word headline, two floating analysis cards.
+ * Rotating word headline, paste-link input, demo animation.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import HeroDemoAnimation from "./HeroDemoAnimation";
 
 const ROTATING_WORDS = ["summarized.", "understood.", "clarified.", "actioned.", "finally useful."];
 
-const HERO_CARDS = [
-  {
-    platform: "Instagram",
-    platformColor: "#E1306C",
-    title: "Kimi K2.6 — Moonshot AI's coding model",
-    summary: "SWE-Bench Pro 58.6. Top-ranked on agentic coding benchmarks. Free tier available.",
-    action: "Try it at kimi.com — drop a bug and see what it catches.",
-    tags: ["AI Tools", "Coding"],
-    time: "2h ago",
-  },
-  {
-    platform: "X",
-    platformColor: "#FAFAFA",
-    title: "Caveman — open-source AI output compressor",
-    summary: "Rewrites verbose AI coding agent outputs into terse English. ~75% token reduction.",
-    action: "github.com/JuliusBrussee/caveman — add to your Claude Code setup.",
-    tags: ["Open Source", "Dev Tools"],
-    time: "5h ago",
-  },
+const PLATFORMS = [
+  { name: "Instagram", color: "#E1306C" },
+  { name: "LinkedIn", color: "#0A66C2" },
+  { name: "X", color: "#FAFAFA" },
+  { name: "TikTok", color: "#00F2EA" },
 ];
 
-function PlatformIcon({ platform, color }: { platform: string; color: string }) {
-  if (platform === "Instagram") {
-    return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill={color}>
-        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-      </svg>
-    );
-  }
-  if (platform === "X") {
-    return (
-      <svg width="13" height="13" viewBox="0 0 24 24" fill={color}>
-        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-      </svg>
-    );
-  }
-  return null;
+function HeroSubheadline() {
+  const [platformIndex, setPlatformIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlatformIndex((i) => (i + 1) % PLATFORMS.length);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, []);
+
+  const platform = PLATFORMS[platformIndex];
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <p className="text-center" style={{ color: "#A1A1AA", lineHeight: 1.5 }}>
+        Admit it — you saved something on{" "}
+        <span className="inline-block text-center" style={{ minWidth: "5.8em" }}>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={platformIndex}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
+              className="inline-block font-bold"
+              style={{ color: platform.color }}
+            >
+              {platform.name}
+            </motion.span>
+          </AnimatePresence>
+        </span>
+        {" "}last week.<br />
+        You never went back to it.
+      </p>
+      <p className="text-sm mt-1" style={{ color: "#52525B" }}>
+        For the first time, you can chat with your saved content and set tasks from it.
+      </p>
+    </div>
+  );
+}
+
+function HeroAnalysePanel() {
+  const [link, setLink] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubmit = async () => {
+    if (!link.trim() || checking) return;
+    setChecking(true);
+    try {
+      const res = await fetch("/api/user");
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.user) {
+          sessionStorage.setItem("pendingLink", link.trim());
+          window.location.href = "/dashboard";
+          return;
+        }
+      }
+    } catch {}
+    sessionStorage.setItem("pendingLink", link.trim());
+    setChecking(false);
+    setSubmitted(true);
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
+      className="w-full max-w-xl mb-10"
+    >
+      <AnimatePresence mode="wait">
+        {!submitted ? (
+          <motion.div key="input" initial={{ opacity: 1 }} exit={{ opacity: 0, y: -6 }}>
+            <div
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-200"
+              style={{
+                background: "#111111",
+                border: focused ? "1px solid rgba(249,115,22,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                boxShadow: focused
+                  ? "0 0 0 3px rgba(249,115,22,0.08), 0 8px 32px rgba(0,0,0,0.5)"
+                  : "0 4px 24px rgba(0,0,0,0.4)",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Paste any link — YouTube, TikTok, X, Instagram, article..."
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+                className="flex-1 bg-transparent text-sm outline-none"
+                style={{ color: "#FAFAFA", fontFamily: "'Inter', sans-serif" }}
+              />
+              <button
+                onClick={handleSubmit}
+                disabled={!link.trim() || checking}
+                className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 hover:brightness-110 disabled:opacity-30"
+                style={{ background: link.trim() ? "#F97316" : "rgba(249,115,22,0.3)" }}
+              >
+                {checking ? (
+                  <div className="w-3 h-3 rounded-full border border-white/40 border-t-white animate-spin" />
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <p className="mt-3 text-center text-xs" style={{ color: "#52525B" }}>
+              Prefer Telegram?{" "}
+              <a
+                href="https://t.me/contextdrop2027bot"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors duration-150 hover:text-white"
+                style={{ color: "#71717A", textDecoration: "underline", textUnderlineOffset: "3px" }}
+              >
+                Send to @ContextDropBot →
+              </a>
+            </p>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="submitted"
+            initial={{ opacity: 0, scale: 0.97, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", damping: 24, stiffness: 300 }}
+            className="rounded-2xl px-5 py-4 flex items-start gap-4"
+            style={{
+              background: "rgba(249,115,22,0.08)",
+              border: "1px solid rgba(249,115,22,0.2)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div className="mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: "#F97316" }}>
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
+                <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>Got it — analysing your link…</p>
+              <p className="text-xs mt-1" style={{ color: "#A1A1AA" }}>Sign in to see your card. Takes about 30 seconds.</p>
+              <div className="flex flex-wrap items-center gap-3 mt-3">
+                <a
+                  href="/api/auth/google"
+                  className="text-xs font-semibold px-4 py-1.5 rounded-lg text-white hover:brightness-110 transition-all"
+                  style={{ background: "#F97316" }}
+                >
+                  Sign in with Google →
+                </a>
+                <button
+                  onClick={() => { setSubmitted(false); setLink(""); }}
+                  className="text-xs transition-colors hover:text-white"
+                  style={{ color: "#52525B" }}
+                >
+                  Try another link
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
 }
 
 export default function HeroSection() {
@@ -128,117 +273,26 @@ export default function HeroSection() {
           </h1>
         </motion.div>
 
-        <motion.p
+        <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-xl mb-10 leading-relaxed"
-          style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)", color: "#A1A1AA" }}
+          style={{ fontSize: "clamp(1rem, 2.5vw, 1.15rem)" }}
         >
-          Send anything you'd normally save.<br />Get what matters and what to do next.
-        </motion.p>
+          <HeroSubheadline />
+        </motion.div>
+
+        <HeroAnalysePanel />
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          className="w-full mt-14"
+          initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col sm:flex-row items-center gap-3 mb-10"
+          transition={{ duration: 0.65, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
         >
-          <a
-            href="/signup"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-white text-base transition-all duration-150 hover:brightness-110 active:scale-95"
-            style={{ background: "#F97316", boxShadow: "0 0 28px rgba(249,115,22,0.28)", textDecoration: "none" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-            </svg>
-            Start free
-          </a>
-          <a
-            href="/dashboard"
-            className="text-sm font-medium transition-colors duration-150 hover:text-white"
-            style={{ color: "#71717A", textDecoration: "none" }}
-          >
-            or see the dashboard →
-          </a>
+          <HeroDemoAnimation />
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.38 }}
-          className="flex items-center gap-3 mb-14"
-        >
-          <div className="flex -space-x-2">
-            {[
-              "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=32&h=32&fit=crop&crop=face",
-              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=32&h=32&fit=crop&crop=face",
-              "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=32&h=32&fit=crop&crop=face",
-              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=32&h=32&fit=crop&crop=face",
-            ].map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={src} alt="" className="w-7 h-7 rounded-full border-2 object-cover" style={{ borderColor: "#0a0a0a" }} />
-            ))}
-          </div>
-          <span className="text-sm" style={{ color: "#71717A" }}>
-            <span className="text-white font-semibold">2,400+</span> creators &amp; founders
-          </span>
-        </motion.div>
-
-        <div className="w-full max-w-2xl flex flex-col sm:flex-row gap-4">
-          {HERO_CARDS.map((card, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 28 + i * 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.65, delay: 0.5 + i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-              className="flex-1 rounded-xl p-4 text-left"
-              style={{
-                background: "#111111",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderLeft: `3px solid ${card.platformColor}`,
-              }}
-            >
-              <div className="flex items-center gap-1.5 mb-3">
-                <PlatformIcon platform={card.platform} color={card.platformColor} />
-                <span
-                  className="text-[11px] font-medium uppercase tracking-wider"
-                  style={{ color: "#71717A", fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  {card.platform}
-                </span>
-                <span
-                  className="ml-auto text-[11px]"
-                  style={{ color: "#52525B", fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  {card.time}
-                </span>
-              </div>
-              <p className="text-white text-sm font-semibold mb-2 leading-snug">{card.title}</p>
-              <p className="text-[13px] mb-3 leading-relaxed" style={{ color: "#A1A1AA" }}>{card.summary}</p>
-              <div className="rounded-lg p-3" style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.2)" }}>
-                <div
-                  className="text-[10px] font-semibold uppercase tracking-widest mb-1"
-                  style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  TRY THIS ONCE
-                </div>
-                <p className="text-[12px] leading-relaxed" style={{ color: "#D4D4D8" }}>{card.action}</p>
-              </div>
-              <div className="flex gap-1.5 mt-3">
-                {card.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="text-[11px] px-2 py-0.5 rounded-md"
-                    style={{ background: "rgba(255,255,255,0.06)", color: "#71717A", border: "1px solid rgba(255,255,255,0.08)" }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          ))}
-        </div>
 
         <motion.div
           initial={{ opacity: 0 }}
