@@ -32,6 +32,7 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
   useEffect(() => {
     if (autoSubmitUrl && !autoSubmittedRef.current) {
       autoSubmittedRef.current = true;
+      setUrl(autoSubmitUrl);
       submit(autoSubmitUrl, "");
     }
     // submit is stable (defined in render body, only uses setters)
@@ -62,10 +63,6 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
       const { analysisId } = await res.json();
       setStatus("processing");
       setStatusText(PROCESSING_LABELS.pending);
-
-      // Clear inputs so user knows the submission was received
-      const submittedUrl = targetUrl;
-      setUrl("");
       setNote("");
       setNoteOpen(false);
 
@@ -81,10 +78,11 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
             setStatusText("Verdict ready");
             if (pollRef.current) clearInterval(pollRef.current);
             onAnalyzed?.();
-            // Auto-dismiss the success banner after 4s
+            // Auto-dismiss the success banner after 4s and clear the input
             setTimeout(() => {
               setStatus("idle");
               setStatusText("");
+              setUrl("");
             }, 4000);
           } else if (data.status === "failed") {
             setStatus("failed");
@@ -97,8 +95,6 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
           // Transient poll error — keep polling
         }
       }, 3000);
-      // Silence unused var warning; keep for future inline preview
-      void submittedUrl;
     } catch {
       setError("Network error. Try again.");
       setStatus("failed");
@@ -129,7 +125,7 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
             fontSize: 14,
             color: "#1c1917",
             background: disabled ? "#f5f1eb" : "#fff",
-            border: "1px solid #e7e2d9",
+            border: `1px solid ${status === "processing" || status === "submitting" ? "#fed7aa" : "#e7e2d9"}`,
             borderRadius: 100,
             outline: "none",
             fontFamily: "'DM Sans', sans-serif",
