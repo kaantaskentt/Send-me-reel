@@ -191,18 +191,30 @@ function HeroAnalysePanel() {
             <div className="flex-1">
               <p className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>Got it — analysing your link…</p>
               <p className="text-xs mt-1" style={{ color: "#A1A1AA" }}>Sign in to see your card. Takes about 30 seconds.</p>
-              <div className="flex flex-wrap items-center gap-3 mt-3">
+              <div className="flex flex-col items-stretch gap-3 mt-3">
                 <a
                   href="/api/auth/google"
-                  className="text-xs font-semibold px-4 py-1.5 rounded-lg text-white hover:brightness-110 transition-all"
-                  style={{ background: "#F97316" }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    padding: "14px 24px",
+                    background: "#F97316",
+                    color: "#fff",
+                    fontWeight: 600,
+                    fontSize: 14,
+                    borderRadius: 100,
+                    textDecoration: "none",
+                    textAlign: "center",
+                    boxSizing: "border-box",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
                 >
                   Sign in with Google →
                 </a>
                 <button
                   onClick={() => { setSubmitted(false); setLink(""); }}
                   className="text-xs transition-colors hover:text-white"
-                  style={{ color: "#52525B" }}
+                  style={{ color: "#52525B", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}
                 >
                   Try another link
                 </button>

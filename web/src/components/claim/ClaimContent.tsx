@@ -11,13 +11,13 @@ export default function ClaimContent({ token, firstName, analysisCount }: Props)
 
   const headline =
     analysisCount > 0
-      ? `Hey ${firstName} — save your ${analysisCount} ${analysisCount === 1 ? "analysis" : "analyses"}.`
-      : `Hey ${firstName} — set up your account.`;
+      ? "Your verdict is ready 👇"
+      : "Almost there 👇";
 
   const subhead =
     analysisCount > 0
-      ? "Sign in with Google so you never lose your dashboard. Takes 3 seconds."
-      : "Sign in with Google so your dashboard is permanently saved. Takes 3 seconds.";
+      ? "One quick step. Sign in with Google to view your verdict and save it forever."
+      : "One quick step. Sign in with Google to set up your dashboard.";
 
   return (
     <div
