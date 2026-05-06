@@ -79,7 +79,7 @@ function StepDots({ step, total }: { step: number; total: number }) {
                 ? "#F97316"
                 : i < step
                 ? "rgba(249,115,22,0.35)"
-                : "rgba(255,255,255,0.12)",
+                : "#e7e2d9",
           }}
         />
       ))}
@@ -95,10 +95,10 @@ function StepIntro({ onAI, onManual }: { onAI: () => void; onManual: () => void 
       <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#F97316", fontFamily: "JetBrains Mono, monospace" }}>
         Step 1 of 3
       </p>
-      <h1 className="text-3xl font-black mb-3 leading-tight" style={{ color: "#FAFAFA", letterSpacing: "-0.02em" }}>
+      <h1 className="text-3xl font-black mb-3 leading-tight" style={{ color: "#1c1917", letterSpacing: "-0.02em" }}>
         Build your context.
       </h1>
-      <p className="text-base mb-8 max-w-sm leading-relaxed" style={{ color: "#A1A1AA" }}>
+      <p className="text-base mb-8 max-w-sm leading-relaxed" style={{ color: "#78716c" }}>
         ContextDrop uses your profile to filter what matters. The more specific you are, the sharper your feed.
       </p>
 
@@ -124,19 +124,19 @@ function StepIntro({ onAI, onManual }: { onAI: () => void; onManual: () => void 
 
         <button
           onClick={onManual}
-          className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all duration-150 hover:border-white/20"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
+          className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all duration-150"
+          style={{ background: "#fff", border: "1px solid #e7e2d9", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}
         >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#f5f1eb" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8a29e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm" style={{ color: "#FAFAFA" }}>Write it myself</p>
-            <p className="text-xs mt-0.5" style={{ color: "#71717A" }}>Fill in the fields manually</p>
+            <p className="font-semibold text-sm" style={{ color: "#1c1917" }}>Write it myself</p>
+            <p className="text-xs mt-0.5" style={{ color: "#78716c" }}>Fill in the fields manually</p>
           </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c4bdb5" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
@@ -167,24 +167,24 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
       <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#F97316", fontFamily: "JetBrains Mono, monospace" }}>
         Step 1 of 3
       </p>
-      <h2 className="text-2xl font-black mb-2 leading-tight" style={{ color: "#FAFAFA", letterSpacing: "-0.02em" }}>
+      <h2 className="text-2xl font-black mb-2 leading-tight" style={{ color: "#1c1917", letterSpacing: "-0.02em" }}>
         Open Claude or ChatGPT.
       </h2>
-      <p className="text-sm mb-6 leading-relaxed" style={{ color: "#A1A1AA" }}>
+      <p className="text-sm mb-6 leading-relaxed" style={{ color: "#78716c" }}>
         We&apos;ll send a prompt. The AI writes your profile from your chat history — takes about 30 seconds.
       </p>
 
-      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: "#0D0D0D", border: "1px solid rgba(255,255,255,0.08)" }}>
-        <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#52525B", fontFamily: "JetBrains Mono, monospace" }}>
+      <div className="rounded-2xl mb-5 overflow-hidden" style={{ background: "#fff", border: "1px solid #e7e2d9" }}>
+        <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: "1px solid #f0ebe4" }}>
+          <span className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: "#a8a29e", fontFamily: "JetBrains Mono, monospace" }}>
             Prompt
           </span>
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg transition-all duration-150"
             style={{
-              background: copied ? "rgba(249,115,22,0.15)" : "rgba(255,255,255,0.06)",
-              color: copied ? "#F97316" : "#A1A1AA",
+              background: copied ? "rgba(249,115,22,0.08)" : "#f5f1eb",
+              color: copied ? "#F97316" : "#78716c",
               border: copied ? "1px solid rgba(249,115,22,0.3)" : "1px solid transparent",
             }}
           >
@@ -203,7 +203,7 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
             )}
           </button>
         </div>
-        <p className="px-4 py-3 text-xs leading-relaxed line-clamp-4" style={{ color: "#71717A", fontFamily: "JetBrains Mono, monospace" }}>
+        <p className="px-4 py-3 text-xs leading-relaxed line-clamp-4" style={{ color: "#78716c", fontFamily: "JetBrains Mono, monospace" }}>
           {AI_PROMPT}
         </p>
       </div>
@@ -213,9 +213,9 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
           onClick={() => handleOpen("claude")}
           className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
           style={{
-            background: opened === "claude" ? "rgba(249,115,22,0.15)" : "#F97316",
+            background: opened === "claude" ? "rgba(249,115,22,0.08)" : "#F97316",
             color: opened === "claude" ? "#F97316" : "white",
-            border: opened === "claude" ? "1px solid rgba(249,115,22,0.4)" : "none",
+            border: opened === "claude" ? "1px solid rgba(249,115,22,0.3)" : "none",
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
@@ -237,11 +237,11 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
 
         <button
           onClick={() => handleOpen("chatgpt")}
-          className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all duration-150 hover:brightness-110 active:scale-[0.98]"
+          className="flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold text-sm transition-all duration-150 active:scale-[0.98]"
           style={{
-            background: opened === "chatgpt" ? "rgba(16,163,127,0.12)" : "rgba(255,255,255,0.06)",
-            color: opened === "chatgpt" ? "#10a37f" : "#FAFAFA",
-            border: opened === "chatgpt" ? "1px solid rgba(16,163,127,0.3)" : "1px solid rgba(255,255,255,0.1)",
+            background: opened === "chatgpt" ? "rgba(16,163,127,0.08)" : "#fff",
+            color: opened === "chatgpt" ? "#10a37f" : "#1c1917",
+            border: opened === "chatgpt" ? "1px solid rgba(16,163,127,0.3)" : "1px solid #e7e2d9",
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="flex-shrink-0">
@@ -259,10 +259,10 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-5 flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)" }}
+          style={{ background: "rgba(249,115,22,0.06)", border: "1px solid rgba(249,115,22,0.15)" }}
         >
           <div className="w-2 h-2 rounded-full flex-shrink-0 animate-pulse" style={{ background: "#F97316" }} />
-          <p className="text-sm" style={{ color: "#FAFAFA" }}>
+          <p className="text-sm" style={{ color: "#44403c" }}>
             Opened in a new tab. Come back here once you have the output.
           </p>
         </motion.div>
@@ -276,7 +276,7 @@ function StepCopyPrompt({ onNext, onBack }: { onNext: () => void; onBack: () => 
         >
           I have the output →
         </button>
-        <button onClick={onBack} className="text-sm transition-colors hover:text-white" style={{ color: "#52525B" }}>
+        <button onClick={onBack} className="text-sm" style={{ color: "#a8a29e" }}>
           Back
         </button>
       </div>
@@ -297,14 +297,14 @@ function StepPasteOutput({ onNext, onBack }: { onNext: (raw: string) => void; on
       <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#F97316", fontFamily: "JetBrains Mono, monospace" }}>
         Step 2 of 3
       </p>
-      <h2 className="text-2xl font-black mb-2 leading-tight" style={{ color: "#FAFAFA", letterSpacing: "-0.02em" }}>
+      <h2 className="text-2xl font-black mb-2 leading-tight" style={{ color: "#1c1917", letterSpacing: "-0.02em" }}>
         Paste what it wrote.
       </h2>
-      <p className="text-sm mb-5 leading-relaxed" style={{ color: "#A1A1AA" }}>
+      <p className="text-sm mb-5 leading-relaxed" style={{ color: "#78716c" }}>
         Copy the full response from Claude or ChatGPT and drop it here. We&apos;ll parse it automatically.
       </p>
 
-      <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "#0D0D0D", border: "1px solid rgba(255,255,255,0.09)" }}>
+      <div className="rounded-2xl overflow-hidden mb-5" style={{ background: "#fff", border: "1px solid #e7e2d9" }}>
         <textarea
           ref={textareaRef}
           value={raw}
@@ -312,7 +312,7 @@ function StepPasteOutput({ onNext, onBack }: { onNext: (raw: string) => void; on
           placeholder="Paste the AI's response here…"
           rows={10}
           className="w-full bg-transparent text-sm outline-none resize-none px-4 py-4 leading-relaxed"
-          style={{ color: "#FAFAFA", fontFamily: "Inter, sans-serif", caretColor: "#F97316" }}
+          style={{ color: "#1c1917", fontFamily: "Inter, sans-serif", caretColor: "#F97316" }}
         />
       </div>
 
@@ -325,7 +325,7 @@ function StepPasteOutput({ onNext, onBack }: { onNext: (raw: string) => void; on
         >
           Parse & continue →
         </button>
-        <button onClick={onBack} className="text-sm transition-colors hover:text-white" style={{ color: "#52525B" }}>
+        <button onClick={onBack} className="text-sm" style={{ color: "#a8a29e" }}>
           Back
         </button>
       </div>
@@ -349,18 +349,20 @@ function StepEditProfile({
   saving: boolean;
 }) {
   const fieldStyle = {
-    background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.09)",
-    color: "#FAFAFA",
+    background: "#faf8f5",
+    border: "1px solid #e7e2d9",
+    color: "#1c1917",
     fontFamily: "Inter, sans-serif",
     caretColor: "#F97316",
   };
 
   const onFocus = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = "rgba(249,115,22,0.4)";
+    e.target.style.borderColor = "#f97316";
+    e.target.style.boxShadow = "0 0 0 3px rgba(249,115,22,0.1)";
   };
   const onBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    e.target.style.borderColor = "rgba(255,255,255,0.09)";
+    e.target.style.borderColor = "#e7e2d9";
+    e.target.style.boxShadow = "none";
   };
 
   return (
@@ -368,17 +370,17 @@ function StepEditProfile({
       <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "#F97316", fontFamily: "JetBrains Mono, monospace" }}>
         Step 3 of 3
       </p>
-      <h2 className="text-2xl font-black mb-2 leading-tight" style={{ color: "#FAFAFA", letterSpacing: "-0.02em" }}>
+      <h2 className="text-2xl font-black mb-2 leading-tight" style={{ color: "#1c1917", letterSpacing: "-0.02em" }}>
         Looks right?
       </h2>
-      <p className="text-sm mb-6 leading-relaxed" style={{ color: "#A1A1AA" }}>
+      <p className="text-sm mb-6 leading-relaxed" style={{ color: "#78716c" }}>
         We parsed the AI output. Edit anything that&apos;s off — this is your self-portrait.
       </p>
 
       {/* Display name */}
       <div className="mb-5">
         <div className="flex items-baseline justify-between mb-1.5">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#71717A", fontFamily: "JetBrains Mono, monospace" }}>Display name</label>
+          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#78716c", fontFamily: "JetBrains Mono, monospace" }}>Display name</label>
         </div>
         <input
           type="text"
@@ -391,14 +393,14 @@ function StepEditProfile({
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <p className="text-[10px] mt-1 text-right" style={{ color: "#3F3F46" }}>{profile.name.length} / 60</p>
+        <p className="text-[10px] mt-1 text-right" style={{ color: "#c4bdb5" }}>{profile.name.length} / 60</p>
       </div>
 
       {/* Who you are */}
       <div className="mb-5">
         <div className="flex items-baseline justify-between mb-1.5">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#71717A", fontFamily: "JetBrains Mono, monospace" }}>Who you are</label>
-          <span className="text-[10px]" style={{ color: "#3F3F46" }}>1 sentence · 80 chars</span>
+          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#78716c", fontFamily: "JetBrains Mono, monospace" }}>Who you are</label>
+          <span className="text-[10px]" style={{ color: "#c4bdb5" }}>1 sentence · 80 chars</span>
         </div>
         <input
           type="text"
@@ -411,14 +413,14 @@ function StepEditProfile({
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <p className="text-[10px] mt-1 text-right" style={{ color: "#3F3F46" }}>{profile.whoYouAre.length} / 80</p>
+        <p className="text-[10px] mt-1 text-right" style={{ color: "#c4bdb5" }}>{profile.whoYouAre.length} / 80</p>
       </div>
 
       {/* Working on */}
       <div className="mb-5">
         <div className="flex items-baseline justify-between mb-1.5">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#71717A", fontFamily: "JetBrains Mono, monospace" }}>What you&apos;re working on</label>
-          <span className="text-[10px]" style={{ color: "#3F3F46" }}>1 sentence · 80 chars</span>
+          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#78716c", fontFamily: "JetBrains Mono, monospace" }}>What you&apos;re working on</label>
+          <span className="text-[10px]" style={{ color: "#c4bdb5" }}>1 sentence · 80 chars</span>
         </div>
         <input
           type="text"
@@ -431,14 +433,14 @@ function StepEditProfile({
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <p className="text-[10px] mt-1 text-right" style={{ color: "#3F3F46" }}>{profile.workingOn.length} / 80</p>
+        <p className="text-[10px] mt-1 text-right" style={{ color: "#c4bdb5" }}>{profile.workingOn.length} / 80</p>
       </div>
 
       {/* Interests */}
       <div className="mb-5">
         <div className="flex items-baseline justify-between mb-1.5">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#71717A", fontFamily: "JetBrains Mono, monospace" }}>Interests & topics</label>
-          <span className="text-[10px]" style={{ color: "#3F3F46" }}>comma-separated</span>
+          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#78716c", fontFamily: "JetBrains Mono, monospace" }}>Interests & topics</label>
+          <span className="text-[10px]" style={{ color: "#c4bdb5" }}>comma-separated</span>
         </div>
         <input
           type="text"
@@ -451,14 +453,14 @@ function StepEditProfile({
           onFocus={onFocus}
           onBlur={onBlur}
         />
-        <p className="text-[10px] mt-1 text-right" style={{ color: "#3F3F46" }}>{profile.interests.length} / 200</p>
+        <p className="text-[10px] mt-1 text-right" style={{ color: "#c4bdb5" }}>{profile.interests.length} / 200</p>
       </div>
 
       {/* Bio */}
       <div className="mb-6">
         <div className="flex items-baseline justify-between mb-1.5">
-          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#71717A", fontFamily: "JetBrains Mono, monospace" }}>More about you</label>
-          <span className="text-[10px]" style={{ color: "#3F3F46" }}>optional</span>
+          <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#78716c", fontFamily: "JetBrains Mono, monospace" }}>More about you</label>
+          <span className="text-[10px]" style={{ color: "#c4bdb5" }}>optional</span>
         </div>
         <textarea
           value={profile.bio}
@@ -481,7 +483,7 @@ function StepEditProfile({
         >
           {saving ? "Saving…" : "Save profile →"}
         </button>
-        <button onClick={onBack} className="text-sm transition-colors hover:text-white" style={{ color: "#52525B" }}>
+        <button onClick={onBack} className="text-sm" style={{ color: "#a8a29e" }}>
           Back
         </button>
       </div>
@@ -499,7 +501,7 @@ function StepDone({ name }: { name: string }) {
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", damping: 18, stiffness: 260, delay: 0.1 }}
         className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-        style={{ background: "rgba(249,115,22,0.15)", border: "1px solid rgba(249,115,22,0.3)" }}
+        style={{ background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.2)" }}
       >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12" />
@@ -507,10 +509,10 @@ function StepDone({ name }: { name: string }) {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-        <h2 className="text-2xl font-black mb-2" style={{ color: "#FAFAFA", letterSpacing: "-0.02em" }}>
+        <h2 className="text-2xl font-black mb-2" style={{ color: "#1c1917", letterSpacing: "-0.02em" }}>
           You&apos;re set{name ? `, ${name.split(" ")[0]}` : ""}.
         </h2>
-        <p className="text-sm mb-8 max-w-xs mx-auto leading-relaxed" style={{ color: "#A1A1AA" }}>
+        <p className="text-sm mb-8 max-w-xs mx-auto leading-relaxed" style={{ color: "#78716c" }}>
           Your feed will now filter for what actually matters to you. Drop a link to try it.
         </p>
 
@@ -638,25 +640,25 @@ export default function ProfileSetup() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0A0A0A" }}>
-        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(249,115,22,0.25)", borderTopColor: "#F97316" }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#faf8f5" }}>
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "rgba(249,115,22,0.2)", borderTopColor: "#F97316" }} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#0A0A0A" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#faf8f5" }}>
       {/* Nav */}
-      <nav className="flex items-center px-5 sm:px-6 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <nav className="flex items-center px-5 sm:px-6 py-4" style={{ borderBottom: "1px solid #e7e2d9" }}>
         <Link href="/" className="flex items-center gap-2">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          <span className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>
+          <span className="text-sm font-semibold" style={{ color: "#1c1917" }}>
             Context<span style={{ color: "#F97316" }}>Drop</span>
           </span>
-          <span className="text-sm" style={{ color: "#3F3F46" }}>/</span>
-          <span className="text-sm" style={{ color: "#71717A" }}>Your Profile</span>
+          <span className="text-sm" style={{ color: "#c4bdb5" }}>/</span>
+          <span className="text-sm" style={{ color: "#78716c" }}>Your Profile</span>
         </Link>
       </nav>
 
