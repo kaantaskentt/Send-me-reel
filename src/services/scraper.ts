@@ -191,6 +191,13 @@ export async function scrapeVideoWithFallback(
       throw new ServiceError("NOT_A_VIDEO", "LinkedIn post — no video content");
     }
 
+    // X/Twitter: Apify actor doesn't support single tweet fetching — skip it entirely.
+    // Jina can read public tweet text; article pipeline handles the rest.
+    if (platform === "x") {
+      console.log(`[scraper] yt-dlp failed for x — routing to article pipeline via Jina`);
+      throw new ServiceError("NOT_A_VIDEO", "X post — falling back to text analysis", false);
+    }
+
     // No Apify actors for YouTube — skip straight to article fallback
     if (platform === "youtube") {
       console.log(`[scraper] yt-dlp failed for youtube — no Apify fallback`);
