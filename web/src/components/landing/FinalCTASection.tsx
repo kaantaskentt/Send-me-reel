@@ -80,7 +80,7 @@ export default function FinalCTASection() {
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              Your first 50 analyses are free. No card. No signup form. Just open the bot and send a link.
+              Your first 20 analyses are free. No card. No signup form. Just open the bot and send a link.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <a

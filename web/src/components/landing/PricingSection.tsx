@@ -23,7 +23,7 @@ function useInView(threshold = 0.2) {
 }
 
 const FREE_FEATURES = [
-  "50 analyses to start",
+  "20 analyses to start",
   "All platforms (Instagram, TikTok, X, YouTube, LinkedIn, articles)",
   "Summary + action item per link",
   "Personal dashboard",
@@ -110,7 +110,7 @@ export default function PricingSection() {
                 </span>
                 <span style={{ color: "#71717A", fontSize: "14px" }}>/month</span>
               </div>
-              <p className="mt-2" style={{ color: "#71717A", fontSize: "13px" }}>50 analyses to get started</p>
+              <p className="mt-2" style={{ color: "#71717A", fontSize: "13px" }}>20 analyses to get started</p>
             </div>
             <ul className="space-y-3 mb-8">
               {FREE_FEATURES.map((f, i) => (

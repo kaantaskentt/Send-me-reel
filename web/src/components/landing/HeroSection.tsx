@@ -267,7 +267,7 @@ export default function HeroSection() {
         >
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: "#F97316" }} />
           <span className="text-[13px] font-medium" style={{ color: "#F97316" }}>
-            50 free analyses · No card needed
+            Beta · 20 free analyses · No card needed
           </span>
         </motion.div>
 

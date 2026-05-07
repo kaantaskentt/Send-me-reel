@@ -16,7 +16,7 @@ interface Props {
 }
 
 const FREE_PERKS = [
-  "50 analyses to start",
+  "20 analyses to start",
   "All platforms (Instagram, TikTok, X, YouTube, LinkedIn, articles)",
   "Summary + action item per link",
   "Personal dashboard",
