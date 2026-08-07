@@ -237,6 +237,10 @@ export async function downloadFromCdn(
   const appUrl = config.appUrl;
   const proxySecret = (process.env.JWT_SECRET || "").replace(/\s+/g, "");
 
+  if (!proxySecret) {
+    throw new ServiceError("PROXY_NOT_CONFIGURED", "JWT_SECRET is required for proxy downloads", false);
+  }
+
   console.log(`[apify] Downloading video via proxy: ${videoUrl.slice(0, 80)}...`);
 
   const response = await fetch(`${appUrl}/api/proxy-download`, {
