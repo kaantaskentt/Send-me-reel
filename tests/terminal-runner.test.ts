@@ -7,7 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const execute = promisify(execFile);
 
-async function fixture(mode: 'exec' | 'interactive', exitCode = 0) {
+async function fixture(mode: 'exec' | 'interactive', exitCode = 0, harness: 'codex' | 'claude' = 'codex') {
   const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-runner-check-'));
   const workspace = path.join(folder, 'project');
   const control = path.join(folder, 'control');
@@ -17,7 +17,7 @@ async function fixture(mode: 'exec' | 'interactive', exitCode = 0) {
   // This folder is outside the repository, so tell Node to treat the fixture as ESM.
   await fs.writeFile(path.join(folder, 'package.json'), '{"type":"module"}');
   const config = path.join(control, 'runner.json');
-  await fs.writeFile(config, JSON.stringify({ id: 'fixture-run', workspace, codexBinary: binary, terminalMode: mode, ...(mode === 'exec' ? { codexModel: 'gpt-5.4-mini' } : {}) }));
+  await fs.writeFile(config, JSON.stringify({ id: 'fixture-run', workspace, ...(harness === 'claude' ? { harness, claudeBinary: binary } : { codexBinary: binary }), terminalMode: mode, ...(mode === 'exec' && harness === 'codex' ? { codexModel: 'gpt-5.4-mini' } : {}) }));
   return { folder, workspace, control, config };
 }
 
@@ -40,6 +40,43 @@ test('opt-in exec runner uses fixed sandboxed argv, streams progress and saves l
     assert.match(await fs.readFile(path.join(f.control, 'codex-stderr.log'), 'utf8'), /fixture diagnostic/);
     assert.deepEqual(await fs.readdir(f.workspace), []);
   } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('Claude handoff preserves local auth environment and starts a fixed interactive inspection', async () => {
+  const f = await fixture('interactive', 0, 'claude');
+  try {
+    const forbidden = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN', 'SUPABASE_SERVICE_ROLE_KEY', 'CONTEXTDROP_COMPANION_TOKEN', 'NODE_OPTIONS', 'CLAUDE_CODE_DANGEROUSLY_SKIP_PERMISSIONS'];
+    const env = { ...process.env, ...Object.fromEntries(forbidden.map(key => [key, `fixture-sentinel-${key}`])) };
+    // A valid parent Node option must still be absent from the harness child.
+    env.NODE_OPTIONS = '--no-warnings';
+    await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000, env });
+    const args = JSON.parse(await fs.readFile(path.join(f.control, 'argv.json'), 'utf8'));
+    assert.deepEqual(args.slice(0, 6), ['--safe-mode', '--permission-mode', 'plan', '--no-chrome', '--name', 'ContextDrop inspection']);
+    assert.equal(args.length, 7);
+    assert.match(args[6], /Do not install dependencies, clone repositories, run project code/);
+    assert.ok(!args.some((arg: string) => /^(--bare|--print|-p|--dangerously-skip-permissions|--allowedTools|--chrome)$/.test(arg)));
+    const keys: string[] = JSON.parse(await fs.readFile(path.join(f.control, 'environment-keys.json'), 'utf8'));
+    for (const key of forbidden) assert.ok(!keys.includes(key), `${key} leaked to Claude`);
+    for (const key of ['PATH', 'HOME']) assert.ok(keys.includes(key), `${key} should support signed-in local CLI`);
+    const status = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+    assert.equal(status.harness, 'claude'); assert.equal(status.status, 'finished_unverified');
+    assert.deepEqual(await fs.readdir(f.workspace), []);
+  } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('Claude handoff fails closed on noninteractive config and reports a nonzero CLI exit', async () => {
+  for (const [mode, exitCode] of [['exec', 0], ['interactive', 7]] as const) {
+    const f = await fixture(mode, exitCode, 'claude');
+    try {
+      await assert.rejects(execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 }));
+      if (mode === 'exec') {
+        await assert.rejects(fs.access(path.join(f.control, 'argv.json')));
+      } else {
+        const status = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+        assert.equal(status.harness, 'claude'); assert.equal(status.status, 'failed'); assert.equal(status.exitCode, 7);
+      }
+    } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+  }
 });
 
 test('exec nonzero exit is a failed run even if a report was written', async () => {

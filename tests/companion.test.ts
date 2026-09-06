@@ -15,9 +15,9 @@ export const fixturePlan: ReplicationPlan = {
   evidence:[{id:'e1',kind:'frame',text:'The creator clicks a button and it displays Ready.',timestampSec:3}],warnings:['Fixture evidence.'],successCriteria:['The button works.']
 };
 const token = 'test-token-that-is-long-enough-for-local-pairing';
-async function setup(launch: (file:string)=>Promise<void> = async()=>{}, withoutCodex = false, terminalMode?: 'interactive' | 'exec') {
+async function setup(launch: (file:string)=>Promise<void> = async()=>{}, withoutCodex = false, terminalMode?: 'interactive' | 'exec', claudeBinary?: string) {
   const rootDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-companion-test-'));
-  const server = createCompanionServer({ token, allowedOrigins:['http://localhost:3000'], rootDir, codexBinary:withoutCodex ? undefined : '/usr/bin/true', terminalMode, platform:'darwin', launchTerminal:launch });
+  const server = createCompanionServer({ token, allowedOrigins:['http://localhost:3000'], rootDir, codexBinary:withoutCodex ? undefined : '/usr/bin/true', claudeBinary, terminalMode, platform:'darwin', launchTerminal:launch });
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return {rootDir,base, cleanup:async()=>{server.closeAllConnections(); await new Promise<void>(r=>server.close(()=>r())); await fs.rm(rootDir,{recursive:true,force:true});}};
@@ -31,6 +31,38 @@ test('pairing and origin/host boundaries reject unauthorized clients',async()=>{
     const ok=await fetch(`${t.base}/health`,{headers}); assert.equal(ok.status,200);assert.equal(ok.headers.get('Access-Control-Allow-Origin'),'http://localhost:3000');
     const preflight=await fetch(`${t.base}/runs`,{method:'OPTIONS',headers:{Origin:'http://localhost:3000'}});assert.equal(preflight.status,204);
   } finally{await t.cleanup();}
+});
+
+test('Claude selection produces an interactive trusted bundle independently of Codex', async () => {
+  let launched = '';
+  const t = await setup(async filename => { launched = filename; }, true, 'exec', '/usr/bin/true');
+  try {
+    const health = await (await fetch(`${t.base}/health`, { headers })).json();
+    assert.equal(health.capabilities.terminal, true);
+    assert.deepEqual(health.capabilities.harnesses, { codex: false, claude: true });
+    const plan = { ...fixturePlan, goal: 'Inspect literal $(touch /tmp/never-execute-this), then propose setup.' };
+    const response = await fetch(`${t.base}/runs`, { method: 'POST', headers, body: JSON.stringify({ plan, executor: 'terminal', harness: 'claude', claudeBinary: '/bin/untrusted', terminalMode: 'exec' }) });
+    assert.equal(response.status, 201);
+    const run = await response.json(); assert.equal(run.harness, 'claude'); assert.equal(run.status, 'launching');
+    const config = JSON.parse(await fs.readFile(path.join(path.dirname(launched), 'runner.json'), 'utf8'));
+    assert.equal(config.claudeBinary, '/usr/bin/true'); assert.equal(config.codexBinary, undefined); assert.equal(config.harness, 'claude'); assert.equal(config.terminalMode, 'interactive');
+    const script = await fs.readFile(launched, 'utf8'); assert.ok(!script.includes(plan.goal)); assert.ok(!script.includes('/bin/untrusted'));
+    const instructions = await fs.readFile(path.join(run.workspace, '.contextdrop', 'task.md'), 'utf8');
+    assert.match(instructions, /Selected harness: Claude Code/);
+    assert.match(instructions, /Do not install dependencies, clone repositories, run project code/);
+  } finally { await t.cleanup(); }
+});
+
+test('unavailable or arbitrary harnesses and browser-harness mixes never launch', async () => {
+  let launched = 0;
+  const t = await setup(async () => { launched++; });
+  try {
+    for (const request of [{ harness: 'claude' }, { harness: 'shell' }, { harness: ['claude'] }, { harness: 'claude', executor: 'browser' }]) {
+      const result = await fetch(`${t.base}/runs`, { method: 'POST', headers, body: JSON.stringify({ plan: fixturePlan, executor: 'terminal', ...request }) });
+      assert.ok([400, 409].includes(result.status));
+    }
+    assert.equal(launched, 0); assert.deepEqual(await fs.readdir(t.rootDir), []);
+  } finally { await t.cleanup(); }
 });
 test('data-only packet launches a fixed command in a fresh workspace; duplicate requests do not run twice',async()=>{
   let launched=''; let count=0; const t=await setup(async p=>{launched=p;count++;});try{
