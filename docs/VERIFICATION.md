@@ -13,6 +13,7 @@ Environment: macOS, Node.js 24.13.0, Next.js 16.3.4, Chromium 1243 / Playwright 
 | Targeted browser/security checks after highlight refinement | Passed | Actual Chromium click approval, stale-element rejection, and egress shutdown |
 | `npm audit` | 0 advisories in the root worker and `web/` dependency trees | Known dependency advisories in those two trees at check time |
 | Legacy production lockfile audits | `landing/`: 35 advisories; `landing-v2/`: 73 | Separate pnpm trees remain unremediated; neither is built by the current worker/web build |
+| Legacy full lockfile audits | `landing/`: 99 advisories; `landing-v2/`: 137 | Each includes 2 critical development-tool advisories; separate historical deployments were not inspected |
 | `git diff --check` | Passed | Patch whitespace consistency |
 
 ## Rendered UI
@@ -41,7 +42,7 @@ A real launcher opened a Terminal runner and started the installed, signed-in Co
 
 ## Not verified
 
-- The separate legacy `landing/` and `landing-v2/` dependency trees were not remediated. Their production-only audits found 15 high/19 moderate/1 low and 17 high/48 moderate/8 low advisories respectively, with no critical advisories. These were lockfile audits without dependency installation. GitHub still reports advisories on the default branch; the zero-advisory result above is scoped to this branch's root worker and `web/` packages.
+- The separate legacy `landing/` and `landing-v2/` dependency trees were not remediated. Their production-only audits found 15 high/19 moderate/1 low and 17 high/48 moderate/8 low advisories respectively, with no critical production advisories. Full audits found 2 critical/50 high/45 moderate/2 low and 2 critical/52 high/74 moderate/9 low respectively. The critical development dependencies involve Vitest (`GHSA-5xrq-8626-4rwp`) and tar (`GHSA-23hp-3jrh-7fpw`). These were lockfile audits without dependency installation or lockfile changes. GitHub's 349 open default-branch alerts also include the older root/web manifests; the zero-advisory result above is scoped to this branch's root worker and `web/` packages.
 - Live Instagram, TikTok, X or YouTube analysis with paid providers.
 - Browser task quality with a real model and third-party accounts.
 - Production Supabase migration application, RLS/grants, and simultaneous multi-connection contention.
