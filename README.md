@@ -2,18 +2,19 @@
 
 Turn an internet example into something you actually try, build, or do.
 
-ContextDrop accepts social links through its web dashboard and Telegram bot, captures source content, and prepares a task grounded in the creator's words and sampled on-screen actions. The new local Mac companion can guide a visible browser workflow or open a Codex build session in Terminal.
+ContextDrop turns AI-related videos, repositories and websites into a conversation you can act on. The local content studio gives a short take, suggests useful questions, searches for referenced resources and prepares a task only when you choose one. The Mac companion can guide a visible browser or hand a reviewed task to Claude Code or Codex.
 
-**This branch adds a locally tested execution foundation.** Live provider credentials, a running worker, and the database migrations are required for real links. It does not promise access to every URL or unrestricted control of every Mac application.
+**This branch adds a locally tested content companion and execution foundation.** The local studio uses configured provider keys and private files without a database. The production dashboard/bot additionally require a worker and database migrations. It does not promise access to every URL or unrestricted control of every Mac application.
 
 ```mermaid
 flowchart LR
   A[Paste a link] --> B[Retrieve media or article]
   B --> C[Transcript + timestamped screen evidence]
-  C --> D[Choose a goal and review the plan]
+  C --> Q[Chat, inspect a moment, find a resource]
+  Q --> D[Choose an action and review its plan]
   D --> E[Local Mac companion]
   E --> F[Visible browser + highlighted actions]
-  E --> G[Codex in Terminal]
+  E --> G[Claude Code or Codex in Terminal]
   F --> H[User decisions + observable results]
   G --> H
 ```
@@ -63,11 +64,11 @@ Paste the companion's token into the execution panel. The token lasts only for t
 
 The development-only `/replicate/demo` page uses labelled fixture content for UI inspection without provider credentials. It does not analyze a live video and does not enable real execution.
 
-### Local video studio
+### Local content studio
 
-The optional `/replicate/local` development studio runs real video capture and planning without a production database. It accepts public YouTube, Instagram, TikTok, and X links up to ten minutes, displays the actual captured frames, and uses the same bounded plan contract and Mac companion as the dashboard. Source access still varies by post.
+The optional `/replicate/local` development studio starts with a conversation, then offers relevant links or reviewed tasks. It saves sources and chats on this Mac. Automatic reading uses Gemini for public YouTube videos up to sixty minutes when configured, the existing saved-frame/transcript path for other social videos up to ten minutes, and public text extraction for websites and GitHub READMEs. Source access still varies by post. See the [architecture, concrete examples, costs and current boundaries](docs/CONTENT-COMPANION.md).
 
-Set `CONTEXTDROP_LOCAL_STUDIO=1` and `OPENAI_API_KEY` in `web/.env.local`, and configure `OPENAI_API_KEY` in the root `.env`. The local capture currently uses yt-dlp; the production worker additionally supports Apify fallback through `APIFY_TOKEN`. Then run `npm run local:studio` and `npm run local:companion` in separate terminals. Visit `http://127.0.0.1:3127/replicate/local`. The private companion session enables an explicit **Connect this Mac** button; it does not authorize a task automatically. This studio rejects production mode, remote hostnames, and cross-origin mutations. Bind development servers to loopback.
+Set `CONTEXTDROP_LOCAL_STUDIO=1` and `OPENAI_API_KEY` in `web/.env.local`, and configure `OPENAI_API_KEY` in the root `.env`. Add `GEMINI_API_KEY` to both local environment files for native YouTube understanding and short high-resolution reinspection. The other social-video capture path uses yt-dlp; the production worker additionally supports Apify fallback through `APIFY_TOKEN`. `CONTENT_CHAT_MODEL` selects the conversational model (default `gpt-5.4-mini`). Then run `npm run local:studio` and `npm run local:companion` in separate terminals. Visit `http://127.0.0.1:3127/replicate/local`. The private companion session enables an explicit **Connect this Mac** button; it does not authorize a task automatically. This studio rejects production mode, remote hostnames, and cross-origin mutations. Bind development servers to loopback.
 
 For streamed local builds, set `CONTEXTDROP_TERMINAL_MODE=exec` and a supported `CONTEXTDROP_CODEX_MODEL` in the root `.env` before starting the companion. Exec mode ignores stale user model/plugin configuration but keeps signed-in CLI authentication, workspace sandboxing, and on-request approval policy. A zero exit still means the result needs review.
 
@@ -84,6 +85,7 @@ npm run check:companion
 npm --prefix web run build
 # With the development server running on 127.0.0.1:3127:
 npm run test:ui
+npm --prefix web run test:content
 ```
 
 Tests include synthetic video extraction, structured evidence validation, retries and persistence failures, URL/proxy/account boundaries, local companion pairing, and a real Chromium approval/click flow using a deterministic test planner. Those offline tests do not establish the quality of a live model on arbitrary tutorials.

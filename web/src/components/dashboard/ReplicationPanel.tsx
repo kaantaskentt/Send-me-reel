@@ -16,7 +16,8 @@ const MODES = [
   { id: "research", title: "Understand it", detail: "Explain, compare, investigate", icon: BookOpen, prompt: "Explain how this works, verify the main claims, and give me a concrete example I can try." },
 ] as const;
 
-interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string }
+type Harness = "codex" | "claude";
+interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness }
 
 function timestamp(seconds: number | null) {
   if (seconds === null) return "No timestamp";
@@ -37,10 +38,10 @@ function download(content: string, name: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export default function ReplicationPanel({ analysis, initialPlan, demo = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "" }: Props) {
+export default function ReplicationPanel({ analysis, initialPlan, demo = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex" }: Props) {
   const captured = buildSourceEvidence(analysis);
-  const [mode, setMode] = useState<ReplicationPlan["mode"]>(initialPlan?.mode ?? "build");
-  const [goal, setGoal] = useState(initialPlan?.goal ?? "");
+  const [mode, setMode] = useState<ReplicationPlan["mode"]>(initialPlan?.mode ?? initialMode);
+  const [goal, setGoal] = useState(initialPlan?.goal ?? initialGoal);
   const [plan, setPlan] = useState<ReplicationPlan | null>(initialPlan ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -52,12 +53,14 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const [localError, setLocalError] = useState("");
   const [showSetup, setShowSetup] = useState(false);
   const [origin, setOrigin] = useState("http://localhost:3000");
-  const [run, setRun] = useState<RunState | null>(null);
+  const [run, setRun] = useState<(RunState & { harness?: Harness }) | null>(null);
   const [launchBusy, setLaunchBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [executor, setExecutor] = useState<"terminal" | "browser">(initialExecutor);
   const [browserConfigured, setBrowserConfigured] = useState(false);
-  const [terminalAvailable, setTerminalAvailable] = useState(true);
+  const [harness, setHarness] = useState<Harness>(initialHarness);
+  const [harnesses, setHarnesses] = useState<Record<Harness, boolean>>({ codex: false, claude: false });
+  const [macSupported, setMacSupported] = useState(true);
   const [reviewed, setReviewed] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
   const browserSessionDialog = useRef<HTMLDialogElement>(null);
@@ -67,6 +70,9 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const stale = plan && (plan.goal !== goal.trim() || plan.mode !== mode);
   const runActive = !!run && ["launching", "running", "awaiting_approval", "needs_input"].includes(run.status);
   const sessionOpen = runActive || (!!run && executor === "browser" && run.status !== "stopped");
+  const harnessName = harness === "claude" ? "Claude Code" : "Codex";
+  const runHarnessName = (run?.harness ?? harness) === "claude" ? "Claude Code" : "Codex";
+  const terminalAvailable = macSupported && harnesses[harness];
 
   useEffect(() => { setOrigin(window.location.origin); return () => generationController.current?.abort(); }, []);
   useEffect(() => {
@@ -115,7 +121,13 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
       const response = await fetch(`${COMPANION_URL}/health`, { headers: { Authorization: `Bearer ${token.trim()}` }, signal: AbortSignal.timeout(5_000) });
       if (!response.ok) throw new Error(response.status === 401 ? "Pairing token was rejected. Copy the current token from the companion." : "The local companion is not ready.");
       const health = await response.json();
-      setTerminalAvailable(health.capabilities?.terminal !== false && health.codexAvailable !== false && (!health.platform || health.platform === "darwin"));
+      setMacSupported(!health.platform || health.platform === "darwin");
+      const terminalConfigured = health.capabilities?.terminal !== false;
+      const detected = health.capabilities?.harnesses;
+      setHarnesses({
+        codex: terminalConfigured && (detected ? detected.codex === true : health.codexAvailable !== false),
+        claude: terminalConfigured && detected?.claude === true,
+      });
       setBrowserConfigured(health.capabilities?.browser?.configured === true);
       setToken(token.trim()); setPaired(true);
     } catch (e) { setLocalError(e instanceof TypeError ? "Cannot reach the companion. Start it with this app’s exact origin and allow local network access if your browser asks." : e instanceof Error ? e.message : "Connection failed."); }
@@ -123,10 +135,10 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   }
 
   async function launch() {
-    if (!plan || stale || !reviewed || demo || sessionOpen) return;
+    if (!plan || stale || !reviewed || demo || sessionOpen || launchBusy || !paired || (executor === "terminal" ? !terminalAvailable : !browserConfigured)) return;
     setLaunchBusy(true); setLocalError("");
     try {
-      const response = await fetch(`${COMPANION_URL}/runs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ plan, executor }), signal: AbortSignal.timeout(15_000) });
+      const response = await fetch(`${COMPANION_URL}/runs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ plan, executor, ...(executor === "terminal" ? { harness } : {}) }), signal: AbortSignal.timeout(15_000) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The companion could not open a session.");
       setRun(result); setShowSetup(false);
@@ -181,20 +193,21 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
 
         <aside className="min-w-0 space-y-5">
           <section className="rounded-2xl bg-slate-950 p-5 text-white sm:p-6"><div className="mb-4 flex items-center gap-2"><Monitor size={19} className="text-blue-400" /><h2 className="text-base">From plan to your computer</h2></div><p className="text-xs leading-relaxed text-slate-400">Build in a local workspace or walk through the task in a visible browser. Review each proposed browser action before it happens.</p><div className="my-5 flex items-center gap-2 text-[10px]"><span className="text-blue-300">01 Prepare</span><ChevronRight size={12} className="text-slate-600" /><span className="text-slate-400">02 Run locally</span><ChevronRight size={12} className="text-slate-600" /><span className="text-slate-400">03 Verify</span></div>
-            <div className="mb-4 grid gap-2"><button type="button" disabled={sessionOpen} onClick={() => setExecutor("browser")} aria-pressed={executor === "browser"} className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs ${executor === "browser" ? "border-blue-500 bg-blue-950 text-blue-200" : "border-slate-700 text-slate-400"}`}><Monitor size={16} /><span><strong className="block">Browser walkthrough</strong><span className="mt-1 block text-[10px] font-normal">Open pages, scroll, and review proposed actions</span></span></button><button type="button" disabled={sessionOpen} onClick={() => setExecutor("terminal")} aria-pressed={executor === "terminal"} className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs ${executor === "terminal" ? "border-blue-500 bg-blue-950 text-blue-200" : "border-slate-700 text-slate-400"}`}><Terminal size={16} /><span><strong className="block">Build in Terminal</strong><span className="mt-1 block text-[10px] font-normal">A Codex session in a fresh project workspace</span></span></button></div>
+            <div className="mb-4 grid gap-2"><button type="button" disabled={sessionOpen} onClick={() => { setExecutor("browser"); setReviewed(false); }} aria-pressed={executor === "browser"} className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs ${executor === "browser" ? "border-blue-500 bg-blue-950 text-blue-200" : "border-slate-700 text-slate-400"}`}><Monitor size={16} /><span><strong className="block">Browser walkthrough</strong><span className="mt-1 block text-[10px] font-normal">Open pages, scroll, and review proposed actions</span></span></button><button type="button" disabled={sessionOpen} onClick={() => { setExecutor("terminal"); setReviewed(false); }} aria-pressed={executor === "terminal"} className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs ${executor === "terminal" ? "border-blue-500 bg-blue-950 text-blue-200" : "border-slate-700 text-slate-400"}`}><Terminal size={16} /><span><strong className="block">Build in Terminal</strong><span className="mt-1 block text-[10px] font-normal">{harnessName} in a fresh project workspace</span></span></button></div>
+            {executor === "terminal" && <div className="mb-4"><label htmlFor="coding-harness" className="mb-2 block text-xs font-semibold text-slate-300">Coding app</label><select id="coding-harness" value={harness} disabled={sessionOpen || launchBusy} onChange={(event) => { setHarness(event.target.value as Harness); setReviewed(false); setLocalError(""); }} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500"><option value="codex">Codex{paired && !harnesses.codex ? " · unavailable" : ""}</option><option value="claude">Claude Code{paired && !harnesses.claude ? " · unavailable" : ""}</option></select><p className="mt-2 text-[10px] leading-relaxed text-slate-400">{harness === "claude" ? "Opens Claude Code in plan mode. Review its proposal in Terminal before allowing setup or code changes. It uses your existing Claude sign-in." : "Opens Codex in a fresh workspace with its existing permissions and sign-in."}</p></div>}
             {executor === "browser" && <p className="mb-4 rounded-lg border border-slate-700 bg-slate-900 p-3 text-[10px] leading-relaxed text-slate-300">Browser guidance sends screenshots and visible page text to OpenAI using your local API key. Enter logins and private fields directly in the isolated browser.</p>}
             {demo ? <div className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs leading-relaxed text-slate-400">Demo launch is disabled. Open one of your completed analyses to prepare a real task.</div> : <>
               {initialPairingToken ? <div className="mb-5 rounded-xl border border-slate-700 bg-slate-900 p-3"><p className="flex items-center gap-2 text-xs font-semibold text-slate-200"><Monitor size={14} className="text-blue-400" />{paired ? "Mac connected" : "Local companion detected"}{paired && <Check size={14} className="text-emerald-400" />}</p><p className="my-3 text-[10px] leading-relaxed text-slate-400">Pairing stays in this page’s memory. No browser storage is used.</p>{paired ? <button className="inline-flex items-center gap-1 text-xs text-slate-400" onClick={() => setPaired(false)}><Unplug size={12} />Disconnect</button> : <button onClick={pair} disabled={pairBusy || token.trim().length < 16} className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50">{pairBusy ? "Connecting…" : "Connect this Mac"}</button>}</div> : <>
               <button onClick={() => setShowSetup(!showSetup)} className="mb-4 flex w-full items-center justify-between rounded-lg border border-slate-700 p-3 text-xs text-slate-200"><span className="flex items-center gap-2"><Monitor size={14} />{paired ? "Mac connected" : "Connect this Mac"}</span>{paired ? <Check size={14} className="text-emerald-400" /> : <ChevronRight size={14} />}</button>
-              {showSetup && <div className="mb-5 space-y-3"><p className="text-xs leading-relaxed text-slate-400">In the project folder, start the companion. Terminal tasks require Codex CLI installed and signed in. Browser walkthroughs require OPENAI_API_KEY in the companion’s local environment.</p><pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-slate-900 p-3 text-[10px] leading-relaxed text-blue-200">npm run companion -- --origin {origin}</pre><label htmlFor="companion-token" className="block text-xs text-slate-300">Paste the pairing token printed in Terminal</label><input id="companion-token" type="password" value={token} onChange={(e) => { setToken(e.target.value); setPaired(false); }} autoComplete="off" maxLength={256} placeholder="Local pairing token" className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-xs text-white outline-none focus:border-blue-500" /><p className="text-[10px] leading-relaxed text-slate-500">Kept in this page’s memory. Sent only to the local companion. Closing or refreshing this page clears it.</p><button onClick={pair} disabled={pairBusy || token.trim().length < 16} className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-white disabled:opacity-50">{pairBusy ? "Connecting…" : "Connect"}</button>{paired && <button className="ml-3 inline-flex items-center gap-1 text-xs text-slate-400" onClick={() => { setPaired(false); setToken(""); }}><Unplug size={12} />Disconnect</button>}</div>}
+              {showSetup && <div className="mb-5 space-y-3"><p className="text-xs leading-relaxed text-slate-400">In the project folder, start the companion. Terminal tasks require {harnessName} installed and signed in. Browser walkthroughs require OPENAI_API_KEY in the companion’s local environment.</p><pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-slate-900 p-3 text-[10px] leading-relaxed text-blue-200">npm run companion -- --origin {origin}</pre><label htmlFor="companion-token" className="block text-xs text-slate-300">Paste the pairing token printed in Terminal</label><input id="companion-token" type="password" value={token} onChange={(e) => { setToken(e.target.value); setPaired(false); }} autoComplete="off" maxLength={256} placeholder="Local pairing token" className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-xs text-white outline-none focus:border-blue-500" /><p className="text-[10px] leading-relaxed text-slate-500">Kept in this page’s memory. Sent only to the local companion. Closing or refreshing this page clears it.</p><button onClick={pair} disabled={pairBusy || token.trim().length < 16} className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-white disabled:opacity-50">{pairBusy ? "Connecting…" : "Connect"}</button>{paired && <button className="ml-3 inline-flex items-center gap-1 text-xs text-slate-400" onClick={() => { setPaired(false); setToken(""); }}><Unplug size={12} />Disconnect</button>}</div>}
               </>}
-              {paired && executor === "terminal" && !terminalAvailable && <p className="mb-3 text-xs leading-relaxed text-amber-300">Terminal launch requires Codex CLI installed and signed in on macOS. Browser walkthroughs can work without Codex.</p>}
+              {paired && executor === "terminal" && !terminalAvailable && <p className="mb-3 text-xs leading-relaxed text-amber-300">Terminal launch requires {harness === "codex" ? "Codex CLI" : "Claude Code with safe-mode support"} installed and signed in on macOS. Reconnect after starting the updated companion, or choose an available coding app.</p>}
               {paired && executor === "browser" && !browserConfigured && <p className="mb-3 text-xs leading-relaxed text-amber-300">The browser planner is not configured. Add OPENAI_API_KEY to the companion’s environment, restart it, then reconnect.</p>}
               <label className="mb-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-300"><input type="checkbox" checked={reviewed} disabled={!plan || !!stale || sessionOpen} onChange={(e) => setReviewed(e.target.checked)} className="mt-0.5 accent-blue-500" /><span>I reviewed the plan and its gaps. Start this task on my computer.</span></label><button onClick={launch} disabled={!plan || !!stale || !paired || !reviewed || launchBusy || sessionOpen || (executor === "browser" && !browserConfigured) || (executor === "terminal" && !terminalAvailable)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">{launchBusy ? <Loader2 size={16} className="animate-spin" /> : executor === "browser" ? <Monitor size={16} /> : <Terminal size={16} />}{launchBusy ? "Opening session…" : executor === "browser" ? "Start browser walkthrough" : "Open in Terminal"}</button>
             </>}
             {localError && <p role="alert" className="mt-3 rounded-lg border border-red-900 bg-red-950/40 p-3 text-xs leading-relaxed text-red-200">{localError}</p>}
             {run && executor === "browser" && <div className="mt-4 rounded-xl border border-blue-900 bg-blue-950/40 p-3"><p className="mb-2 text-xs text-blue-200">{run.status === "stopped" ? "Browser closed" : "Your browser session is open"}</p><button type="button" onClick={() => browserSessionDialog.current?.showModal()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-3 py-2.5 text-xs font-semibold hover:bg-blue-400"><Monitor size={14} />View browser session</button></div>}
-            {run && executor === "terminal" && <div aria-live="polite" className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-3"><p className="text-xs font-semibold text-blue-200">{run.status === "launching" ? "Terminal launch requested" : run.status === "running" ? "Terminal session active" : run.status === "failed" ? "Terminal session failed" : "Terminal session ended · outcome unverified"}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-400">{run.error || run.message || "Check Terminal for the current prompt and actual progress. An active session may be waiting for your input; an ended session does not verify the result."}</p>{run.workspace && <p className="mt-2 break-all font-mono text-[10px] text-slate-300">{run.workspace}</p>}</div>}
+            {run && executor === "terminal" && <div aria-live="polite" className="mt-4 rounded-xl border border-slate-700 bg-slate-900 p-3"><p className="text-xs font-semibold text-blue-200">{run.status === "launching" ? `${runHarnessName} launch requested` : run.status === "running" ? `${runHarnessName} session active` : run.status === "failed" ? `${runHarnessName} session failed` : `${runHarnessName} session ended · outcome unverified`}</p><p className="mt-2 text-[10px] leading-relaxed text-slate-400">{run.error || run.message || "Check Terminal for the current prompt and actual progress. An active session may be waiting for your input; an ended session does not verify the result."}</p>{run.workspace && <p className="mt-2 break-all font-mono text-[10px] text-slate-300">{run.workspace}</p>}</div>}
             <p className="mt-4 text-[10px] leading-relaxed text-slate-500">macOS companion preview. Browser control works in its own visible browser. Other native desktop apps are not controlled by this runner.</p>
           </section>
 

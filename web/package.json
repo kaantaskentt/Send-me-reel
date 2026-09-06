@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:replication": "playwright test --config e2e/replication.config.ts"
+    "test:replication": "playwright test --config e2e/replication.config.ts",
+    "test:content": "playwright test --config e2e/content-studio.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

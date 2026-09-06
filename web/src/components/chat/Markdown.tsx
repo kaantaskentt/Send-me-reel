@@ -1,22 +1,27 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface Props {
   children: string;
+  allowedUrls?: string[];
 }
 
-export default function Markdown({ children }: Props) {
+export default function Markdown({ children, allowedUrls }: Props) {
   return (
     <div className="cd-markdown">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        urlTransform={url => allowedUrls ? (allowedUrls.includes(url) ? defaultUrlTransform(url) : "") : defaultUrlTransform(url)}
         components={{
+          // Source chat is read-only text. External images can leak a query in
+          // their URL even when ordinary Markdown links have been checked.
+          ...(allowedUrls ? { img: () => null } : {}),
           p: ({ children }) => (
             <p style={{ margin: "0 0 8px 0", lineHeight: 1.65 }}>{children}</p>
           ),
-          a: ({ href, children }) => (
+          a: ({ href, children }) => !href ? <span>{children}</span> : (
             <a
               href={href}
               target="_blank"

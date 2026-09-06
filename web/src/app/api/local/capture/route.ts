@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs, openSync, closeSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
-import { isLocalStudioRequest, localProjectRoot, localStudioRoot, readLocalAnalysis, validateLocalSourceUrl } from "@/lib/local-studio";
+import { isLocalStudioRequest, localProjectRoot, localStudioRoot, readLocalAnalysis } from "@/lib/local-studio";
+import { captureIsActive, selectCaptureReader } from "@/lib/capture-routing";
 import { readBoundedJson } from "@/lib/bounded-json";
 import { getCaptureFailure } from "@/lib/capture-feedback";
 
@@ -15,15 +16,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!isLocalStudioRequest(request.headers, true)) return new NextResponse(null, { status: 404 });
-  let sourceUrl;
+  let selection;
   try {
-    const body = await readBoundedJson(request, 4_000) as { url: unknown };
-    if (Object.keys(body).some(key => key !== "url")) throw new Error();
-    sourceUrl = validateLocalSourceUrl(body.url);
-  } catch { return NextResponse.json({ error: "Paste a public HTTPS video link from YouTube, Instagram, TikTok, or X." }, { status: 400 }); }
-  if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "The local server needs OPENAI_API_KEY." }, { status: 503 });
+    const body = await readBoundedJson(request, 4_000) as { url: unknown; provider?: unknown };
+    if (Object.keys(body).some(key => !["url", "provider"].includes(key))) throw new Error("Unexpected capture options.");
+    selection = selectCaptureReader(body.url, body.provider ?? "auto", !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY));
+  } catch (error) { return NextResponse.json({ error: error instanceof Error && error.message.length < 200 ? error.message : "Paste a public HTTPS link." }, { status: 400 }); }
+  const sourceUrl = selection.url;
+  if (selection.provider === "detailed" && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "The local server needs OPENAI_API_KEY for detailed video capture." }, { status: 503 });
   const existing = await readLocalAnalysis(true);
-  if (existing && !["done", "failed"].includes(existing.status) && Date.now() - Date.parse(existing.created_at) < 15 * 60_000) return NextResponse.json({ error: "A video is already being captured. Wait for it to finish.", status: existing.status, id: existing.id, sourceUrl: existing.source_url, stage: (existing.metadata?.local_capture as { stage?: string })?.stage }, { status: 409 });
+  if (existing && captureIsActive(existing)) return NextResponse.json({ error: "Content is already being captured. Wait for it to finish.", status: existing.status, id: existing.id, sourceUrl: existing.source_url, stage: (existing.metadata?.local_capture as { stage?: string })?.stage }, { status: 409 });
   await fs.mkdir(localStudioRoot, { recursive: true, mode: 0o700 });
   const lockfile = path.join(localStudioRoot, "capture-launch.lock");
   let lock;
@@ -33,12 +35,19 @@ export async function POST(request: NextRequest) {
   try {
     const checkpoint = path.join(localStudioRoot, "local-analysis.json");
     const temporary = `${checkpoint}.launch.tmp`;
-    await fs.writeFile(temporary, JSON.stringify(pending), { mode: 0o600 });
-    await fs.rename(temporary, checkpoint);
+    // Keep the previous source and its evidence available locally. A native retry
+    // resumes completed clips instead of discarding its checkpoint.
+    if (existing && /^[a-zA-Z0-9-]{1,80}$/.test(existing.id)) {
+      const library = path.join(localStudioRoot, "library");
+      await fs.mkdir(library, { recursive: true, mode: 0o700 });
+      await fs.writeFile(path.join(library, `${existing.id}.json`), JSON.stringify(existing), { mode: 0o600 });
+    }
+    const resume = selection.provider === "gemini" && existing?.status === "failed" && existing.source_url === sourceUrl && !!existing.metadata?.source_evidence && !!(existing.metadata.source_evidence as { native_video?: unknown }).native_video;
+    if (!resume) { await fs.writeFile(temporary, JSON.stringify(pending), { mode: 0o600 }); await fs.rename(temporary, checkpoint); }
     // Fixed executable and literal argv; the URL is never shell text. The CLI owns
     // durable stage checkpoints, timeouts, and cleanup independently of Next dev.
     descriptor = openSync(path.join(localStudioRoot, "local-capture.log"), "a", 0o600);
-    const child = spawn(process.execPath, ["--import", "tsx", "scripts/analyze-one.ts", sourceUrl, "--output", ".contextdrop/local-analysis.json", "--timeout-seconds", "720"], { cwd: localProjectRoot, env: process.env, detached: true, stdio: ["ignore", descriptor, descriptor] });
+    const child = spawn(process.execPath, ["--import", "tsx", selection.script, sourceUrl, "--output", ".contextdrop/local-analysis.json", "--timeout-seconds", String(selection.timeoutSeconds), ...(resume ? ["--resume"] : [])], { cwd: localProjectRoot, env: process.env, detached: true, stdio: ["ignore", descriptor, descriptor] });
     await new Promise<void>((resolve, reject) => { child.once("spawn", resolve); child.once("error", reject); });
     child.unref();
     // Prevent duplicate starts while the CLI initializes its first checkpoint.
