@@ -11,7 +11,8 @@ Environment: macOS, Node.js 24.13.0, Next.js 16.3.4, Chromium 1243 / Playwright 
 | `npm --prefix web run build` | Passed | Optimized Next.js build and route generation |
 | `npm run test:ui` | 2 passed | Desktop/mobile workbench and mocked-provider/companion approval UI |
 | Targeted browser/security checks after highlight refinement | Passed | Actual Chromium click approval, stale-element rejection, and egress shutdown |
-| `npm audit` | 0 advisories in both dependency trees | Known dependency advisories at check time |
+| `npm audit` | 0 advisories in the root worker and `web/` dependency trees | Known dependency advisories in those two trees at check time |
+| Legacy production lockfile audits | `landing/`: 35 advisories; `landing-v2/`: 73 | Separate pnpm trees remain unremediated; neither is built by the current worker/web build |
 | `git diff --check` | Passed | Patch whitespace consistency |
 
 ## Rendered UI
@@ -40,6 +41,7 @@ A real launcher opened a Terminal runner and started the installed, signed-in Co
 
 ## Not verified
 
+- The separate legacy `landing/` and `landing-v2/` dependency trees were not remediated. Their production-only audits found 15 high/19 moderate/1 low and 17 high/48 moderate/8 low advisories respectively, with no critical advisories. These were lockfile audits without dependency installation. GitHub still reports advisories on the default branch; the zero-advisory result above is scoped to this branch's root worker and `web/` packages.
 - Live Instagram, TikTok, X or YouTube analysis with paid providers.
 - Browser task quality with a real model and third-party accounts.
 - Production Supabase migration application, RLS/grants, and simultaneous multi-connection contention.

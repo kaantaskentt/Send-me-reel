@@ -39,7 +39,7 @@ The browser uses a fresh isolated profile. Its egress proxy resolves and pins pu
 
 The root regression suite passed 66 tests, including eight embedded PostgreSQL checks. Backend build, companion TypeScript checks, and the web production build passed. Two focused web UI tests passed at 1440×1000 and 390×844. See [the verification record](VERIFICATION.md) for commands and evidence boundaries. The checked-in tests cover synthetic video frame extraction, evidence/reference validation, queue/refund/persistence behavior, URL/command/proxy boundaries, account ownership, loopback pairing, and actual Chromium interactions with a deterministic fixture planner. Web UI testing uses clearly labelled fixture content and controlled API responses.
 
-Production dependency audits check known package advisories at the time of the run. A zero-advisory report is not a proof that the application is secure.
+Full dependency audits of this branch's root worker and `web/` packages reported zero known advisories at check time. The separate legacy `landing/` and `landing-v2/` dependency trees were not remediated; GitHub still reports advisories on the default branch. This is not a repository-wide clean bill of health, and zero known advisories is not proof that an application is secure.
 
 ## Required setup and remaining limits
 
