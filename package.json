@@ -10,7 +10,10 @@
     "start": "node dist/index.js",
     "companion": "tsx companion/server.ts",
     "check:companion": "tsc -p companion/tsconfig.json",
-    "test:ui": "npm --prefix web run test:replication"
+    "test:ui": "npm --prefix web run test:replication",
+    "local:companion": "tsx scripts/start-local-companion.ts",
+    "local:result": "node scripts/serve-demo-result.mjs",
+    "local:studio": "npm --prefix web run dev -- --hostname 127.0.0.1 --port 3127"
   },
   "keywords": [],
   "author": "",

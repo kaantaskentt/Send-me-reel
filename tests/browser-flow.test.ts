@@ -52,3 +52,40 @@ test('declining an action stops progress until the user explicitly resumes',asyn
   const run=new GuidedBrowserRun({workspace,headless:true,onState:s=>{state=s;},validateUrl:async()=>{},planner:async()=>{calls++;return action('navigate','Open example',{url:'https://example.com'});}});
   try{await run.start();assert.equal(state.status,'awaiting_approval',state.message);await run.approve(state.pendingAction!.id,false);assert.equal(state.status,'needs_input');assert.equal(calls,1);await run.resume();assert.equal(calls,2);assert.equal(state.status,'awaiting_approval',state.message);}finally{await run.stop();await fs.rm(workspace,{recursive:true,force:true});}
 });
+
+test('navigation waits for the destination document body before observing the next action', async () => {
+  const fixture = http.createServer((request, response) => {
+    response.setHeader('Content-Type', 'text/html');
+    if (request.url === '/next') {
+      response.write('<!doctype html><html><head><title>Slow destination</title></head>');
+      setTimeout(() => response.end('<body><h1>Destination ready</h1></body></html>'), 250);
+    } else response.end('<!doctype html><title>Navigation source</title><a href="/next">Open destination</a>');
+  });
+  await new Promise<void>(resolve => fixture.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(fixture.address() as AddressInfo).port}`;
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-browser-navigation-'));
+  const run = new GuidedBrowserRun({ workspace, headless: true, onState: () => {},
+    validateUrl: async value => { assert.equal(new URL(value).origin, origin); },
+    resolveDestination: async value => ({ url: new URL(value), addresses: [{ address: '127.0.0.1', family: 4 }] }),
+    planner: async observation => {
+      if (observation.url === 'about:blank') return action('navigate', 'Open navigation fixture', { url: `${origin}/` });
+      if (observation.url === `${origin}/next`) {
+        assert.match(observation.text, /Destination ready/);
+        return action('finish', 'Destination ready was observed.');
+      }
+      return action('click', 'Follow the observed destination link', { targetId: observation.controls[0]!.id });
+    },
+  });
+  try {
+    await run.start();
+    await run.approve(run.state.pendingAction!.id, true);
+    assert.equal(run.state.pendingAction?.type, 'click', run.state.message);
+    await run.approve(run.state.pendingAction!.id, true);
+    assert.equal(run.state.status, 'finished_unverified', run.state.message);
+    assert.equal(run.state.currentUrl, `${origin}/next`);
+  } finally {
+    await run.stop(); fixture.closeAllConnections();
+    await new Promise<void>(resolve => fixture.close(() => resolve()));
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});

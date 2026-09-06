@@ -4,12 +4,12 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import OpenAI from "openai";
 import ffmpegPath from "ffmpeg-static";
-import { config } from "../config.js";
+import "dotenv/config";
 import { ServiceError } from "../pipeline/types.js";
 
 const execFileAsync = promisify(execFile);
 const FFMPEG = ffmpegPath || "ffmpeg";
-const openai = new OpenAI({ apiKey: config.openaiApiKey });
+const openai = new OpenAI();
 
 export async function transcribe(videoPath: string, signal?: AbortSignal): Promise<string> {
   const audioPath = videoPath.replace(/\.[^.]+$/, ".mp3");

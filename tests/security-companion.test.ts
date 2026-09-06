@@ -7,7 +7,22 @@ import path from 'node:path';
 import os from 'node:os';
 import type { AddressInfo } from 'node:net';
 import { createBrowserEgress } from '../companion/egress.js';
-import { GuidedBrowserRun, parseBrowserAction, type BrowserAction } from '../companion/browser.js';
+import { GuidedBrowserRun, parseBrowserAction, parseBrowserPlannerResponse, browserActionResponseSchema, type BrowserAction } from '../companion/browser.js';
+
+test('planner response schema excludes extra click text and its envelope still fails closed', () => {
+  const click = { type: 'click', description: 'Generate the preview', targetId: 'e1', url: null, text: null };
+  assert.deepEqual(parseBrowserPlannerResponse({ action: click }), click);
+  assert.throws(() => parseBrowserPlannerResponse({ action: click, extra: 'ignored instruction' }), /planner response/);
+  assert.throws(() => parseBrowserPlannerResponse({ action: { ...click, text: 'unexpected input' } }), /cannot include text/);
+  const alternatives = browserActionResponseSchema.properties.action.anyOf;
+  assert.equal(alternatives.length, 8);
+  const clickSchema = alternatives.find(schema => schema.properties.type.enum[0] === 'click')!;
+  assert.equal(clickSchema.properties.text.type, 'null');
+  assert.equal(clickSchema.properties.url.type, 'null');
+  assert.equal(clickSchema.properties.targetId.type, 'string');
+  const fillSchema = alternatives.find(schema => schema.properties.type.enum[0] === 'fill')!;
+  assert.equal(fillSchema.properties.text.type, 'string');
+});
 
 test('browser actions cannot smuggle a second operation through irrelevant fields', () => {
   const base = { type: 'navigate', description: 'Open the page', targetId: null, url: 'https://example.com', text: null };

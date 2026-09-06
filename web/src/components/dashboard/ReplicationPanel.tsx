@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import BrowserSession, { type LocalRunState as RunState } from "./BrowserSession";
+import ReplicationRehearsal from "./ReplicationRehearsal";
 import { ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Circle, Code2, Download, ExternalLink, FileText, Film, Loader2, Monitor, RefreshCw, Sparkles, Terminal, Unplug, WandSparkles, Workflow } from "lucide-react";
 import type { Analysis } from "@/lib/types";
 import { buildSourceEvidence, parseReplicationPlan, replicationPlanMarkdown, type ReplicationPlan } from "@/lib/execution-plan";
@@ -15,7 +16,7 @@ const MODES = [
   { id: "research", title: "Understand it", detail: "Explain, compare, investigate", icon: BookOpen, prompt: "Explain how this works, verify the main claims, and give me a concrete example I can try." },
 ] as const;
 
-interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean }
+interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string }
 
 function timestamp(seconds: number | null) {
   if (seconds === null) return "No timestamp";
@@ -36,7 +37,7 @@ function download(content: string, name: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export default function ReplicationPanel({ analysis, initialPlan, demo = false }: Props) {
+export default function ReplicationPanel({ analysis, initialPlan, demo = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "" }: Props) {
   const captured = buildSourceEvidence(analysis);
   const [mode, setMode] = useState<ReplicationPlan["mode"]>(initialPlan?.mode ?? "build");
   const [goal, setGoal] = useState(initialPlan?.goal ?? "");
@@ -45,7 +46,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false }
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"plan" | "evidence">("plan");
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(initialPairingToken);
   const [paired, setPaired] = useState(false);
   const [pairBusy, setPairBusy] = useState(false);
   const [localError, setLocalError] = useState("");
@@ -54,7 +55,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false }
   const [run, setRun] = useState<RunState | null>(null);
   const [launchBusy, setLaunchBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
-  const [executor, setExecutor] = useState<"terminal" | "browser">("terminal");
+  const [executor, setExecutor] = useState<"terminal" | "browser">(initialExecutor);
   const [browserConfigured, setBrowserConfigured] = useState(false);
   const [terminalAvailable, setTerminalAvailable] = useState(true);
   const [reviewed, setReviewed] = useState(false);
@@ -99,7 +100,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false }
     setBusy(true); setError(""); setReviewed(false);
     const controller = new AbortController(); generationController.current = controller;
     try {
-      const response = await fetch(`/api/analyses/${analysis.id}/replicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal: goal.trim(), mode }), signal: controller.signal });
+      const response = await fetch(planningEndpoint ?? `/api/analyses/${analysis.id}/replicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal: goal.trim(), mode }), signal: controller.signal });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not prepare this plan.");
       setPlan(parseReplicationPlan(data.plan)); setTab("plan"); setRun(null);
@@ -148,6 +149,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false }
   return (
     <div className="text-slate-900">
       {demo && <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><Film size={16} /><strong>Interactive demo</strong><span>Illustrative source and prepared plan. No AI request or computer execution.</span></div>}
+      {demo && <ReplicationRehearsal />}
       <div className="mb-8 flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600"><Film size={23} /></div>
         <div className="min-w-0 flex-1"><p className="mb-1 text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Your source · {analysis.platform}</p><h2 className="text-base leading-snug">{String(sourceTitle)}</h2><p className="mt-1 truncate text-xs text-slate-500">{analysis.source_url}</p></div>
@@ -165,7 +167,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false }
             <textarea id="replication-goal" value={goal} maxLength={1_200} onChange={(e) => { setGoal(e.target.value); setReviewed(false); }} placeholder={MODES.find((m) => m.id === mode)?.prompt} rows={3} className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><button type="button" onClick={() => { setGoal(MODES.find((m) => m.id === mode)!.prompt); setReviewed(false); }} className="text-xs font-medium text-blue-700 hover:underline">Use suggested goal</button><span className="text-[10px] text-slate-400">{goal.length}/1,200</span></div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3"><p className="max-w-xs text-xs leading-relaxed text-slate-500">Uses captured transcript, frame observations, and source text. Every step gets evidence or an inference label.</p><button onClick={prepare} disabled={demo || busy || goal.trim().length < 8 || sessionOpen || analysis.status !== "done"} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? <Loader2 size={16} className="animate-spin" /> : plan ? <RefreshCw size={15} /> : <Sparkles size={15} />}{demo ? "Example plan below" : busy ? "Reading source evidence…" : plan ? "Regenerate plan" : "Prepare my plan"}</button></div>
-            {!demo && <p className="mt-3 text-[10px] leading-relaxed text-slate-400">{remaining === null ? "20 planning attempts per 24-hour window. Free chat shares this allowance. Each generation attempt uses a slot." : `${remaining} planning requests remain in the current window.`}</p>}
+            {!demo && <p className="mt-3 text-[10px] leading-relaxed text-slate-400">{planningNotice ?? (remaining === null ? "20 planning attempts per 24-hour window. Free chat shares this allowance. Each generation attempt uses a slot." : `${remaining} planning requests remain in the current window.`)}</p>}
             {error && <p role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
             {stale && <p role="status" className="mt-4 text-xs text-amber-800">Your goal changed. Regenerate the plan before launching or exporting it.</p>}
           </section>
@@ -182,8 +184,10 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false }
             <div className="mb-4 grid gap-2"><button type="button" disabled={sessionOpen} onClick={() => setExecutor("browser")} aria-pressed={executor === "browser"} className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs ${executor === "browser" ? "border-blue-500 bg-blue-950 text-blue-200" : "border-slate-700 text-slate-400"}`}><Monitor size={16} /><span><strong className="block">Browser walkthrough</strong><span className="mt-1 block text-[10px] font-normal">Open pages, scroll, and review proposed actions</span></span></button><button type="button" disabled={sessionOpen} onClick={() => setExecutor("terminal")} aria-pressed={executor === "terminal"} className={`flex items-center gap-2 rounded-xl border p-3 text-left text-xs ${executor === "terminal" ? "border-blue-500 bg-blue-950 text-blue-200" : "border-slate-700 text-slate-400"}`}><Terminal size={16} /><span><strong className="block">Build in Terminal</strong><span className="mt-1 block text-[10px] font-normal">A Codex session in a fresh project workspace</span></span></button></div>
             {executor === "browser" && <p className="mb-4 rounded-lg border border-slate-700 bg-slate-900 p-3 text-[10px] leading-relaxed text-slate-300">Browser guidance sends screenshots and visible page text to OpenAI using your local API key. Enter logins and private fields directly in the isolated browser.</p>}
             {demo ? <div className="rounded-xl border border-slate-800 bg-slate-900 p-3 text-xs leading-relaxed text-slate-400">Demo launch is disabled. Open one of your completed analyses to prepare a real task.</div> : <>
+              {initialPairingToken ? <div className="mb-5 rounded-xl border border-slate-700 bg-slate-900 p-3"><p className="flex items-center gap-2 text-xs font-semibold text-slate-200"><Monitor size={14} className="text-blue-400" />{paired ? "Mac connected" : "Local companion detected"}{paired && <Check size={14} className="text-emerald-400" />}</p><p className="my-3 text-[10px] leading-relaxed text-slate-400">Pairing stays in this page’s memory. No browser storage is used.</p>{paired ? <button className="inline-flex items-center gap-1 text-xs text-slate-400" onClick={() => setPaired(false)}><Unplug size={12} />Disconnect</button> : <button onClick={pair} disabled={pairBusy || token.trim().length < 16} className="w-full rounded-lg bg-slate-800 px-3 py-2.5 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50">{pairBusy ? "Connecting…" : "Connect this Mac"}</button>}</div> : <>
               <button onClick={() => setShowSetup(!showSetup)} className="mb-4 flex w-full items-center justify-between rounded-lg border border-slate-700 p-3 text-xs text-slate-200"><span className="flex items-center gap-2"><Monitor size={14} />{paired ? "Mac connected" : "Connect this Mac"}</span>{paired ? <Check size={14} className="text-emerald-400" /> : <ChevronRight size={14} />}</button>
               {showSetup && <div className="mb-5 space-y-3"><p className="text-xs leading-relaxed text-slate-400">In the project folder, start the companion. Terminal tasks require Codex CLI installed and signed in. Browser walkthroughs require OPENAI_API_KEY in the companion’s local environment.</p><pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg bg-slate-900 p-3 text-[10px] leading-relaxed text-blue-200">npm run companion -- --origin {origin}</pre><label htmlFor="companion-token" className="block text-xs text-slate-300">Paste the pairing token printed in Terminal</label><input id="companion-token" type="password" value={token} onChange={(e) => { setToken(e.target.value); setPaired(false); }} autoComplete="off" maxLength={256} placeholder="Local pairing token" className="w-full rounded-lg border border-slate-700 bg-slate-900 p-2.5 text-xs text-white outline-none focus:border-blue-500" /><p className="text-[10px] leading-relaxed text-slate-500">Kept in this page’s memory. Sent only to the local companion. Closing or refreshing this page clears it.</p><button onClick={pair} disabled={pairBusy || token.trim().length < 16} className="rounded-lg bg-slate-800 px-3 py-2 text-xs text-white disabled:opacity-50">{pairBusy ? "Connecting…" : "Connect"}</button>{paired && <button className="ml-3 inline-flex items-center gap-1 text-xs text-slate-400" onClick={() => { setPaired(false); setToken(""); }}><Unplug size={12} />Disconnect</button>}</div>}
+              </>}
               {paired && executor === "terminal" && !terminalAvailable && <p className="mb-3 text-xs leading-relaxed text-amber-300">Terminal launch requires Codex CLI installed and signed in on macOS. Browser walkthroughs can work without Codex.</p>}
               {paired && executor === "browser" && !browserConfigured && <p className="mb-3 text-xs leading-relaxed text-amber-300">The browser planner is not configured. Add OPENAI_API_KEY to the companion’s environment, restart it, then reconnect.</p>}
               <label className="mb-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-300"><input type="checkbox" checked={reviewed} disabled={!plan || !!stale || sessionOpen} onChange={(e) => setReviewed(e.target.checked)} className="mt-0.5 accent-blue-500" /><span>I reviewed the plan and its gaps. Start this task on my computer.</span></label><button onClick={launch} disabled={!plan || !!stale || !paired || !reviewed || launchBusy || sessionOpen || (executor === "browser" && !browserConfigured) || (executor === "terminal" && !terminalAvailable)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">{launchBusy ? <Loader2 size={16} className="animate-spin" /> : executor === "browser" ? <Monitor size={16} /> : <Terminal size={16} />}{launchBusy ? "Opening session…" : executor === "browser" ? "Start browser walkthrough" : "Open in Terminal"}</button>

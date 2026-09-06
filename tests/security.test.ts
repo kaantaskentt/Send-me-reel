@@ -70,6 +70,7 @@ test("scraping passes shell metacharacters literally to an executable with an ar
     util: { promisify: (fn: (...args: any[]) => void) => (...args: any[]) => new Promise((resolve, reject) => fn(...args, (err: Error | null, result: unknown) => err ? reject(err) : resolve(result))) },
     "../pipeline/types.js": { ServiceError: Error },
     "./apifyScraper.js": { scrapeWithApify() { throw new Error("Unexpected fallback"); } },
+    "./mediaRuntime.js": { resolveYtDlpExecutable: () => "yt-dlp" },
   });
   const url = "https://youtube.com/watch?v=$(:);echo-inert";
   await service.scrapeVideo("youtube", url);
@@ -93,6 +94,8 @@ test("downloads use literal arguments, restore certificate verification, and cap
     fs: { existsSync: () => true, statSync: () => ({ size: 2000 }) },
     path: { join: (...parts: string[]) => parts.join("/") },
     "../pipeline/types.js": { ServiceError: Error },
+    "ffmpeg-static": "/fixture/ffmpeg",
+    "./mediaRuntime.js": { resolveYtDlpExecutable: () => "yt-dlp", ANALYSIS_VIDEO_FORMAT: "bv*[height<=1080]+ba/b[height<=1080]" },
   });
   const url = "https://youtube.com/watch?v=$(:)";
   await service.downloadVideo(url, "analysis-demo");

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spellbreaker Arcade</title>
+    <meta
+      name="description"
+      content="Wizard-themed block breaker game with a controllable mage paddle, magic orb, breakable wards, score, lives, and controls."
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <main class="arcade-app" aria-label="Spellbreaker Arcade">
+        <header class="hero">
+          <div class="title-block">
+            <p class="eyebrow">Local browser game</p>
+            <h1>Spellbreaker Arcade</h1>
+            <p class="intro">
+              Guide the wizard, launch the astral orb, and shatter every ward.
+              This version is built with original HTML, CSS, and JavaScript only.
+            </p>
+          </div>
+
+          <div class="hud" aria-label="Game stats">
+            <div class="hud-card">
+              <span class="hud-label">Score</span>
+              <strong id="score">0000</strong>
+            </div>
+            <div class="hud-card">
+              <span class="hud-label">Lives</span>
+              <strong id="lives">3</strong>
+            </div>
+            <div class="hud-card">
+              <span class="hud-label">State</span>
+              <strong id="state">Idle</strong>
+            </div>
+          </div>
+        </header>
+
+        <section class="stage-wrap" aria-label="Game stage">
+          <div class="stage-frame">
+            <canvas id="game" width="900" height="600" aria-label="Spellbreaker playfield"></canvas>
+            <div class="overlay" id="overlay">
+              <div class="overlay-panel">
+                <p class="overlay-kicker">Spellbook ready</p>
+                <h2 id="overlayTitle">Press Start</h2>
+                <p id="overlayCopy">
+                  Move with arrow keys or drag on the playfield. Launch with Start or Space.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="controls" aria-label="Game controls">
+            <button type="button" id="startBtn">Start</button>
+            <button type="button" id="pauseBtn">Pause</button>
+            <button type="button" id="restartBtn">Restart</button>
+            <button type="button" id="muteBtn" aria-pressed="false">Sound On</button>
+          </div>
+
+          <div class="touch-strip" aria-label="Touch controls">
+            <button type="button" id="touchLeft" aria-label="Move left">◀</button>
+            <button type="button" id="touchLaunch" aria-label="Launch spell">Launch</button>
+            <button type="button" id="touchRight" aria-label="Move right">▶</button>
+          </div>
+        </section>
+
+        <section class="notes" aria-label="Play notes">
+          <div class="note">
+            <h3>Controls</h3>
+            <p>Arrow keys or drag the playfield to steer the wizard. Space launches, P pauses.</p>
+          </div>
+          <div class="note">
+            <h3>Goal</h3>
+            <p>Clear all wards without letting the orb fall. The game resets when lives reach zero or the board is cleared.</p>
+          </div>
+          <div class="note">
+            <h3>Implementation note</h3>
+            <p>The wizard, orb, wards, and glow effects are code-drawn. That is an intentional adaptation because no external assets are allowed.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>

@@ -15,9 +15,9 @@ export const fixturePlan: ReplicationPlan = {
   evidence:[{id:'e1',kind:'frame',text:'The creator clicks a button and it displays Ready.',timestampSec:3}],warnings:['Fixture evidence.'],successCriteria:['The button works.']
 };
 const token = 'test-token-that-is-long-enough-for-local-pairing';
-async function setup(launch: (file:string)=>Promise<void> = async()=>{}, withoutCodex = false) {
+async function setup(launch: (file:string)=>Promise<void> = async()=>{}, withoutCodex = false, terminalMode?: 'interactive' | 'exec') {
   const rootDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-companion-test-'));
-  const server = createCompanionServer({ token, allowedOrigins:['http://localhost:3000'], rootDir, codexBinary:withoutCodex ? undefined : '/usr/bin/true', platform:'darwin', launchTerminal:launch });
+  const server = createCompanionServer({ token, allowedOrigins:['http://localhost:3000'], rootDir, codexBinary:withoutCodex ? undefined : '/usr/bin/true', terminalMode, platform:'darwin', launchTerminal:launch });
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return {rootDir,base, cleanup:async()=>{server.closeAllConnections(); await new Promise<void>(r=>server.close(()=>r())); await fs.rm(rootDir,{recursive:true,force:true});}};
@@ -72,4 +72,20 @@ test('companion remains pairable without Codex and explains the missing Terminal
     const health=await (await fetch(`${t.base}/health`,{headers})).json();assert.equal(health.status,'ready');assert.equal(health.capabilities.terminal,false);
     const response=await fetch(`${t.base}/runs`,{method:'POST',headers,body:JSON.stringify({plan:fixturePlan,executor:'terminal'})});assert.equal(response.status,409);assert.match((await response.json()).error,/Install and sign in to Codex/);
   }finally{await t.cleanup();}
+});
+
+test('streaming execution is selected only by trusted local configuration', async () => {
+  for (const configured of [undefined, 'exec'] as const) {
+    let launched = '';
+    const t = await setup(async filename => { launched = filename; }, false, configured);
+    try {
+      const response = await fetch(`${t.base}/runs`, { method: 'POST', headers, body: JSON.stringify({ plan: fixturePlan, terminalMode: configured ? 'interactive' : 'exec', codexModel: 'untrusted-web-model' }) });
+      assert.equal(response.status, 201);
+      const config = JSON.parse(await fs.readFile(path.join(path.dirname(launched), 'runner.json'), 'utf8'));
+      assert.equal(config.terminalMode, configured || 'interactive');
+      assert.equal(config.codexModel, undefined);
+      const health = await (await fetch(`${t.base}/health`, { headers })).json();
+      assert.equal(health.execution, configured ? 'streaming-terminal' : 'interactive-terminal');
+    } finally { await t.cleanup(); }
+  }
 });

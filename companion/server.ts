@@ -23,6 +23,8 @@ export interface CompanionOptions {
   allowedOrigins: string[];
   rootDir: string;
   codexBinary?: string;
+  terminalMode?: 'interactive' | 'exec';
+  codexModel?: string;
   platform?: string;
   launchTerminal?: (commandPath: string) => Promise<void>;
   browserApiKey?: string;
@@ -52,6 +54,8 @@ async function openTerminal(commandPath: string) {
 }
 export function createCompanionServer(options: CompanionOptions) {
   if (options.token.length < 32) throw new Error('Pairing token must contain at least 32 characters');
+  if (options.terminalMode !== undefined && !['interactive', 'exec'].includes(options.terminalMode)) throw new Error('Unknown local Terminal mode');
+  if (options.codexModel !== undefined && !/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,99}$/.test(options.codexModel)) throw new Error('Invalid local Codex model');
   if (!path.isAbsolute(options.rootDir) || (options.codexBinary !== undefined && !path.isAbsolute(options.codexBinary))) throw new Error('Local paths must be absolute');
   for (const origin of options.allowedOrigins) {
     const parsed = new URL(origin);
@@ -94,7 +98,7 @@ export function createCompanionServer(options: CompanionOptions) {
     if (Buffer.byteLength(auth) !== Buffer.byteLength(wanted) || !timingSafeEqual(Buffer.from(auth), Buffer.from(wanted))) return json(response, 401, { error: 'Pair this browser with the token shown by the local companion' });
     const url = new URL(request.url || '/', 'http://127.0.0.1');
     if (request.method === 'GET' && url.pathname === '/health') {
-      return json(response, 200, { status: 'ready', platform: options.platform || process.platform, runner: 'codex', execution: 'interactive-terminal', capabilities: { terminal: Boolean(options.codexBinary), browser: { configured: Boolean(options.browserApiKey || options.browserPlanner) } }, version: 1 });
+      return json(response, 200, { status: 'ready', platform: options.platform || process.platform, runner: 'codex', execution: options.terminalMode === 'exec' ? 'streaming-terminal' : 'interactive-terminal', capabilities: { terminal: Boolean(options.codexBinary), browser: { configured: Boolean(options.browserApiKey || options.browserPlanner) } }, version: 1 });
     }
     const runId = url.pathname.match(/^\/runs\/([a-f0-9-]{36})$/)?.[1];
     if (request.method === 'GET' && runId) {
@@ -166,7 +170,7 @@ export function createCompanionServer(options: CompanionOptions) {
         return json(response, 201, state);
       }
       const configPath = path.join(controlDir, 'runner.json');
-      await fs.writeFile(configPath, JSON.stringify({ id, workspace, codexBinary: options.codexBinary }), { mode: 0o600 });
+      await fs.writeFile(configPath, JSON.stringify({ id, workspace, codexBinary: options.codexBinary, terminalMode: options.terminalMode || 'interactive', codexModel: options.codexModel }), { mode: 0o600 });
       const commandPath = path.join(controlDir, 'Build with ContextDrop.command');
       // Only locally resolved trusted paths enter this fixed launcher. No creator text or generated commands.
       await fs.writeFile(commandPath, `#!/bin/sh\nexec ${shellQuote(process.execPath)} ${shellQuote(path.join(here, 'runner.mjs'))} ${shellQuote(configPath)}\n`, { mode: 0o700 });
@@ -206,7 +210,9 @@ async function main() {
     }
   } catch { console.log('Codex CLI is unavailable. Browser guidance can still run with OPENAI_API_KEY.'); }
   const token = randomBytes(32).toString('base64url');
-  const server = createCompanionServer({ token, allowedOrigins: [origin], rootDir: value('--root') || path.join(os.homedir(), 'Developer', 'contextdrop-runs'), codexBinary, browserApiKey: process.env.OPENAI_API_KEY });
+  const terminalMode = process.env.CONTEXTDROP_TERMINAL_MODE || 'interactive';
+  if (terminalMode !== 'interactive' && terminalMode !== 'exec') throw new Error('CONTEXTDROP_TERMINAL_MODE must be interactive or exec');
+  const server = createCompanionServer({ token, allowedOrigins: [origin], rootDir: value('--root') || path.join(os.homedir(), 'Developer', 'contextdrop-runs'), codexBinary, terminalMode, codexModel: process.env.CONTEXTDROP_CODEX_MODEL, browserApiKey: process.env.OPENAI_API_KEY });
   server.on('error', (error) => { console.error(`Companion failed: ${error.message}`); process.exitCode = 1; });
   server.listen(port, '127.0.0.1', () => {
     console.log(`\nContextDrop Mac companion · http://127.0.0.1:${port}\nPaired app origin: ${origin}\nPairing token (this session only): ${token}\n\nPaste this token into Build on my Mac. Keep this Terminal open. Ctrl+C stops accepting new runs.\n`);

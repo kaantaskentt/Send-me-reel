@@ -1,11 +1,11 @@
 import fs from "fs/promises";
 import OpenAI from "openai";
-import { config } from "../config.js";
+import "dotenv/config";
 import { ServiceError } from "../pipeline/types.js";
 import type { FrameAnalysis } from "../pipeline/types.js";
 import { MAX_ANALYSIS_FRAMES } from "./frameExtractor.js";
 
-const openai = new OpenAI({ apiKey: config.openaiApiKey });
+const openai = new OpenAI();
 const BATCH_SIZE = 4;
 export const MAX_VISION_CONCURRENCY = 2;
 

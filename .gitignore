@@ -8,3 +8,5 @@ dist/
 preview-shots/
 audit-results.md
 TEMP-DOCS/
+# Private local captures, run state, and provider outputs
+.contextdrop/

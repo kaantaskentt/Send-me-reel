@@ -4,6 +4,8 @@ import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { ServiceError } from "../pipeline/types.js";
+import ffmpegPath from "ffmpeg-static";
+import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT } from "./mediaRuntime.js";
 
 const execFileAsync = promisify(execFile);
 const TMP_BASE = "/tmp/contextdrop";
@@ -37,8 +39,9 @@ export async function downloadVideo(
     try {
       console.log(`[download] yt-dlp attempt ${attempt}: ${url}`);
       const { stdout, stderr } = await execFileAsync(
-        "yt-dlp",
-        ["--js-runtimes", "node", "-f", "bv*+ba/b", "--merge-output-format", "mp4", "-o", filePath,
+        resolveYtDlpExecutable(),
+        ["--js-runtimes", "node", "-f", ANALYSIS_VIDEO_FORMAT, "--merge-output-format", "mp4", "-o", filePath,
+          ...(ffmpegPath ? ["--ffmpeg-location", ffmpegPath] : []),
           "--no-warnings", "--no-playlist", "--max-filesize", "100M",
           "--extractor-args", "instagram:compatible_formats", "--", url],
         { timeout: 90000, maxBuffer: 5 * 1024 * 1024 },

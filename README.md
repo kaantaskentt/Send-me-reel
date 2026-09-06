@@ -63,6 +63,18 @@ Paste the companion's token into the execution panel. The token lasts only for t
 
 The development-only `/replicate/demo` page uses labelled fixture content for UI inspection without provider credentials. It does not analyze a live video and does not enable real execution.
 
+### Local video studio
+
+The optional `/replicate/local` development studio runs real video capture and planning without a production database. It accepts public YouTube, Instagram, TikTok, and X links up to ten minutes, displays the actual captured frames, and uses the same bounded plan contract and Mac companion as the dashboard. Source access still varies by post.
+
+Set `CONTEXTDROP_LOCAL_STUDIO=1` and `OPENAI_API_KEY` in `web/.env.local`, and configure `OPENAI_API_KEY` in the root `.env`. The local capture currently uses yt-dlp; the production worker additionally supports Apify fallback through `APIFY_TOKEN`. Then run `npm run local:studio` and `npm run local:companion` in separate terminals. Visit `http://127.0.0.1:3127/replicate/local`. The private companion session enables an explicit **Connect this Mac** button; it does not authorize a task automatically. This studio rejects production mode, remote hostnames, and cross-origin mutations. Bind development servers to loopback.
+
+For streamed local builds, set `CONTEXTDROP_TERMINAL_MODE=exec` and a supported `CONTEXTDROP_CODEX_MODEL` in the root `.env` before starting the companion. Exec mode ignores stale user model/plugin configuration but keeps signed-in CLI authentication, workspace sandboxing, and on-request approval policy. A zero exit still means the result needs review.
+
+Captures and run state are private, ignored files under `.contextdrop/`. The downloader uses explicit `YTDLP_PATH`, then `.contextdrop/media-runtime/bin/yt-dlp` when installed, then the system executable. See [video evidence and runtime setup](docs/VIDEO_EVIDENCE.md). Browser guidance sends the isolated browser's screenshots and visible text to the configured OpenAI model; keep private fields for manual input.
+
+The **Start rehearsal** button at `/replicate/demo` is a separate recorded-example walkthrough that makes no provider or companion requests. It is available as a clearly labelled offline fallback for presentations.
+
 ## Verification
 
 ```sh

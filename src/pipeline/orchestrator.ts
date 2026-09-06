@@ -254,12 +254,12 @@ export async function executeVideoPipeline(
     signal?.throwIfAborted();
     // Metadata can be public while the media CDN blocks yt-dlp. Give the alternate
     // provider a chance in this case too, while retaining the original content identity.
-    if (!apifyVideoUrl && source === "yt-dlp" && (platform === "instagram" || platform === "tiktok")) {
+    if (!apifyVideoUrl && source === "yt-dlp" && (platform === "instagram" || platform === "tiktok" || platform === "x")) {
       try {
         const fallback = await scrapeWithApify(platform, url);
         signal?.throwIfAborted();
         scraper.verifyScrapedContent(platform, url, fallback);
-        if (platform === "tiktok" && String(fallback.metadata.id) !== scrapedId) {
+        if ((platform === "tiktok" || platform === "x") && String(fallback.metadata.id) !== scrapedId) {
           throw new ServiceError("SCRAPE_MISMATCH", "The download fallback returned a different video", false);
         }
         apifyVideoUrl = fallback.apifyVideoUrl;
