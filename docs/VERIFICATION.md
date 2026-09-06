@@ -4,7 +4,7 @@ Environment: macOS, Node.js 24.13.0, Next.js 16.3.4, Chromium 1243 / Playwright 
 
 | Check | Result | What this proves |
 |---|---|---|
-| `npm test` | 84 passed | Contract, API, ownership, network, acquisition/evidence, queue, billing, local studio, Terminal runner and controlled browser behavior |
+| `npm test` | 91 passed | Contract, API, ownership, network, acquisition/evidence, queue, billing, local studio, Terminal runner and controlled browser behavior |
 | Embedded PostgreSQL | 8 tests included above | Actual migration SQL, rollback, duplicate submission/refund behavior, and RPC permissions |
 | `npm run build` | Passed | Worker TypeScript compilation |
 | `npm run check:companion` | Passed | Local companion TypeScript compilation |
@@ -23,6 +23,16 @@ Environment: macOS, Node.js 24.13.0, Next.js 16.3.4, Chromium 1243 / Playwright 
 | Instagram acquisition smoke | Passed; zero AI/Apify calls | Matching reel metadata and actual 64.223537-second, 10,232,788-byte video/audio retrieval |
 
 These live checks are separate from the default regression suite. They establish the stated local paths and artifacts, not universal source support or a production deployment.
+
+## Follow-up: a real metadata overflow and misleading capture status
+
+The user's YouTube video `QhmhUgccaS0` failed during metadata retrieval at 16:30 UTC with `stdout maxBuffer length exceeded`. The old call buffered yt-dlp's complete JSON, including unused fields, until it exceeded 10 MiB. The video itself was within the ten-minute duration limit. Both the local CLI and production scraper now ask yt-dlp to project only consumed source fields, a format-presence marker, and bounded chapter fields before stdout reaches Node. The hard output limit is now 1 MiB. The exact source returned 2,350 bytes successfully. An offline integration regression uses real yt-dlp against a fixture larger than 12 MiB and verifies that unused captions/fragments are excluded.
+
+The page previously displayed a generic failure alongside a false “Waiting for real source capture” panel. It now renders one live status, maps private diagnostics to safe, actionable messages, clears old failures on retry, and waits for capture startup before polling. An already-running capture returns its state on HTTP 409 so the UI follows it instead of reporting failure. Startup failures persist a failed checkpoint.
+
+The real retry, analysis `9b7a1e12-19e3-448a-a0b7-7851674c8928`, completed at **16:40:17 UTC**, about 133 seconds after starting. The downloaded file was 67,916,385 bytes and measured 516.552 seconds. Whisper produced 9,767 characters (1,866 words); all 95 sampled frames were analyzed with zero failed frames. This is analysis evidence, not a generated website or completed execution task. The original failure checkpoint was preserved privately.
+
+The 91-test suite, worker/CLI typechecks, and optimized Next.js build passed. The existing three UI tests passed. Separate browser checks verified the actual failure page, desktop/mobile layout, nine delayed-start/retry/failure assertions and eight assertions for joining an existing capture after HTTP 409, with intercepted requests and no paid model calls. QA files are under `/private/tmp/contextdrop-capture-failure-qa/`.
 
 ## Rendered UI
 

@@ -10,6 +10,7 @@ import * as webUrlModule from "../web/src/lib/url-utils.ts";
 import { isPublicAddress, resolvePublicUrl } from "../src/services/publicUrl.ts";
 import * as mediaModule from "../web/src/lib/media-proxy.ts";
 import * as notionStateModule from "../web/src/lib/notion-oauth-state.ts";
+import * as ytDlpMetadata from "../src/services/ytDlpMetadata.ts";
 
 // The nested web package is CommonJS when imported by the worker's ESM tests.
 const { detectPlatform: webPlatform } = (webUrlModule as any).default || webUrlModule;
@@ -65,12 +66,13 @@ test("scraping passes shell metacharacters literally to an executable with an ar
   const service = loadIsolated("src/services/scraper.ts", {
     child_process: { execFile: (...args: any[]) => {
       call = args.slice(0, 3);
-      args[3](null, { stdout: JSON.stringify({ id: "demo", duration: 1, title: "demo" }), stderr: "" });
+      args[3](null, { stdout: JSON.stringify({ source: { id: "demo", duration: 1, title: "demo" } }), stderr: "" });
     } },
     util: { promisify: (fn: (...args: any[]) => void) => (...args: any[]) => new Promise((resolve, reject) => fn(...args, (err: Error | null, result: unknown) => err ? reject(err) : resolve(result))) },
     "../pipeline/types.js": { ServiceError: Error },
     "./apifyScraper.js": { scrapeWithApify() { throw new Error("Unexpected fallback"); } },
     "./mediaRuntime.js": { resolveYtDlpExecutable: () => "yt-dlp" },
+    "./ytDlpMetadata.js": ytDlpMetadata,
   });
   const url = "https://youtube.com/watch?v=$(:);echo-inert";
   await service.scrapeVideo("youtube", url);

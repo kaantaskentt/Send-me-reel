@@ -10,6 +10,7 @@ import ffmpegPath from "ffmpeg-static";
 import { detectPlatform, parseSourceUrl } from "../src/pipeline/urlRouter.js";
 import { extractFrames, getVideoDuration, validateVideoDuration, MAX_ANALYSIS_FRAMES, FRAME_MAX_WIDTH } from "../src/services/frameExtractor.js";
 import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT } from "../src/services/mediaRuntime.js";
+import { ytDlpMetadataArgs, parseYtDlpMetadata, YTDLP_METADATA_MAX_BYTES } from "../src/services/ytDlpMetadata.js";
 
 const execFileAsync = promisify(execFile);
 const HELP = `Usage: npx tsx scripts/analyze-one.ts URL [--output .contextdrop/local-analysis.json] [--timeout-seconds 720] [--note "What to reproduce"]\n\nCaptures public video/audio and sampled frame evidence locally. OPENAI_API_KEY enables actual transcription and frame analysis. Without it, capture remains incomplete and no model calls are made. No Supabase or Telegram configuration is required.`;
@@ -104,10 +105,9 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   }
   try {
     const metadata = await stage("metadata", "scraping", async () => {
-      const { stdout } = await execFileAsync(ytdlpCommand, ["--dump-single-json", "--skip-download", "--no-playlist", "--js-runtimes", "node", "--socket-timeout", "15", "--retries", "1", "--", input.url], { timeout: 60_000, maxBuffer: 10 * 1024 * 1024, signal: controller.signal });
-      return JSON.parse(stdout);
+      const { stdout } = await execFileAsync(ytdlpCommand, ytDlpMetadataArgs(input.url), { timeout: 60_000, maxBuffer: YTDLP_METADATA_MAX_BYTES, signal: controller.signal });
+      return parseYtDlpMetadata(stdout);
     });
-    validateVideoDuration(Number(metadata.duration));
     analysis.title = metadata.title || null;
     analysis.caption = metadata.description || metadata.title || "";
     Object.assign(analysis.metadata, {
@@ -115,6 +115,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       authorUsername: metadata.uploader_id || metadata.channel_id, duration: metadata.duration,
       webpage_url: metadata.webpage_url, thumbnail: metadata.thumbnail, chapters: metadata.chapters || [],
     });
+    validateVideoDuration(Number(metadata.duration));
     const videoPath = path.join(captureDirectory, "video.mp4");
     await stage("download", "scraping", async () => {
       await execFileAsync(ytdlpCommand, [
@@ -200,6 +201,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   } catch (error) {
     analysis.status = "failed";
     analysis.error_message = safeError(error);
+    analysis.metadata.local_capture.errorCode = error && typeof error === "object" && "code" in error && typeof error.code === "string"
+      ? error.code.slice(0, 100) : "CAPTURE_FAILED";
     analysis.metadata.local_capture.stage = "failed";
     analysis.metadata.source_evidence.capture_complete = false;
     await save();

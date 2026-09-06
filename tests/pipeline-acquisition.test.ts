@@ -8,6 +8,7 @@ import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { ServiceError } from "../src/pipeline/types.ts";
 import { resolveYtDlpExecutable } from "../src/services/mediaRuntime.ts";
+import * as ytDlpMetadata from "../src/services/ytDlpMetadata.ts";
 
 function load(file: string, dependencies: Record<string, unknown>) {
   const source = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -92,6 +93,7 @@ function scraper(stderr: string, alternate: () => Promise<any>) {
     "../pipeline/types.js": { ServiceError },
     "./apifyScraper.js": { scrapeWithApify: alternate },
     "./mediaRuntime.js": { resolveYtDlpExecutable: () => "/maintained/yt-dlp" },
+    "./ytDlpMetadata.js": ytDlpMetadata,
   });
   return { service, attempts: () => attempts };
 }

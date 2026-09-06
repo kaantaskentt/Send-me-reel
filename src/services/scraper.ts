@@ -4,6 +4,7 @@ import { ServiceError } from "../pipeline/types.js";
 import type { Platform, ScrapedVideo, ScrapedArticle } from "../pipeline/types.js";
 import { scrapeWithApify } from "./apifyScraper.js";
 import { resolveYtDlpExecutable } from "./mediaRuntime.js";
+import { ytDlpMetadataArgs, parseYtDlpMetadata, YTDLP_METADATA_MAX_BYTES } from "./ytDlpMetadata.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -32,8 +33,8 @@ export async function scrapeVideo(
       // Use stderr to capture errors, don't suppress them
       const { stdout, stderr } = await execFileAsync(
         resolveYtDlpExecutable(),
-        ["--dump-json", "--no-download", "--no-playlist", "--js-runtimes", "node", "--", url],
-        { timeout: 45000, maxBuffer: 10 * 1024 * 1024 },
+        ytDlpMetadataArgs(url),
+        { timeout: 45000, maxBuffer: YTDLP_METADATA_MAX_BYTES },
       );
 
       const output = stdout.trim();
@@ -81,7 +82,7 @@ export async function scrapeVideo(
         throw new Error("No JSON found in yt-dlp output");
       }
 
-      const data = JSON.parse(jsonLine);
+      const data = parseYtDlpMetadata(jsonLine);
 
       // Check if there's actually video content
       if (!data.duration && !data.formats?.length) {

@@ -47,10 +47,12 @@ The result is an `Analysis`-compatible JSON checkpoint. `status` progresses thro
 
 - `transcript`, `frame_descriptions`, actual source title/caption and source URL.
 - `metadata.source_evidence`: measured duration, extraction/model status, counts, timing limitations and warnings.
-- `metadata.local_capture`: current stage, process ID, timestamps and stage errors.
+- `metadata.local_capture`: current stage, process ID, timestamps, stage errors and a failure code when available. The UI maps these private diagnostics to safe messages; it does not expose raw provider errors.
 - `metadata.local_evidence`: absolute paths to the downloaded video and sampled JPEGs, their source timestamps, capture time and source URL.
 
 The output is written atomically with private file permissions. Media and JPEGs remain in `.contextdrop/captures/<analysis-id>/` so the local studio can show real source frames. `.contextdrop/` is gitignored. Preserve a successful capture when demonstrating the planner; starting another capture makes new model calls and replaces the default checkpoint.
+
+Metadata is requested through a shared yt-dlp output template that selects only source fields used by the application. Unused captions, signed media URLs and format fragment lists are excluded before buffering, with a 1 MiB limit. This fixes a real public YouTube source whose complete metadata overflowed the former 10 MiB buffer. See the follow-up in [the verification record](VERIFICATION.md).
 
 ## Platform readiness
 
