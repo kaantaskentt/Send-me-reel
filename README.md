@@ -1,116 +1,88 @@
-<div align="center">
-  <img src="https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/readme_banner-bPypwAhrFjfNeErmmoqeSf.png" alt="ContextDrop — Stop bookmarking. Start understanding." width="100%" />
-</div>
+# ContextDrop
 
-<br />
+Turn an internet example into something you actually try, build, or do.
 
-<div align="center">
+ContextDrop accepts social links through its web dashboard and Telegram bot, captures source content, and prepares a task grounded in the creator's words and sampled on-screen actions. The new local Mac companion can guide a visible browser workflow or open a Codex build session in Terminal.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
+**This branch adds a locally tested execution foundation.** Live provider credentials, a running worker, and the database migrations are required for real links. It does not promise access to every URL or unrestricted control of every Mac application.
 
-</div>
-
----
-
-## What is ContextDrop?
-
-ContextDrop is a Telegram bot that turns social media videos into actionable insights — in under 60 seconds.
-
-Send any Instagram Reel, TikTok, or X video link. The bot transcribes the audio, analyzes the screen, extracts every tool and concept mentioned, and returns a personalized verdict: **what it contains, why it matters to you, and what to do next.** Then you tap Learn, Apply, or Skip.
-
-No more saving videos you never watch. No more losing that reel with the tool you wanted to try.
-
----
-
-## Try it now
-
-Copy this link and paste it into the bot to see a live example:
-
-```
-https://www.instagram.com/reel/DFnVBmxx2Lj/
+```mermaid
+flowchart LR
+  A[Paste a link] --> B[Retrieve media or article]
+  B --> C[Transcript + timestamped screen evidence]
+  C --> D[Choose a goal and review the plan]
+  D --> E[Local Mac companion]
+  E --> F[Visible browser + highlighted actions]
+  E --> G[Codex in Terminal]
+  F --> H[User decisions + observable results]
+  G --> H
 ```
 
-Then open [@contextdrop2027bot](https://t.me/contextdrop2027bot) on Telegram and paste it. Verdict in 60 seconds.
+## What you can do
 
----
+- Open a finished analysis and choose **Build / automate this** to prepare a source-linked task.
+- Adapt the goal: build, automate, create, or research. Observed steps and proposed additions are distinguished.
+- Review prerequisites, missing evidence, source timestamps, and outcome checks.
+- Pair the Mac companion using a session token. Choose a guided browser walkthrough or a Terminal build.
+- In browser mode, see the current page and highlighted target. Approve or decline each navigation, click, or fill; scrolling and inspection proceed automatically. Enter logins and private fields directly in the browser, then continue.
+- In Terminal mode, Codex works in a fresh project folder with normal approval and workspace restrictions.
+- Download the plan as JSON or Markdown. Agent-reported completion is explicitly **unverified** until the output is checked.
 
-## Repository structure
+Browser mode uses an isolated Chromium session. It can navigate, click, fill ordinary fields, scroll, go back, and save downloads. It does not automate CAPTCHA, payment/private fields, native Mac apps, arbitrary JavaScript from the model, or file uploads. A visible browser can remain open for manual review; Stop closes it without undoing actions already performed.
 
-```
-/
-├── src/                  # Telegram bot (Node.js + TypeScript)
-│   ├── bot/              # Bot handlers, commands, onboarding
-│   ├── pipeline/         # Orchestrator, URL router, analysis types
-│   ├── services/         # Transcriber, visual analyzer, verdict generator
-│   └── db/               # Supabase queries (users, analyses, credits)
-│
-└── web/                  # Landing page + dashboard (Next.js 15)
-    └── src/
-        ├── app/          # Next.js App Router pages & API routes
-        ├── components/
-        │   ├── landing/  # Landing page sections
-        │   └── dashboard/# User dashboard components
-        └── hooks/        # Scroll animation, etc.
-```
+## Local setup
 
----
+Requires Node.js 22+, npm, git, ffmpeg/ffprobe via the included packages, and a maintained `yt-dlp` executable with its matching EJS package for social media ingestion. The worker explicitly enables the existing Node.js runtime for YouTube challenges. For pip-based installations, use `python3 -m pip install -U "yt-dlp[default]"` in your chosen Python environment. The local companion requires macOS. Terminal mode uses an installed and signed-in Codex CLI; browser guidance uses your `OPENAI_API_KEY`.
 
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Bot runtime | Node.js + TypeScript + Telegraf |
-| AI pipeline | OpenAI Whisper · GPT-5.4-mini Vision · GPT-5.4 |
-| Database | Supabase (PostgreSQL) |
-| Storage | Supabase Storage |
-| Landing page | Next.js 15 · Tailwind CSS 4 · React 19 |
-| Integrations | Notion API |
-
----
-
-## Getting started
-
-### Bot
-
-```bash
-# Install dependencies
-npm install
-
-# Copy environment variables
+```sh
+npm ci
+npm --prefix web ci
+npx playwright install chromium
 cp .env.example .env
-# Fill in TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
-
-# Run in development
-npm run dev
+cp web/.env.example web/.env.local
 ```
 
-### Web
+Planning is capped at 20 provider attempts per user per day (shared with free chat). Each reserved attempt counts even if its provider call fails. `REPLICATION_MODEL` optionally selects the planning model.
 
-```bash
-cd web
-npm install
+Fill the environment files locally; never paste secrets into the frontend or a plan. The bot/worker and web app share Supabase settings and `JWT_SECRET`. Browser guidance reads `OPENAI_API_KEY` from the root environment. Apply the checked-in Supabase migrations, including `022_atomic_analysis_billing.sql`, before using the updated analysis submission and refunds. Existing production data must be reviewed before applying migrations; tests here do not apply changes to your live database.
+
+Start each in a separate Terminal:
+
+```sh
+# Worker + Telegram bot (requires configured .env)
 npm run dev
-# Open http://localhost:3000
+
+# Web dashboard
+npm --prefix web run dev
+
+# Mac companion. Origin must exactly match the address in your browser.
+npm run companion -- --origin http://localhost:3000
 ```
 
----
+Paste the companion's token into the execution panel. The token lasts only for that companion session and is kept in browser memory, not local storage. Output folders are created under `~/Developer/contextdrop-runs/<run-id>/project`. Keep the companion Terminal open. A custom port and output root are available with `--port` and `--root`.
 
-## Environment variables
+The development-only `/replicate/demo` page uses labelled fixture content for UI inspection without provider credentials. It does not analyze a live video and does not enable real execution.
 
-See `.env.example` for the full list. Key variables:
+## Verification
 
-| Variable | Description |
-|---|---|
-| `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) |
-| `OPENAI_API_KEY` | For transcription and analysis |
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase service role key |
+```sh
+npm test
+npm run build
+npm run check:companion
+npm --prefix web run build
+# With the development server running on 127.0.0.1:3127:
+npm run test:ui
+```
 
----
+Tests include synthetic video extraction, structured evidence validation, retries and persistence failures, URL/proxy/account boundaries, local companion pairing, and a real Chromium approval/click flow using a deterministic test planner. Those offline tests do not establish the quality of a live model on arbitrary tutorials.
 
-<div align="center">
-  <sub>Built with ☕ and orange accents.</sub>
-</div>
+See [the implementation audit](docs/IMPLEMENTATION-AUDIT.md) for evidence, known limits and the next release gates, and [the product direction](docs/PRODUCT-DIRECTION.md) for the intended full experience.
+
+## Repository
+
+- `src/`: worker, bot, media retrieval, transcription, evidence analysis, persistence.
+- `web/`: Next.js dashboard, authenticated planning API, review and execution UI.
+- `shared/`: bounded, data-only replication plan contract.
+- `companion/`: loopback pairing server, guided browser, checked-IP network proxy, Terminal runner.
+- `supabase/migrations/`: database schema and transactional credit functions.
+- `tests/`: offline regressions and controlled browser workflows.
