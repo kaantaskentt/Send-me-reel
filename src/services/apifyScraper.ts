@@ -235,7 +235,10 @@ export async function downloadFromCdn(
   const filePath = path.join(dir, "video.mp4");
 
   const appUrl = config.appUrl;
-  const proxySecret = (process.env.JWT_SECRET || "").replace(/\s+/g, "");
+  const proxySecret = process.env.MEDIA_PROXY_SECRET || process.env.JWT_SECRET;
+  if (!proxySecret) {
+    throw new ServiceError("PROXY_NOT_CONFIGURED", "A media proxy secret is required", false);
+  }
 
   console.log(`[apify] Downloading video via proxy: ${videoUrl.slice(0, 80)}...`);
 

@@ -7,17 +7,7 @@ function ConnectNotionContent() {
   const searchParams = useSearchParams();
   const analysisId = searchParams.get("analysisId") || "";
 
-  const clientId = "33ad872b-594c-81bd-86f2-0037cd6b0623";
-  const redirectUri = `${window.location.origin}/api/auth/notion/callback`;
-
-  const notionAuthUrl = new URL("https://api.notion.com/v1/oauth/authorize");
-  notionAuthUrl.searchParams.set("client_id", clientId);
-  notionAuthUrl.searchParams.set("response_type", "code");
-  notionAuthUrl.searchParams.set("owner", "user");
-  notionAuthUrl.searchParams.set("redirect_uri", redirectUri);
-  if (analysisId) {
-    notionAuthUrl.searchParams.set("state", analysisId);
-  }
+  const notionAuthUrl = `/api/auth/notion/start${analysisId ? `?analysisId=${encodeURIComponent(analysisId)}` : ""}`;
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center p-6">
@@ -63,7 +53,7 @@ function ConnectNotionContent() {
         </p>
 
         <a
-          href={notionAuthUrl.toString()}
+          href={notionAuthUrl}
           className="block w-full py-3 px-4 bg-blue-500 hover:bg-blue-400 text-white font-semibold rounded-lg transition-colors text-center"
         >
           Continue to Notion

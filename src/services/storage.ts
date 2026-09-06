@@ -1,11 +1,11 @@
 import fs from "fs/promises";
 import { existsSync, statSync } from "fs";
 import path from "path";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { ServiceError } from "../pipeline/types.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const TMP_BASE = "/tmp/contextdrop";
 
 const MAX_RETRIES = 2;
@@ -36,8 +36,11 @@ export async function downloadVideo(
 
     try {
       console.log(`[download] yt-dlp attempt ${attempt}: ${url}`);
-      const { stdout, stderr } = await execAsync(
-        `yt-dlp -f "bv*+ba/b" --merge-output-format mp4 -o "${filePath}" --no-warnings --no-check-certificates --extractor-args "instagram:compatible_formats" "${url}" 2>&1`,
+      const { stdout, stderr } = await execFileAsync(
+        "yt-dlp",
+        ["--js-runtimes", "node", "-f", "bv*+ba/b", "--merge-output-format", "mp4", "-o", filePath,
+          "--no-warnings", "--no-playlist", "--max-filesize", "100M",
+          "--extractor-args", "instagram:compatible_formats", "--", url],
         { timeout: 90000, maxBuffer: 5 * 1024 * 1024 },
       );
 

@@ -4,17 +4,19 @@
   "description": "AI-powered content analysis bot",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "tsx --test tests/*.test.ts web/tests/*.test.ts",
     "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "companion": "tsx companion/server.ts",
+    "check:companion": "tsc -p companion/tsconfig.json",
+    "test:ui": "npm --prefix web run test:replication"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
     "@grammyjs/conversations": "^2.1.1",
     "@notionhq/client": "^5.16.0",
     "@supabase/supabase-js": "^2.101.1",
@@ -27,14 +29,16 @@
     "grammy": "^1.42.0",
     "jose": "^6.2.2",
     "openai": "^6.33.0",
-    "sharp": "^0.34.5"
+    "playwright": "^1.63.0",
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/express": "^5.0.6",
     "@types/ffprobe-static": "^2.0.3",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^25.5.2",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.13",
     "typescript": "^6.0.2"
   }
 }

@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { pushToNotion } from "@/lib/notion-push";
+import { cookies } from "next/headers";
+import { verifyNotionOAuthState, NOTION_STATE_COOKIE } from "@/lib/notion-oauth-state";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
-  const state = request.nextUrl.searchParams.get("state"); // analysisId if coming from direct connect
+  const state = request.nextUrl.searchParams.get("state");
   const baseUrl = request.nextUrl.origin;
 
   if (error || !code) {
@@ -22,6 +24,14 @@ export async function GET(request: NextRequest) {
       new URL("/?notion_error=not_logged_in", baseUrl),
     );
   }
+
+  const cookieStore = await cookies();
+  const validatedState = await verifyNotionOAuthState(state, cookieStore.get(NOTION_STATE_COOKIE)?.value, session.sub, process.env.JWT_SECRET);
+  if (!validatedState) {
+    return NextResponse.redirect(new URL("/dashboard?notion_error=invalid_state", baseUrl));
+  }
+  cookieStore.delete(NOTION_STATE_COOKIE);
+  const analysisId = validatedState.analysisId;
 
   // Exchange code for access token
   const clientId = process.env.NOTION_CLIENT_ID;
@@ -181,12 +191,12 @@ export async function GET(request: NextRequest) {
     .eq("id", session.sub);
 
   // If we have an analysisId from state, auto-push the analysis
-  if (state) {
+  if (analysisId) {
     try {
       const { data: analysis } = await supabase
         .from("analyses")
         .select("verdict, transcript, visual_summary, source_url, platform, verdict_intent")
-        .eq("id", state)
+        .eq("id", analysisId)
         .eq("user_id", session.sub)
         .single();
 

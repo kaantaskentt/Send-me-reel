@@ -10,6 +10,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   google_callback_failed: "Something went wrong with Google sign-in.",
   missing_token: "Invalid sign-in link.",
   account_not_found: "Account not found.",
+  account_conflict: "This link belongs to another account. Your current account has not been changed. Use your own sign-in link.",
 };
 
 export default function LoginContent({

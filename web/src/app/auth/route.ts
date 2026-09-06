@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken, getSession, setSessionCookie, signToken } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
-import { mergeAccounts } from "@/lib/merge-accounts";
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -43,30 +42,10 @@ export async function GET(request: NextRequest) {
   // Check for existing session (user might be logged in with a different identity)
   const existingSession = await getSession();
 
-  if (existingSession && existingSession.sub !== payload.sub) {
-    // Different user is logged in — check if we should merge
-    const { data: sessionUser } = await db
-      .from("users")
-      .select("id, telegram_id")
-      .eq("id", existingSession.sub)
-      .single();
-
-    if (sessionUser && !sessionUser.telegram_id && tokenUser.telegram_id) {
-      // Session user has no telegram_id — merge the Telegram account into their account
-      await mergeAccounts(sessionUser.id, tokenUser.id);
-
-      // Regenerate JWT for the kept user with the newly linked telegram_id
-      const newToken = await signToken({
-        sub: sessionUser.id,
-        username: existingSession.username,
-        tid: tokenUser.telegram_id,
-      });
-      await setSessionCookie(newToken);
-
-      return NextResponse.redirect(new URL("/dashboard", baseUrl));
-    }
-
-    // Session user already has a telegram_id (different account) — just log in as the token user
+  if (existingSession && existingSession.sub !== tokenUser.id) {
+    // A cross-site GET can carry a SameSite=Lax session cookie. Never link an
+    // arbitrary magic-link identity to that session or silently replace it.
+    return NextResponse.redirect(new URL("/login?error=account_conflict", baseUrl));
   }
 
   // Telegram-only user (no email yet) and no existing session → force them to
@@ -77,6 +56,11 @@ export async function GET(request: NextRequest) {
   }
 
   // Normal flow: set session cookie for the token user
-  await setSessionCookie(token);
+  const sessionToken = tokenUser.id === payload.sub ? token : await signToken({
+    sub: tokenUser.id,
+    username: tokenUser.telegram_username || tokenUser.email || payload.username,
+    tid: tokenUser.telegram_id || 0,
+  });
+  await setSessionCookie(sessionToken);
   return NextResponse.redirect(new URL("/dashboard", baseUrl));
 }

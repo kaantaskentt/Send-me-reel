@@ -22,7 +22,7 @@ export default function ProfileSidebar({ profile, onUpgrade }: Props) {
   const creditsUsed = credits?.lifetime_used ?? 0;
   const creditsTotal = (credits?.balance ?? 0) + creditsUsed;
   const creditsPct = creditsTotal > 0 ? Math.min(100, Math.round((creditsUsed / creditsTotal) * 100)) : 0;
-  const notionConnected = !!user.notion_access_token;
+  const notionConnected = user.notion_connected;
 
   const handleManageSubscription = () => {
     fetch("/api/stripe/portal", { method: "POST" })

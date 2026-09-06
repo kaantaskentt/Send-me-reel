@@ -96,7 +96,7 @@ export default function AnalysisPile({
                   analysis={a}
                   isOpen={openCardId === a.id}
                   onToggle={() => setOpenCardId((p) => (p === a.id ? null : a.id))}
-                  notionConnected={!!profile?.user.notion_access_token}
+                  notionConnected={!!profile?.user.notion_connected}
                   isPremium={!!profile?.user.premium}
                   premiumTabsUnlocked={premiumTabsUnlocked}
                   onDeleted={onDeleted}

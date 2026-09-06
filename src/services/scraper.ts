@@ -1,10 +1,10 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, ScrapedVideo, ScrapedArticle } from "../pipeline/types.js";
 import { scrapeWithApify } from "./apifyScraper.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 3000;
@@ -29,8 +29,9 @@ export async function scrapeVideo(
       console.log(`[scraper] yt-dlp metadata for ${platform}: ${url}`);
 
       // Use stderr to capture errors, don't suppress them
-      const { stdout, stderr } = await execAsync(
-        `yt-dlp --dump-json --no-download "${url}" 2>&1 || true`,
+      const { stdout, stderr } = await execFileAsync(
+        "yt-dlp",
+        ["--dump-json", "--no-download", "--no-playlist", "--js-runtimes", "node", "--", url],
         { timeout: 45000, maxBuffer: 10 * 1024 * 1024 },
       );
 
@@ -134,7 +135,7 @@ export async function scrapeVideo(
  * Verify scraped content actually matches the requested URL.
  * Prevents silent wrong-content bugs (e.g. Apify returning a random post).
  */
-function verifyScrapedContent(
+export function verifyScrapedContent(
   platform: Platform,
   url: string,
   scraped: ScrapedVideo,

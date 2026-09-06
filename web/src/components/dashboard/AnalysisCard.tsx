@@ -460,6 +460,14 @@ export default function AnalysisCard({ analysis, isOpen, onToggle, onDeleted, on
                 )
               )}
 
+              {analysis.status === "done" && (
+                <a href={`/replicate?analysis=${analysis.id}`} onClick={(e) => e.stopPropagation()}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "13px 16px", borderRadius: 12, background: isDark ? "rgba(59,130,246,0.12)" : "#eff6ff", border: "1px solid rgba(59,130,246,0.2)", color: isDark ? "#93c5fd" : "#1d4ed8", textDecoration: "none" }}>
+                  <span><strong style={{ display: "block", fontSize: 13 }}>Make this happen</strong><span style={{ display: "block", fontSize: 11, opacity: 0.8, marginTop: 3 }}>Build, automate, create, or explore it with a source-backed plan.</span></span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              )}
+
               {/* ── Inline task panel ── */}
               {todosLoaded && (
                 <TodoList

@@ -6,7 +6,7 @@ import * as users from "../db/users.js";
 import * as credits from "../db/credits.js";
 import * as analyses from "../db/analyses.js";
 import * as scraper from "../services/scraper.js";
-import { downloadFromCdn } from "../services/apifyScraper.js";
+import { downloadFromCdn, scrapeWithApify } from "../services/apifyScraper.js";
 import * as storage from "../services/storage.js";
 import * as transcriber from "../services/transcriber.js";
 import * as frameExtractor from "../services/frameExtractor.js";
@@ -85,28 +85,21 @@ export async function runPipeline(
     return;
   }
 
-  // Deduct credit upfront
-  const deducted = await credits.deduct(user.id);
-  if (!deducted) {
-    await ctx.reply("You're out for now.", replyOpts(ctx, replyToMessageId));
-    return;
-  }
-
-  // Create analysis record — if this fails, refund + tell user, never silently lose them
+  // Reserve a credit and insert the analysis in one transaction.
   let analysisId: string;
   try {
     analysisId = await analyses.create({
       userId: user.id,
       sourceUrl: url,
       platform,
+      userNote,
     });
   } catch (createErr) {
     console.error("[pipeline] Failed to create analysis record:", createErr);
-    credits.refund(user.id).catch((refundErr) =>
-      console.error("[pipeline] CRITICAL: refund failed after create failure for user", user.id, refundErr),
-    );
     await ctx.reply(
-      "Something broke on our end. Credit's back. Try again in a sec.",
+      createErr instanceof ServiceError && createErr.code === "INSUFFICIENT_CREDITS"
+        ? "You're out for now."
+        : "Analysis submission is temporarily unavailable. Please try again later.",
       replyOpts(ctx, replyToMessageId),
     ).catch((replyErr) => console.error("[pipeline] Failed to send error reply:", replyErr));
     return;
@@ -130,20 +123,22 @@ export async function runPipeline(
 
   // Hard timeout at 3 min. Anything beyond this → refund + clear message.
   const PIPELINE_TIMEOUT_MS = 180_000;
+  const controller = new AbortController();
+  let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
 
   const pipelineWork = async () => {
     if (platform === "article") {
-      await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote);
+      await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote, controller.signal);
     } else {
       try {
-        await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId, userNote);
+        await runVideoPipeline(ctx, user.id, analysisId, url, platform, replyToMessageId, userNote, controller.signal);
       } catch (videoErr) {
         const errCode = videoErr instanceof ServiceError ? videoErr.code : "";
         // Only fall back to article for NOT_A_VIDEO (image posts with captions).
         // Scraping failures on social media URLs also fail via Jina and produce junk verdicts.
         if (errCode === "NOT_A_VIDEO") {
           console.log(`[pipeline] Image post (NOT_A_VIDEO), falling back to article pipeline: ${url}`);
-          await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote);
+          await runArticlePipeline(ctx, user.id, analysisId, url, replyToMessageId, userNote, controller.signal);
         } else {
           throw videoErr;
         }
@@ -153,21 +148,19 @@ export async function runPipeline(
 
   try {
     await Promise.race([
-      pipelineWork(),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new ServiceError("PIPELINE_TIMEOUT", "Analysis took longer than 3 minutes", false)),
-          PIPELINE_TIMEOUT_MS,
-        ),
-      ),
+      // A timed-out scraper may still finish its network request. Cleanup belongs to
+      // the work promise so it cannot race with a download recreating the temp files.
+      pipelineWork().finally(() => storage.cleanup(analysisId)),
+      new Promise<never>((_, reject) => {
+        timeoutTimer = setTimeout(() => {
+          const error = new ServiceError("PIPELINE_TIMEOUT", "Analysis took longer than 3 minutes", false);
+          controller.abort(error);
+          reject(error);
+        }, PIPELINE_TIMEOUT_MS);
+      }),
     ]);
   } catch (err) {
     console.error("Pipeline error:", err);
-    // Fire-and-forget refund — never block the error reply if the DB is flaky
-    credits.refund(user.id).catch((refundErr) =>
-      console.error("[pipeline] CRITICAL: refund failed for user", user.id, refundErr),
-    );
-
     const rawMessage =
       err instanceof ServiceError
         ? err.message
@@ -178,7 +171,7 @@ export async function runPipeline(
     if (errCode === "NO_CONTENT") {
       userMessage = rawMessage;
     } else if (errCode === "PIPELINE_TIMEOUT") {
-      userMessage = "Took longer than usual. Refunded. Try again in a sec.";
+      userMessage = "Took longer than usual. Try again in a sec.";
     } else if (errCode === "VIDEO_TOO_LONG") {
       userMessage = "Too long. I cap at 10 minutes. Try a shorter clip.";
     } else if (errCode === "SCRAPE_MISMATCH" || errCode === "APIFY_NO_MATCH") {
@@ -193,23 +186,22 @@ export async function runPipeline(
       userMessage = "Something broke analyzing this. Try again in a sec.";
     }
 
-    // DB write is best-effort — don't let it swallow the user reply
-    analyses.updateResult(analysisId, {
-      status: "failed",
-      errorMessage: rawMessage,
-    }).catch((dbErr) => console.error("[pipeline] Failed to record failure in DB:", dbErr));
+    let refundConfirmed = false;
+    try {
+      await analyses.updateResult(analysisId, { status: "failed", errorMessage: rawMessage });
+      await credits.refundAnalysis(analysisId);
+      refundConfirmed = true;
+    } catch (dbError) {
+      console.error("[pipeline] Failure/refund persistence requires recovery:", dbError);
+    }
 
     await ctx.reply(
-      `Couldn't get that one. Credit's back.\n\n${userMessage}`,
+      `Couldn't get that one. ${refundConfirmed ? "Credit's back." : "The credit refund could not be confirmed yet."}\n\n${userMessage}`,
       replyOpts(ctx, replyToMessageId),
     ).catch((replyErr) => console.error("[pipeline] Failed to send error reply:", replyErr));
   } finally {
     clearTimeout(progressTimer);
-    try {
-      await storage.cleanup(analysisId);
-    } catch (cleanupErr) {
-      console.error("[pipeline] Cleanup failed (non-blocking):", cleanupErr);
-    }
+    clearTimeout(timeoutTimer);
   }
 }
 
@@ -223,16 +215,20 @@ export async function executeVideoPipeline(
   url: string,
   platform: Platform,
   userNote?: string,
+  signal?: AbortSignal,
 ): Promise<string> {
+  signal?.throwIfAborted();
   await analyses.updateStatus(analysisId, "scraping");
 
   let costUsd = COST_APIFY_SCRAPE;
 
   // Step 1: Get metadata — yt-dlp first, Apify fallback
   const scraped = await scraper.scrapeVideoWithFallback(platform, url);
+  signal?.throwIfAborted();
 
   // Save the Apify video URL from metadata scrape so we don't call Apify twice
-  const apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
+  let apifyVideoUrl = (scraped as any).apifyVideoUrl as string | undefined;
+  let downloadProvider = "yt-dlp";
 
   // Canonical integrity log — grep for [integrity] to spot wrong-content bugs
   const requestedShortcode = url.match(/\/(reel|p|video)\/([A-Za-z0-9_-]+)/)?.[2] || "n/a";
@@ -245,13 +241,9 @@ export async function executeVideoPipeline(
   );
 
   // Guard: reject videos longer than 10 minutes (cost + timeout risk)
-  const duration = scraped.metadata?.duration as number | undefined;
-  if (duration && duration > 600) {
-    throw new ServiceError(
-      "VIDEO_TOO_LONG",
-      "This video is over 10 minutes. We currently support videos up to 10 minutes.",
-      false,
-    );
+  const reportedDuration = Number(scraped.metadata?.duration);
+  if (Number.isFinite(reportedDuration) && reportedDuration > frameExtractor.MAX_VIDEO_SECONDS) {
+    frameExtractor.validateVideoDuration(reportedDuration);
   }
 
   // Step 2: Download video — yt-dlp first, then Apify CDN (reuse URL from step 1)
@@ -259,11 +251,30 @@ export async function executeVideoPipeline(
   try {
     videoPath = await storage.downloadVideo(url, analysisId);
   } catch (dlErr) {
+    signal?.throwIfAborted();
+    // Metadata can be public while the media CDN blocks yt-dlp. Give the alternate
+    // provider a chance in this case too, while retaining the original content identity.
+    if (!apifyVideoUrl && source === "yt-dlp" && (platform === "instagram" || platform === "tiktok")) {
+      try {
+        const fallback = await scrapeWithApify(platform, url);
+        signal?.throwIfAborted();
+        scraper.verifyScrapedContent(platform, url, fallback);
+        if (platform === "tiktok" && String(fallback.metadata.id) !== scrapedId) {
+          throw new ServiceError("SCRAPE_MISMATCH", "The download fallback returned a different video", false);
+        }
+        apifyVideoUrl = fallback.apifyVideoUrl;
+      } catch (fallbackError) {
+        signal?.throwIfAborted();
+        if (fallbackError instanceof ServiceError && ["SCRAPE_MISMATCH", "APIFY_NO_MATCH"].includes(fallbackError.code)) throw fallbackError;
+        console.error("[pipeline] Alternate media lookup failed:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
+      }
+    }
     // yt-dlp download blocked — try the Apify CDN URL we already have
     if (apifyVideoUrl) {
       console.log(`[pipeline] yt-dlp download failed, using saved Apify CDN URL...`);
       try {
         videoPath = await downloadFromCdn(apifyVideoUrl, analysisId);
+        downloadProvider = "apify-cdn";
       } catch (cdnErr) {
         console.error(`[pipeline] Apify CDN download also failed:`, cdnErr instanceof Error ? cdnErr.message : cdnErr);
         throw new ServiceError(
@@ -293,25 +304,71 @@ export async function executeVideoPipeline(
     }
   }
 
+  // Scraper metadata can omit or misreport duration. Enforce the limit on the media.
+  signal?.throwIfAborted();
+  const duration = await frameExtractor.getVideoDuration(videoPath);
+  frameExtractor.validateVideoDuration(duration);
+  signal?.throwIfAborted();
   await analyses.updateStatus(analysisId, "transcribing");
+
+  const evidenceWarnings: string[] = [];
+  let transcriptionFailed = false;
+  let frameExtractionFailed = false;
 
   // Wrap transcription and frame extraction so one failing doesn't kill the other
   const [transcript, frameResult] = await Promise.all([
-    transcriber.transcribe(videoPath).catch((err) => {
+    transcriber.transcribe(videoPath, signal).catch((err) => {
       console.error(`[pipeline] Transcription failed (continuing with empty):`, err instanceof Error ? err.message : err);
+      transcriptionFailed = true;
+      evidenceWarnings.push("Audio transcription failed. Spoken instructions are unavailable.");
       return "";
     }),
-    frameExtractor.extractFrames(videoPath).catch((err) => {
+    frameExtractor.extractFrames(videoPath, duration).catch((err) => {
       console.error(`[pipeline] Frame extraction failed (continuing with empty):`, err instanceof Error ? err.message : err);
-      return { paths: [] as string[], intervalUsed: 3 };
+      frameExtractionFailed = true;
+      evidenceWarnings.push("Video frames could not be extracted. On-screen instructions are unavailable.");
+      return { paths: [] as string[], timestampsSec: [] as number[], intervalUsed: 0, durationSec: duration, samplingLimited: false };
     }),
   ]);
+  signal?.throwIfAborted();
 
   if (duration) costUsd += COST_WHISPER_PER_MIN * (duration / 60);
 
   await analyses.updateStatus(analysisId, "analyzing");
-  const frameAnalyses = await visualAnalyzer.analyzeFrames(frameResult.paths, frameResult.intervalUsed);
-  const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses);
+  const visualResult = await visualAnalyzer.analyzeFramesDetailed(frameResult.paths, frameResult.intervalUsed, frameResult.timestampsSec, signal);
+  signal?.throwIfAborted();
+  const frameAnalyses = visualResult.frames;
+  evidenceWarnings.push(...visualResult.warnings);
+  if (!transcript.trim() && !transcriptionFailed) evidenceWarnings.push("No speech transcript was extracted.");
+  if (transcript.trim()) evidenceWarnings.push("The transcript has no word or segment timestamps; spoken steps cannot yet be aligned precisely with frames.");
+  if (frameResult.paths.length) evidenceWarnings.push(`Visual evidence uses sampled frames approximately every ${frameResult.intervalUsed.toFixed(2)} seconds. Actions between samples may be missing.`);
+  if (frameResult.samplingLimited) evidenceWarnings.push(`Sampling was reduced to stay within the ${frameExtractor.MAX_ANALYSIS_FRAMES}-frame analysis budget.`);
+  if (frameAnalyses.some((frame) => frame.uncertain)) evidenceWarnings.push("Some visible text or actions were unclear. Check the source before reproducing them.");
+  const visualSummary = await visualAnalyzer.summarizeVisuals(frameAnalyses, signal).catch((err) => {
+    console.error("[pipeline] Visual summary failed; retaining frame observations:", err instanceof Error ? err.message : err);
+    evidenceWarnings.push("Visual summarization failed. Individual frame observations were retained.");
+    return frameAnalyses.map((frame) => `[${frame.timestampSec}s] ${frame.description}\n${frame.onScreenText.join("\n")}`).join("\n").slice(0, 12000);
+  });
+  signal?.throwIfAborted();
+  const sourceEvidence = {
+    version: 1,
+    media_kind: "video",
+    scrape_provider: source,
+    download_provider: downloadProvider,
+    duration_seconds: duration,
+    transcript: { status: transcriptionFailed ? "failed" : transcript.trim() ? "available" : "empty", timing: "untimed", characters: transcript.length },
+    visuals: {
+      status: frameExtractionFailed ? "failed" : visualResult.failedFrameCount ? (frameAnalyses.length ? "partial" : "failed") : frameAnalyses.length ? "available" : "empty",
+      extracted_frames: frameResult.paths.length,
+      analyzed_frames: frameAnalyses.length,
+      failed_frames: visualResult.failedFrameCount,
+      interval_seconds: frameResult.intervalUsed,
+      sampled_timestamps_seconds: frameResult.timestampsSec,
+      max_frames: frameExtractor.MAX_ANALYSIS_FRAMES,
+      max_width: frameExtractor.FRAME_MAX_WIDTH,
+    },
+    warnings: evidenceWarnings,
+  };
   costUsd += COST_VISION_PER_FRAME * frameResult.paths.length + COST_VISUAL_SUMMARY;
 
   // Quality gate — AI decides if content is real and how to route it
@@ -322,6 +379,7 @@ export async function executeVideoPipeline(
     platform,
     url,
   });
+  signal?.throwIfAborted();
 
   if (!decision.proceed) {
     if (decision.strategy === "article") {
@@ -334,6 +392,7 @@ export async function executeVideoPipeline(
     users.getContext(userId),
     users.getStance(userId),
   ]);
+  signal?.throwIfAborted();
 
   const contentType = await classifyContent({
     transcript,
@@ -343,6 +402,7 @@ export async function executeVideoPipeline(
     sourceUrl: url,
   });
   costUsd += COST_CLASSIFIER;
+  signal?.throwIfAborted();
 
   const subjectResearch = contentType.needs_search
     ? await enrichSubject({
@@ -356,6 +416,7 @@ export async function executeVideoPipeline(
     : null;
   if (subjectResearch) costUsd += COST_SUBJECT_RESEARCH;
 
+  signal?.throwIfAborted();
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
     transcript,
@@ -373,14 +434,16 @@ export async function executeVideoPipeline(
 
   costUsd += COST_VERDICT;
 
+  signal?.throwIfAborted();
   await analyses.updateResult(analysisId, {
     transcript,
     frameDescriptions: frameAnalyses,
     visualSummary,
     caption: scraped.caption,
-    metadata: userNote ? { ...scraped.metadata, userNote } : scraped.metadata,
+    metadata: { ...scraped.metadata, authorName: scraped.authorName, authorUsername: scraped.authorUsername, source_evidence: sourceEvidence, ...(userNote ? { userNote } : {}) },
     verdict,
     status: "done",
+    errorMessage: null,
     subjectResearch: subjectResearch as Record<string, unknown> | null,
     contentType: contentType.category,
     actionLane: contentType.action_lane,
@@ -399,9 +462,12 @@ export async function executeArticlePipeline(
   analysisId: string,
   url: string,
   userNote?: string,
+  signal?: AbortSignal,
 ): Promise<string> {
+  signal?.throwIfAborted();
   await analyses.updateStatus(analysisId, "scraping");
   const article = await scraper.scrapeArticle(url);
+  signal?.throwIfAborted();
 
   // Safety net: detect social media login walls (Jina returns platform homepage instead of content)
   const SOCIAL_DOMAINS = ["instagram.com", "tiktok.com", "x.com", "twitter.com"];
@@ -436,6 +502,7 @@ export async function executeArticlePipeline(
     platform: "article",
     url,
   });
+  signal?.throwIfAborted();
 
   if (!decision.proceed) {
     throw new ServiceError("NO_CONTENT", decision.reason, false);
@@ -446,6 +513,7 @@ export async function executeArticlePipeline(
     users.getContext(userId),
     users.getStance(userId),
   ]);
+  signal?.throwIfAborted();
 
   const contentType = await classifyContent({
     transcript: null,
@@ -454,6 +522,7 @@ export async function executeArticlePipeline(
     platform: "article",
     sourceUrl: url,
   });
+  signal?.throwIfAborted();
 
   const subjectResearch = contentType.needs_search
     ? await enrichSubject({
@@ -466,6 +535,7 @@ export async function executeArticlePipeline(
       })
     : null;
 
+  signal?.throwIfAborted();
   await analyses.updateStatus(analysisId, "generating");
   const verdict = await verdictGenerator.generateVerdict({
     transcript: null,
@@ -481,12 +551,24 @@ export async function executeArticlePipeline(
     contentType,
   });
 
+  signal?.throwIfAborted();
   await analyses.updateResult(analysisId, {
     transcript: null,
     caption: article.title,
-    metadata: userNote ? { ...article.metadata, userNote } : article.metadata,
+    metadata: {
+      ...article.metadata,
+      title: article.title,
+      source_text: article.text.slice(0, 100_000),
+      source_evidence: {
+        version: 1,
+        media_kind: "article",
+        warnings: ["Only webpage text was analyzed. No video or audio was observed.", ...(article.text.length > 100_000 ? ["Stored webpage text was limited to 100,000 characters."] : [])],
+      },
+      ...(userNote ? { userNote } : {}),
+    },
     verdict,
     status: "done",
+    errorMessage: null,
     subjectResearch: subjectResearch as Record<string, unknown> | null,
     contentType: contentType.category,
     actionLane: contentType.action_lane,
@@ -505,6 +587,7 @@ export async function executePipeline(
   url: string,
   platform: Platform,
   userNote?: string,
+  options: { deferFailureHandling?: boolean } = {},
 ): Promise<void> {
   try {
     if (platform === "article") {
@@ -527,8 +610,8 @@ export async function executePipeline(
     }
   } catch (err) {
     console.error("[pipeline] executePipeline error:", err);
-    await credits.refund(userId);
-
+    // The queue owns retry decisions and refunds only after its final failed attempt.
+    if (options.deferFailureHandling) throw err;
     const rawMessage =
       err instanceof ServiceError ? err.message : "An unexpected error occurred";
 
@@ -536,6 +619,7 @@ export async function executePipeline(
       status: "failed",
       errorMessage: rawMessage,
     });
+    await credits.refundAnalysis(analysisId);
 
     throw err;
   } finally {
@@ -553,8 +637,10 @@ async function runVideoPipeline(
   platform: Platform,
   replyToMessageId?: number,
   userNote?: string,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const verdict = await executeVideoPipeline(userId, analysisId, url, platform, userNote);
+  const verdict = await executeVideoPipeline(userId, analysisId, url, platform, userNote, signal);
+  signal?.throwIfAborted();
   await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 
@@ -565,8 +651,10 @@ async function runArticlePipeline(
   url: string,
   replyToMessageId?: number,
   userNote?: string,
+  signal?: AbortSignal,
 ): Promise<void> {
-  const verdict = await executeArticlePipeline(userId, analysisId, url, userNote);
+  const verdict = await executeArticlePipeline(userId, analysisId, url, userNote, signal);
+  signal?.throwIfAborted();
   await sendVerdict(ctx, analysisId, verdict, url, userId, replyToMessageId);
 }
 
