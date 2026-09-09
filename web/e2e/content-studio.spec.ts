@@ -29,7 +29,8 @@ async function fixture(page: Page, initial?: ContentReply) {
   let nextId = 0;
   const appendAssistant = (reply: ContentReply) => conversation.messages.push({ id: `fixture-assistant-${++nextId}`, role: "assistant", text: reply.answer, reply, createdAt: "2026-09-06T18:00:00Z" });
   if (initial) appendAssistant(initial);
-  const state = { briefs: 0, failNext: false, messages: [] as string[], mutations: [] as string[], unsafeRequests: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], imageRequests: [] as string[] };
+  const state = { briefs: 0, failNext: false, holdReply: null as Promise<void> | null, messages: [] as string[], mutations: [] as string[], unsafeRequests: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], imageRequests: [] as string[] };
+  const workspace = { profile: { name: "", goal: "", preferences: "", harness: "claude" }, workflows: [] as Array<{ id: string; title: string; instructions: string; sourceTitles: string[]; status: "draft"; createdAt: string }> };
   page.on("pageerror", error => state.pageErrors.push(error.message));
   page.on("console", message => { if (message.type() === "error") state.consoleErrors.push(message.text()); });
   page.on("request", request => {
@@ -46,6 +47,17 @@ async function fixture(page: Page, initial?: ContentReply) {
       return route.fulfill({ status: 409, json: { error: "UI fixture never runs a provider or companion." } });
     }
     if (!url.pathname.startsWith("/api/local/")) return route.continue();
+    if (url.pathname === "/api/local/workspace") {
+      if (request.method() === "PATCH") workspace.profile = request.postDataJSON().profile;
+      return route.fulfill({ json: workspace });
+    }
+    if (url.pathname === "/api/local/workflows" && request.method() === "POST") {
+      const body = request.postDataJSON(); expect(body.analysisId).toBe(analysisId);
+      expect(conversation.messages.some(message => message.id === body.messageId && message.role === "assistant")).toBe(true);
+      const workflow = { id: "fixture-workflow", title: "Understand and adapt a useful idea", instructions: quickReply().answer, sourceTitles: ["Current source UI fixture"], status: "draft" as const, createdAt: "2026-09-09T18:00:00Z" };
+      workspace.workflows = [workflow];
+      return route.fulfill({ json: { workflow } });
+    }
     if (url.pathname === "/api/local/chat") {
       if (request.method() === "GET") return route.fulfill({ json: conversation });
       expect(request.method()).toBe("POST");
@@ -53,6 +65,7 @@ async function fixture(page: Page, initial?: ContentReply) {
       if (body.brief) { state.briefs++; if (!conversation.messages.length) appendAssistant(quickReply()); return route.fulfill({ json: conversation }); }
       state.messages.push(body.message);
       if (state.failNext) { state.failNext = false; return route.fulfill({ status: 502, json: { error: "Fixture server could not finish. Your saved conversation is intact; no computer action was started." } }); }
+      if (state.holdReply) await state.holdReply;
       conversation.messages.push({ id: `fixture-user-${++nextId}`, role: "user", text: body.message, createdAt: "2026-09-06T18:01:00Z" });
       appendAssistant({ answer: "I found the public project. You can open its page or review a local inspection task. Nothing has been launched.", suggestions: [], evidence: [], allowedUrls: [knownUrl], actions: [
         { id: "fixture-open", kind: "open_url", label: "Open verified project", detail: "Public identity checked in this test fixture.", url: knownUrl, goal: null, mode: "research" },
@@ -108,6 +121,82 @@ test("content starts with three suggestions, keeps chat after reload, and prepar
   await browserEvidence(state, testInfo);
 });
 
+test("library search and source evidence dialogs keep keyboard focus and restore it on Escape", async ({ page }, testInfo) => {
+  const state = await fixture(page, quickReply());
+  await page.goto("/replicate/local");
+  await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
+  const libraryButton = page.getByRole("button", { name: "Saved content", exact: true });
+  await libraryButton.click();
+  const library = page.getByRole("dialog", { name: "Saved content", exact: true });
+  await expect(library).toBeVisible();
+  await library.getByRole("searchbox", { name: "Search saved content" }).fill("not-a-matching-source");
+  await expect(library.getByText("No sources match that search.")).toBeVisible();
+  await library.getByRole("searchbox", { name: "Search saved content" }).fill("Current source");
+  await expect(library.getByRole("button", { name: /Current source UI fixture/ })).toBeVisible();
+  await library.getByRole("button", { name: "Close saved content", exact: true }).focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(library.getByRole("button", { name: /Current source UI fixture/ })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(library).toHaveCount(0);
+  await expect(libraryButton).toBeFocused();
+  const source = page.getByRole("complementary", { name: "Current source" });
+  await source.getByText("What ContextDrop read", { exact: true }).click();
+  const moment = source.getByRole("button", { name: /^\d+:\d\d$/ }).first();
+  await moment.click();
+  await expect(page.getByRole("dialog", { name: /^Source evidence/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: /^Source evidence/ })).toHaveCount(0);
+  await expect(moment).toBeFocused();
+  await browserEvidence(state, testInfo);
+});
+
+test("project preferences persist and saved workflow is only a draft until the user sends it", async ({ page }, testInfo) => {
+  const state = await fixture(page, quickReply());
+  await page.goto("/replicate/local");
+  await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "My project", exact: true }).click();
+  const project = page.getByRole("dialog", { name: "My project", exact: true });
+  await project.getByLabel("Project name", { exact: true }).fill("Useful editor");
+  await project.getByLabel("What are you trying to achieve?", { exact: true }).fill("Make an AI editor for my clips.");
+  await project.getByLabel("Preferred coding app").selectOption("codex");
+  await project.getByRole("button", { name: "Save project", exact: true }).click();
+  await expect(project.getByRole("status")).toContainText("Project saved");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "My project", exact: true }).click();
+  await expect(project.getByLabel("Project name", { exact: true })).toHaveValue("Useful editor");
+  await expect(project.getByLabel("Preferred coding app")).toHaveValue("codex");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Save workflow", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Workflow saved", exact: true })).toBeDisabled();
+  await page.getByRole("button", { name: "Workflows", exact: true }).click();
+  const workflows = page.getByRole("dialog", { name: "Saved workflows", exact: true });
+  await expect(workflows.getByText(/Saved workflows are drafts/)).toBeVisible();
+  await expect(workflows.getByRole("link", { name: "Download skill" })).toHaveAttribute("href", "/api/local/workflows/fixture-workflow/export");
+  await workflows.getByRole("button", { name: "Use in chat", exact: true }).click();
+  await expect(workflows).toHaveCount(0);
+  await expect(page.getByLabel("Ask about your content")).toContainText("Saved workflow for reference:");
+  await expect(page.getByLabel("Ask about your content")).toBeFocused();
+  expect(state.messages).toEqual([]);
+  await expect(page.getByRole("heading", { name: "From plan to your computer" })).toHaveCount(0);
+  await browserEvidence(state, testInfo);
+});
+
+test("file picker explains limits and rejects unsupported files before contacting the reader", async ({ page }, testInfo) => {
+  const state = await fixture(page, quickReply());
+  await page.goto("/replicate/local");
+  await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Add a link or upload a file" }).click();
+  await page.getByRole("button", { name: "Upload a file", exact: true }).click();
+  await page.getByLabel("Choose content file").setInputFiles({ name: "unsupported.exe", mimeType: "application/octet-stream", buffer: Buffer.from("unsupported fixture") });
+  await expect(page.getByRole("region", { name: "Add content" }).getByRole("alert")).toContainText("supported video, audio, image, PDF, or text");
+  await expect(page.getByRole("button", { name: "Analyze this file", exact: true })).toBeDisabled();
+  await page.getByLabel("Choose content file").setInputFiles({ name: "notes.md", mimeType: "text/markdown", buffer: Buffer.from("# A useful workflow\nExplain this source.") });
+  await expect(page.getByRole("region", { name: "Add content" }).getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Analyze this file", exact: true })).toBeEnabled();
+  await expect(page.getByText(/Files are sent to your configured AI provider/)).toBeVisible();
+  await browserEvidence(state, testInfo);
+});
+
 test("server failure retains the user's draft and never mounts execution", async ({ page }, testInfo) => {
   const state = await fixture(page, quickReply());
   await page.goto("/replicate/local");
@@ -125,6 +214,37 @@ test("server failure retains the user's draft and never mounts execution", async
   await browserEvidence(state, testInfo);
 });
 
+test("unsent source drafts survive reload and arriving replies preserve newly typed questions", async ({ page }, testInfo) => {
+  const state = await fixture(page, quickReply());
+  await page.goto("/replicate/local");
+  await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
+  const composer = page.getByLabel("Ask about your content");
+  const draft = "Find the GitHub repo shown near the end, then explain why I would use it.";
+  await composer.fill(draft);
+  await page.reload();
+  await expect(composer).toHaveValue(draft);
+  await expect(page.getByRole("button", { name: "Send message" })).toBeEnabled();
+  let releaseReply!: () => void;
+  state.holdReply = new Promise<void>(resolve => { releaseReply = resolve; });
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Checking the evidence" })).toBeVisible();
+  const nextDraft = "And can you compare that with the tool I already use?";
+  await composer.fill(nextDraft);
+  releaseReply();
+  state.holdReply = null;
+  await expect(page.getByRole("link", { name: /Open verified project/ })).toBeVisible();
+  await expect(composer).toHaveValue(nextDraft);
+  await page.reload();
+  await expect(composer).toHaveValue(nextDraft);
+  await expect(page.getByRole("button", { name: "Send message" })).toBeEnabled();
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(composer).toHaveValue("");
+  await page.reload();
+  await expect(composer).toHaveValue("");
+  expect(state.messages).toEqual([draft, nextDraft]);
+  await browserEvidence(state, testInfo);
+});
+
 test("unverified Markdown links and images stay inert and content fits desktop, tablet and phone widths", async ({ page }, testInfo) => {
   const answer = `A legitimate [project link](${knownUrl}) can be opened. These are unverified: <https://unverified.example/auto>, https://unverified.example/bare, [reference][ref], and [inline](https://unverified.example/inline).\n\n![tracking pixel][image]\n\n[ref]: https://unverified.example/reference\n[image]: https://tracker.example/pixel?content=source-clue`;
   const state = await fixture(page, { answer, suggestions, actions: [], evidence: [], allowedUrls: [knownUrl] });
@@ -133,11 +253,18 @@ test("unverified Markdown links and images stay inert and content fits desktop, 
   await expect(chat.getByRole("link", { name: "project link", exact: true })).toHaveAttribute("href", knownUrl);
   await expect(chat.locator('a[href*="unverified.example"]')).toHaveCount(0);
   await expect(chat.locator("img")).toHaveCount(0);
-  for (const width of [1440, 565, 390]) {
-    await page.setViewportSize({ width, height: 1000 });
+  for (const { width, height } of [{ width: 1440, height: 1000 }, { width: 651, height: 889 }, { width: 565, height: 1000 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize({ width, height });
     await expect(page.getByLabel("Ask about your content")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `Horizontal overflow at ${width}px`).toBe(true);
     expect(await chat.evaluate(element => element.scrollWidth <= element.clientWidth), `Chat overflow at ${width}px`).toBe(true);
+    if (width <= 760) {
+      const sourceBounds = await page.getByRole("complementary", { name: "Current source" }).boundingBox();
+      const chatBounds = await chat.boundingBox();
+      expect(sourceBounds!.y, "Keep the active source above the mobile conversation").toBeLessThan(chatBounds!.y);
+      const composerBounds = await page.getByLabel("Ask about your content").boundingBox();
+      expect(composerBounds!.y + composerBounds!.height, `Composer stays within one screen at ${width}px`).toBeLessThanOrEqual(height);
+    }
     await page.screenshot({ path: `${screenshots}/content-width-${width}.png`, fullPage: true });
   }
   for (const url of state.imageRequests) expect(new URL(url).searchParams.get("analysisId")).toBe(analysisId);

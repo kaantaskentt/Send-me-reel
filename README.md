@@ -2,15 +2,17 @@
 
 Turn an internet example into something you actually try, build, or do.
 
-ContextDrop turns AI-related videos, repositories and websites into a conversation you can act on. The local content studio gives a short take, suggests useful questions, searches for referenced resources and prepares a task only when you choose one. The Mac companion can guide a visible browser or hand a reviewed task to Claude Code or Codex.
+ContextDrop turns videos, repositories, websites, images, PDFs, audio and text into a conversation you can act on. The local studio gives a short take, searches source details, compares saved content, remembers your project, and saves useful answers as reusable workflows. The Mac companion can guide a visible browser or hand a reviewed task to Claude Code or Codex.
 
 **This branch adds a locally tested content companion and execution foundation.** The local studio uses configured provider keys and private files without a database. The production dashboard/bot additionally require a worker and database migrations. It does not promise access to every URL or unrestricted control of every Mac application.
 
 ```mermaid
 flowchart LR
-  A[Paste a link] --> B[Retrieve media or article]
-  B --> C[Transcript + timestamped screen evidence]
+  A[Paste a link or upload a file] --> B[Read the content in bounded sections]
+  B --> C[Source evidence + explicit coverage]
   C --> Q[Chat, inspect a moment, find a resource]
+  L[Saved sources + project preferences] --> Q
+  Q --> W[Save a reusable draft workflow]
   Q --> D[Choose an action and review its plan]
   D --> E[Local Mac companion]
   E --> F[Visible browser + highlighted actions]
@@ -66,7 +68,11 @@ The development-only `/replicate/demo` page uses labelled fixture content for UI
 
 ### Local content studio
 
-The optional `/replicate/local` development studio starts with a conversation, then offers relevant links or reviewed tasks. It saves sources and chats on this Mac. Automatic reading uses Gemini for public YouTube videos up to sixty minutes when configured, the existing saved-frame/transcript path for other social videos up to ten minutes, and public text extraction for websites and GitHub READMEs. Source access still varies by post. See the [architecture, concrete examples, costs and current boundaries](docs/CONTENT-COMPANION.md).
+The optional `/replicate/local` development studio starts with a conversation, then offers relevant links or reviewed tasks. Its interface uses the installed `apple-design` skill: restrained surfaces, system typography, keyboard-accessible dialogs, and a compact mobile composer. It saves sources, conversations, drafts, your project profile and draft workflows on this Mac.
+
+Automatic reading uses Gemini for public YouTube videos up to sixty minutes when configured, the existing saved-frame/transcript path for other social videos up to ten minutes, and public text extraction for websites and GitHub READMEs. Uploads provide a fallback when a link cannot be retrieved: video/audio up to sixty minutes and 200 MB, images/PDFs up to 20 MB (PDFs up to 100 pages), or UTF-8 text up to 1 MB. See [upload formats, privacy and actual coverage](docs/UPLOADED-CONTENT.md). Source access still varies by post; “any kind of content” is a reader architecture, not guaranteed access to every URL.
+
+Use **My project** to tell the assistant your goal, preferences and coding app. Ask it to compare items in **Library**; it reads them without replacing the current source and cites them separately. Choose **Save workflow** under a useful answer to reuse it with another source or download a draft `SKILL.md`. Saving a workflow does not execute or verify it. See the [architecture, concrete examples, costs and current boundaries](docs/CONTENT-COMPANION.md).
 
 Set `CONTEXTDROP_LOCAL_STUDIO=1` and `OPENAI_API_KEY` in `web/.env.local`, and configure `OPENAI_API_KEY` in the root `.env`. Add `GEMINI_API_KEY` to both local environment files for native YouTube understanding and short high-resolution reinspection. The other social-video capture path uses yt-dlp; the production worker additionally supports Apify fallback through `APIFY_TOKEN`. `CONTENT_CHAT_MODEL` selects the conversational model (default `gpt-5.4-mini`). Then run `npm run local:studio` and `npm run local:companion` in separate terminals. Visit `http://127.0.0.1:3127/replicate/local`. The private companion session enables an explicit **Connect this Mac** button; it does not authorize a task automatically. This studio rejects production mode, remote hostnames, and cross-origin mutations. Bind development servers to loopback.
 

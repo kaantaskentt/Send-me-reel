@@ -20,18 +20,35 @@ flowchart LR
 
 ## What is implemented locally
 
-Open `http://127.0.0.1:3127/replicate/local`. The dark/orange interface starts with the content conversation. Task controls appear when a user selects a proposed action. Sources and their conversations are saved separately on this Mac; Saved content restores earlier captures.
+Open `http://127.0.0.1:3127/replicate/local`. The interface uses system typography, neutral surfaces and a restrained orange accent. It keeps the current source, conversation and next action clear; task controls appear after an action is selected. Sources, conversations, per-source unsent drafts, a project profile and draft workflows are saved separately on this Mac. Library restores earlier captures without losing their conversations.
 
 - Public YouTube: Automatic selects Gemini when configured. Native audio/video analysis uses ten-minute clips up to a measured hour. Completed clips checkpoint to disk; retrying the same failed capture resumes completed work. The default is an economical overview at 1 FPS/low resolution.
 - Instagram, TikTok and X video: existing yt-dlp capture, up to ten minutes, separate transcription and sampled saved frames. Availability depends on platform access. This local path does not yet use the production Apify fallback; X text-only posts are not a reliable local video input.
 - Public websites: bounded Jina Reader text extraction. This captures readable page content, not a screenshot or every interaction.
 - GitHub repository links: canonical public GitHub metadata and README text, with no repository code execution.
-- Chat: OpenAI Responses with the smaller configured model, source evidence, recent conversation, web search, public GitHub search/verification and inspection tools. A typical short video retains all observations and transcript; long inputs expose explicit transcript/index bounds. The last twelve chat messages are sent, while up to 120 are saved.
+- File uploads: real video/audio, image, PDF and UTF-8 text readers. Media is measured before analysis; videos/audio are split into bounded sections, PDFs into ten-page groups. Focused follow-up inspection reopens only a chosen section. Exact formats, limits, retention and provider cleanup are in [uploaded content](UPLOADED-CONTENT.md).
+- Chat: OpenAI Responses with the smaller configured model, source evidence, recent conversation, web search, public GitHub search/verification and inspection tools. Long overviews distribute excerpts across the source rather than silently keeping only the beginning. A separate lexical retrieval tool searches all stored transcript, page text, summaries and observations, including late evidence omitted from the overview. The last twelve chat messages are sent, while up to 120 are saved.
+- Multiple sources: bounded library search and saved-source reading can bring up to three additional sources into a turn. Secondary citations retain their own identity and observation bounds; they never masquerade as moments in the open video. Combining sources is an adaptation unless the sources demonstrate that integration.
+- Personalization: My project stores a project name, goal, preferences and preferred coding app. This influences new answers and task preparation. It does not silently grant access to an existing project folder or account.
+- Reusable workflows: save an actual assistant reply with its source references and original request. Workflows can be applied as reference material to another conversation or exported as a draft skill. They remain drafts until actually tried and checked; the product does not claim the technique was learned or verified merely because it was saved.
 - Visual questions: inspect up to three stored source images, or re-read a specific YouTube clip up to thirty seconds at 2 FPS/high resolution through Gemini. Exact reinspection questions reuse their saved completed results. A native overview is not a verbatim transcript, and a processed time range is not proof that every fleeting character was read.
-- Resource identity: GitHub existence is distinct from source match. Exact owner/repo text in stored observations can match a canonical repository; approximate search results remain candidates. Unknown private/CTA resources are not invented.
+- Resource identity: GitHub existence is distinct from source match. Exact owner/repo text in stored observations can match a canonical repository; approximate search results remain candidates. Conflicting owners or uncertain OCR prevent a confirmed match, even if one candidate exists. Unknown private/CTA resources are not invented.
 - Actions: public links open when clicked. A coding/browser action first becomes a reviewed plan. The companion offers Codex and Claude Code; Claude opens an interactive inspection in plan mode with normal authentication and repository customizations disabled. The coding agent still needs to inspect and acquire a proposed repository; ContextDrop does not yet guarantee a pre-cloned repository workspace.
+- Task continuity: the chosen source identity is sent with the planning request, additional sources are labelled and namespaced, and project preferences are distinguished from observed source facts. A profile alone cannot turn an empty capture into a plan, and preferences cannot prove an observed step. Uploaded sources retain a private source identity instead of an invented public URL.
 
 This is a local preview. It is not a cloud sandbox or a general Mac desktop agent. Guided browser interaction already exists through the companion, but arbitrary native app clicks, automatic account creation, and unattended execution are not implemented. Provider calls use API billing separately from the user's Claude Code or Codex subscription.
+
+## How the broader vision maps to the working product
+
+| Experience | Current local implementation | Remaining work |
+| --- | --- | --- |
+| Find a briefly shown repo | Search stored clues, reinspect a moment, verify GitHub identity, retain uncertainty | Real evaluation across a wider set of tiny/blurred screenshots |
+| Make my version | Source-specific chat and a reviewed coding/browser task carrying evidence | General media-editing artifact preview and independent result verification in the studio |
+| Try it on my Mac | Existing companion, isolated browser and Codex/Claude handoff | Native desktop controller and broader real account/setup testing |
+| Connect it to my project | Saved goal/preferences/harness used in chat and handoff | Explicit existing-folder connection and incremental project change review |
+| Check a creator's claim | Evidence search, visual reinspection, web verification and a proposed bounded experiment | Repeatable evaluation metrics and executed experiment reports |
+| Combine saved sources | Real source retrieval and separately cited comparisons; evidence passed into the plan | User-curated multi-source collections and richer artifact linking |
+| Reuse a successful technique | Save, reuse and export draft workflows | Promote to tested workflows only after verified execution outcomes |
 
 ## A concrete example
 
