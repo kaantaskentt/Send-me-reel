@@ -17,8 +17,18 @@ const ACTOR_MAP: Partial<Record<Platform, string>> = {
   // The instagram-reel-scraper was returning the @instagram feed when combined with a username input.
   instagram: "apify/instagram-scraper",
   tiktok: "clockworks/tiktok-scraper",
-  x: "apidojo/tweet-scraper",
+  // The bulk tweet-scraper forbids single tweets; this actor explicitly supports them.
+  x: "apidojo/twitter-scraper-lite",
 };
+
+function xPostId(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  try {
+    const url = new URL(value);
+    if (!/^(?:(?:www|mobile)\.)?(?:x|twitter)\.com$/.test(url.hostname)) return undefined;
+    return url.pathname.match(/^\/(?:[^/]+|i\/web)\/status\/(\d+)(?:\/|$)/)?.[1];
+  } catch { return undefined; }
+}
 
 /** Build actor-specific input from a single URL */
 function buildInput(platform: Platform, url: string): Record<string, unknown> {
@@ -29,7 +39,8 @@ function buildInput(platform: Platform, url: string): Record<string, unknown> {
     case "tiktok":
       return { postURLs: [url], resultsPerPage: 1 };
     case "x":
-      return { startUrls: [{ url }], maxItems: 1, addVideoUrl: true };
+      if (!xPostId(url)) throw new ServiceError("NOT_A_VIDEO", "Supply one X status URL, not a profile or search", false);
+      return { startUrls: [url], maxItems: 1 };
     default:
       throw new ServiceError("UNSUPPORTED_PLATFORM", `Apify fallback not available for ${platform}`, false);
   }
@@ -54,12 +65,17 @@ export async function scrapeWithApify(
 
   console.log(`[apify] Running actor ${actorId} for ${url}`);
 
-  const run = await client.actor(actorId).call(buildInput(platform, url), {
+  const input = buildInput(platform, url);
+  const run = await client.actor(actorId).call(input, {
     timeout: 60,
     waitSecs: 60,
+    ...(platform === "x" ? { maxItems: 1, maxTotalChargeUsd: 0.10 } : {}),
   });
 
-  const { items } = await client.dataset(run.defaultDatasetId).listItems();
+  if (run.status !== "SUCCEEDED") {
+    throw new ServiceError("APIFY_RUN_FAILED", `Apify actor did not finish successfully (${run.status})`, false);
+  }
+  const { items } = await client.dataset(run.defaultDatasetId).listItems({ limit: 10 });
 
   if (!items || items.length === 0) {
     throw new ServiceError(
@@ -90,8 +106,15 @@ export async function scrapeWithApify(
         false,
       );
     }
+  } else if (platform === "x") {
+    const requestedId = xPostId(url);
+    data = items.find((item: any) => {
+      const id = item.id_str ?? item.id ?? item.tweetId;
+      return (id !== undefined ? String(id) : xPostId(item.url) || xPostId(item.twitterUrl)) === requestedId;
+    }) as Record<string, any> | undefined;
+    if (!data) throw new ServiceError("APIFY_NO_MATCH", "Apify did not return the requested X post; refusing unrelated content", false);
   } else {
-    // TikTok/X: single-URL actors, items[0] is correct
+    // TikTok receives one post URL.
     data = items[0] as Record<string, any>;
   }
 
@@ -187,15 +210,21 @@ function mapToScrapedVideo(
         apifyVideoUrl: data.videoUrl || data.webVideoUrl || data.video_url,
       };
 
-    case "x":
-      // Tweet scrapers often nest video in extendedEntities or media
-      const media = data.extendedEntities?.media?.[0] || data.media?.[0];
-      const videoVariants = media?.video_info?.variants || [];
+    case "x": {
+      // A post can begin with a photo and have a video later in the media array.
+      const allMedia = data.extendedEntities?.media || data.extended_entities?.media || data.media || [];
+      const mediaItems = Array.isArray(allMedia) ? allMedia : [];
+      const media = mediaItems.find((item: any) => item.video_info || item.videoInfo || item.type === "video");
+      const videoInfo = media?.video_info || media?.videoInfo;
+      const videoVariants = videoInfo?.variants || [];
       // Pick highest bitrate MP4
       const mp4s = videoVariants
-        .filter((v: any) => v.content_type === "video/mp4")
+        .filter((v: any) => (v.content_type || v.contentType) === "video/mp4" && typeof v.url === "string")
         .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0));
       const videoDownloadUrl = mp4s[0]?.url || data.videoUrl || data.downloadUrl;
+      if (!videoDownloadUrl) {
+        throw new ServiceError(media ? "APIFY_VIDEO_UNAVAILABLE" : "NOT_A_VIDEO", "This X post has no downloadable video; only its public text is available", false);
+      }
 
       return {
         videoUrl: url,
@@ -206,8 +235,8 @@ function mapToScrapedVideo(
         views: data.views || data.viewCount || 0,
         hashtags: data.entities?.hashtags?.map((h: any) => h.text || h.tag) || [],
         metadata: {
-          id: data.id || data.id_str || data.tweetId,
-          duration: media?.video_info?.duration_millis ? media.video_info.duration_millis / 1000 : undefined,
+          id: data.id_str || data.id || data.tweetId || xPostId(data.url) || xPostId(data.twitterUrl),
+          duration: videoInfo?.duration_millis ? videoInfo.duration_millis / 1000 : undefined,
           timestamp: data.created_at || data.createdAt,
           comment_count: data.reply_count || data.replyCount || 0,
           thumbnail: media?.media_url_https || data.thumbnailUrl,
@@ -216,6 +245,7 @@ function mapToScrapedVideo(
         },
         apifyVideoUrl: videoDownloadUrl,
       };
+    }
 
     default:
       throw new ServiceError("UNSUPPORTED_PLATFORM", `Cannot map Apify data for ${platform}`, false);
@@ -235,7 +265,10 @@ export async function downloadFromCdn(
   const filePath = path.join(dir, "video.mp4");
 
   const appUrl = config.appUrl;
-  const proxySecret = (process.env.JWT_SECRET || "").replace(/\s+/g, "");
+  const proxySecret = process.env.MEDIA_PROXY_SECRET || process.env.JWT_SECRET;
+  if (!proxySecret) {
+    throw new ServiceError("PROXY_NOT_CONFIGURED", "A media proxy secret is required", false);
+  }
 
   console.log(`[apify] Downloading video via proxy: ${videoUrl.slice(0, 80)}...`);
 

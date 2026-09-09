@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken, setSessionCookie } from "@/lib/auth";
+import { verifyToken, setSessionCookie, getSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token");
@@ -13,6 +13,11 @@ export async function GET(request: NextRequest) {
   const payload = await verifyToken(token);
   if (!payload) {
     return NextResponse.redirect(new URL("/?error=invalid_token", baseUrl));
+  }
+
+  const existingSession = await getSession();
+  if (existingSession && existingSession.sub !== payload.sub) {
+    return NextResponse.redirect(new URL("/login?error=account_conflict", baseUrl));
   }
 
   // Set session cookie so the OAuth callback can identify the user

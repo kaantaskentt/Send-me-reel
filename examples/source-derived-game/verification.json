@@ -1,0 +1,44 @@
+{
+  "runId": "f9fc9c3a-7570-4b04-aa9f-fbfb5eaff0a4",
+  "sourceUrl": "https://www.youtube.com/watch?v=Gda-1msq7pg",
+  "testedAt": "2026-09-06T15:34:25.079Z",
+  "checks": [
+    "desktop initial state and no horizontal overflow",
+    "start launches moving ball",
+    "arrow-key paddle movement",
+    "pause freezes ball and Resume continues",
+    "pointer drag steers the paddle",
+    "mute toggles visible state and accessibility attribute",
+    "real block collision increases score",
+    "resize preserves broken blocks and an unattached paused ball",
+    "restart restores idle score lives and full board",
+    "desktop-to-phone resize keeps all live blocks inside playfield",
+    "fresh phone layout contains playfield and all blocks without horizontal overflow",
+    "phone touch starts game and right control moves paddle",
+    "phone pause and restart work",
+    "controlled missed-ball state decrements lives and reaches loss",
+    "controlled cleared-board state reaches win",
+    "no browser runtime errors"
+  ],
+  "postGenerationFixes": [
+    {
+      "file": "game.js",
+      "reason": "Desktop-to-phone resize left39 blocks outside the playfield and could reattach a paused ball.",
+      "change": "Recompute block geometry while preserving block identities/alive state, scale paddle/orb positions, and preserve a paused free ball.",
+      "originalHashFile": "cli-original-sha256.json",
+      "originalSourceFile": "game.cli-original.js",
+      "beforeEvidence": "browser-qa-before-resize-fix.json"
+    }
+  ],
+  "finalArtifactSha256": {
+    "index.html": "63c55fe30fb579a49d489b81171564b8492fda237e60d5ec54660d3e8c4e5140",
+    "style.css": "4faab13bff0dca5055b61509b1be23be580b46b0392bbe21d9f94d544cddb663",
+    "game.js": "0c5e98abbac19c7bee1f942fc1454ba108725348ecc0262cdc05acef934c423f"
+  },
+  "limitations": [
+    "The source tutorial was sampled; this is an original local recreation, not an exact copy of creator source code.",
+    "Phone checks used Chromium mobile emulation at390x844, not a physical phone.",
+    "Win/loss transition checks used controlled in-memory game state; normal block collision/scoring used actual gameplay.",
+    "The CLI generated the three files; a subsequent independent QA pass applied one focused resize correction."
+  ]
+}

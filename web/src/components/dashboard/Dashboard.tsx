@@ -463,7 +463,7 @@ export default function Dashboard() {
                     >
                       <AnalysisCard
                         analysis={a}
-                        notionConnected={!!profile?.user.notion_access_token}
+                        notionConnected={!!profile?.user.notion_connected}
                         isPremium={!!profile?.user.premium}
                         premiumTabsUnlocked={!!(profile as { premium_tabs_unlocked?: boolean } | null)?.premium_tabs_unlocked}
                         isOpen={openCardId === a.id}

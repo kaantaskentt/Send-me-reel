@@ -17,6 +17,28 @@ export interface QualityDecision {
   reason: string;
 }
 
+// Detect explicit failure headings before the length fast path. A long login page
+// is not stronger evidence than a short one. Actual video/audio observations take
+// precedence: a tutorial may legitimately demonstrate a login screen.
+const FAILURE_HEADINGS = [
+  /(?:^|\n)\s*(?:Title:\s*)?(?:#+\s*)?(?:sign[ -]?in|log[ -]?in|login)\s+to\s+(?:continue|view|see|access)\b/i,
+  /(?:^|\n)\s*(?:Title:\s*)?(?:#+\s*)?(?:sign up or log in|log in or sign up)\b/i,
+  /(?:^|\n)\s*(?:Title:\s*)?(?:#+\s*)?this (?:account|profile|post|video) is private\b/i,
+  /(?:^|\n)\s*(?:Title:\s*)?(?:#+\s*)?(?:404[ :–-]*)?(?:page|post|video|content) (?:not found|unavailable|is no longer available)\b/i,
+  /(?:^|\n)\s*(?:Title:\s*)?(?:#+\s*)?(?:access denied|too many requests|captcha required|verify (?:that )?you are (?:a )?human|just a moment\.\.\.)/i,
+];
+
+export function parseQualityDecision(text: string): QualityDecision {
+  const decision: unknown = JSON.parse(text);
+  if (!decision || typeof decision !== "object") throw new Error("Invalid content verification response");
+  const item = decision as Record<string, unknown>;
+  if (typeof item.proceed !== "boolean" || !["video", "article", "abort"].includes(String(item.strategy)) ||
+      typeof item.reason !== "string" || !item.reason.trim() || (item.proceed && item.strategy === "abort")) {
+    throw new Error("Invalid content verification response");
+  }
+  return item as unknown as QualityDecision;
+}
+
 const SYSTEM_PROMPT = `You're a scrape-failure detector. You receive scraped data from a social-media post and decide ONLY whether the scrape itself failed (got a login wall / CAPTCHA / error page / rate limit instead of real content).
 
 Return JSON only:
@@ -53,6 +75,10 @@ export async function evaluateContent(input: QualityInput): Promise<QualityDecis
   const captionLen = input.caption?.trim().length || 0;
   const visualLen = input.visualSummary?.trim().length || 0;
 
+  if (!transcriptLen && !visualLen && FAILURE_HEADINGS.some((pattern) => pattern.test(input.caption || ""))) {
+    return { proceed: false, strategy: "abort", reason: "The link returned a login, access, or error page instead of the post. No video content was available." };
+  }
+
   // Loose fast-path: any one substantial signal is enough — the verdict
   // pipeline now has its own web research and can fill gaps. Don't second-
   // guess thin content. (Apr 26 — same philosophy as removing the vertical
@@ -79,8 +105,9 @@ export async function evaluateContent(input: QualityInput): Promise<QualityDecis
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.4-nano",
-      max_completion_tokens: 80,
+      max_completion_tokens: 160,
       temperature: 0,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: parts.join("\n") },
@@ -88,18 +115,17 @@ export async function evaluateContent(input: QualityInput): Promise<QualityDecis
     });
 
     const text = response.choices[0]?.message?.content?.trim();
-    if (!text) {
-      // AI returned nothing — default to proceed (fail open, not closed)
-      console.log(`[gate] AI returned empty — defaulting to proceed`);
-      return { proceed: true, strategy: "video", reason: "Gate inconclusive — proceeding" };
-    }
+    if (!text || response.choices[0]?.finish_reason !== "stop") throw new Error("Content verification response was incomplete");
 
-    const decision = JSON.parse(text) as QualityDecision;
+    const decision = parseQualityDecision(text);
     console.log(`[gate] Decision: proceed=${decision.proceed} strategy=${decision.strategy} reason="${decision.reason}"`);
     return decision;
   } catch (err) {
-    // Gate failure should never block the pipeline — fail open
     console.error(`[gate] Error:`, err instanceof Error ? err.message : err);
-    return { proceed: true, strategy: "video", reason: "Gate error — proceeding anyway" };
+    // Thin text alone cannot establish that we obtained the requested source.
+    // Existing audiovisual evidence can still be used with its stored coverage limits.
+    return transcriptLen || visualLen
+      ? { proceed: true, strategy: "video", reason: "Using the available audiovisual evidence" }
+      : { proceed: false, strategy: "abort", reason: "Could not verify the extracted post text. Please retry the link." };
   }
 }

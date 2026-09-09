@@ -18,8 +18,8 @@ export async function GET() {
 
   const supabase = getSupabase();
 
-  const [userRes, contextRes, creditsRes, triedRes, premiumUseRes] = await Promise.all([
-    supabase.from("users").select("*").eq("id", session.sub).single(),
+  const [userRes, contextRes, creditsRes, triedRes, premiumUseRes, notionRes] = await Promise.all([
+    supabase.from("users").select("id, telegram_id, telegram_username, first_name, email, onboarded, premium, notion_workspace_name, notion_database_id, stance, intention, pattern_to_stop").eq("id", session.sub).single(),
     supabase
       .from("user_contexts")
       .select("role, goal, content_preferences")
@@ -44,15 +44,37 @@ export async function GET() {
       .select("id", { count: "exact", head: true })
       .eq("user_id", session.sub)
       .not("action_items", "is", null),
+    // Query only connection presence. Credentials never leave the database here.
+    supabase.from("users").select("id", { count: "exact", head: true })
+      .eq("id", session.sub)
+      .not("notion_access_token", "is", null)
+      .neq("notion_access_token", "")
+      .not("notion_database_id", "is", null),
   ]);
 
   const lifetimeTriedCount = triedRes.count ?? 0;
   const hasUsedPremium = (premiumUseRes.count ?? 0) > 0;
   const isPremium = !!userRes.data?.premium;
   const chatUsage = await getChatUsage(supabase, session.sub, isPremium);
+  const user = userRes.data;
 
   return NextResponse.json({
-    user: userRes.data,
+    // Keep an explicit response allowlist even if the database query changes.
+    user: user ? {
+      id: user.id,
+      telegram_id: user.telegram_id,
+      telegram_username: user.telegram_username,
+      first_name: user.first_name,
+      email: user.email,
+      onboarded: user.onboarded,
+      premium: user.premium,
+      notion_connected: (notionRes.count ?? 0) > 0,
+      notion_workspace_name: user.notion_workspace_name,
+      notion_database_id: user.notion_database_id,
+      stance: user.stance,
+      intention: user.intention,
+      pattern_to_stop: user.pattern_to_stop,
+    } : null,
     context: contextRes.data,
     credits: creditsRes.data || { balance: 0, lifetime_used: 0 },
     lifetime_tried_count: lifetimeTriedCount,

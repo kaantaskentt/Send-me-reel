@@ -2,18 +2,29 @@ import type { Platform } from "./types.js";
 
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/i;
 
-const PLATFORM_PATTERNS: [Platform, RegExp][] = [
-  ["instagram", /(?:instagram\.com|instagr\.am)\//i],
-  ["tiktok", /(?:tiktok\.com|vm\.tiktok\.com)\//i],
-  ["x", /(?:x\.com|twitter\.com)\//i],
-  // LinkedIn: posts, videos, and feed updates
-  ["linkedin", /(?:linkedin\.com|lnkd\.in)\//i],
-  // YouTube: full videos, shorts, youtu.be
-  ["youtube", /(?:youtube\.com|youtu\.be)\//i],
+const PLATFORM_HOSTS: [Platform, string[]][] = [
+  ["instagram", ["instagram.com", "instagr.am"]],
+  ["tiktok", ["tiktok.com"]],
+  ["x", ["x.com", "twitter.com"]],
+  ["linkedin", ["linkedin.com", "lnkd.in"]],
+  ["youtube", ["youtube.com", "youtu.be"]],
 ];
 
-// Domains that are clearly articles/blogs, not social media
-const ARTICLE_EXTENSIONS = /\.(com|org|net|io|dev|co|ai|app|xyz|me|info|blog)/i;
+/** Public web origins only. Classification must use the actual host, never the path. */
+export function parseSourceUrl(value: string): URL | null {
+  if (value.length > 8192 || /[\u0000-\u0020\\]/.test(value)) return null;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/\.$/, "");
+    if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.port) return null;
+    if (!host.includes(".") || host.startsWith("[") || /^[\d.]+$/.test(host)) return null;
+    if (/(?:^|\.)(?:localhost|local|internal|test)$/.test(host)) return null;
+    url.hostname = host;
+    return url;
+  } catch {
+    return null;
+  }
+}
 
 export function extractUrl(text: string): string | null {
   const match = text.match(URL_REGEX);
@@ -21,12 +32,10 @@ export function extractUrl(text: string): string | null {
 }
 
 export function detectPlatform(url: string): Platform {
-  for (const [platform, pattern] of PLATFORM_PATTERNS) {
-    if (pattern.test(url)) return platform;
+  const parsed = parseSourceUrl(url);
+  if (!parsed) return "unknown";
+  for (const [platform, hosts] of PLATFORM_HOSTS) {
+    if (hosts.some((host) => parsed.hostname === host || parsed.hostname.endsWith(`.${host}`))) return platform;
   }
-
-  // If it's a URL but not a known social platform, treat as article
-  if (URL_REGEX.test(url)) return "article";
-
-  return "unknown";
+  return "article";
 }

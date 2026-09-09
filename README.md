@@ -1,116 +1,108 @@
-<div align="center">
-  <img src="https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/readme_banner-bPypwAhrFjfNeErmmoqeSf.png" alt="ContextDrop — Stop bookmarking. Start understanding." width="100%" />
-</div>
+# ContextDrop
 
-<br />
+Turn an internet example into something you actually try, build, or do.
 
-<div align="center">
+ContextDrop turns videos, repositories, websites, images, PDFs, audio and text into a conversation you can act on. The local studio gives a short take, searches source details, compares saved content, remembers your project, and saves useful answers as reusable workflows. The Mac companion can guide a visible browser or hand a reviewed task to Claude Code or Codex.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://core.telegram.org/bots)
+**This branch adds a locally tested content companion and execution foundation.** The local studio uses configured provider keys and private files without a database. The production dashboard/bot additionally require a worker and database migrations. It does not promise access to every URL or unrestricted control of every Mac application.
 
-</div>
-
----
-
-## What is ContextDrop?
-
-ContextDrop is a Telegram bot that turns social media videos into actionable insights — in under 60 seconds.
-
-Send any Instagram Reel, TikTok, or X video link. The bot transcribes the audio, analyzes the screen, extracts every tool and concept mentioned, and returns a personalized verdict: **what it contains, why it matters to you, and what to do next.** Then you tap Learn, Apply, or Skip.
-
-No more saving videos you never watch. No more losing that reel with the tool you wanted to try.
-
----
-
-## Try it now
-
-Copy this link and paste it into the bot to see a live example:
-
-```
-https://www.instagram.com/reel/DFnVBmxx2Lj/
+```mermaid
+flowchart LR
+  A[Paste a link or upload a file] --> B[Read the content in bounded sections]
+  B --> C[Source evidence + explicit coverage]
+  C --> Q[Chat, inspect a moment, find a resource]
+  L[Saved sources + project preferences] --> Q
+  Q --> W[Save a reusable draft workflow]
+  Q --> D[Choose an action and review its plan]
+  D --> E[Local Mac companion]
+  E --> F[Visible browser + highlighted actions]
+  E --> G[Claude Code or Codex in Terminal]
+  F --> H[User decisions + observable results]
+  G --> H
 ```
 
-Then open [@contextdrop2027bot](https://t.me/contextdrop2027bot) on Telegram and paste it. Verdict in 60 seconds.
+## What you can do
 
----
+- Open a finished analysis and choose **Build / automate this** to prepare a source-linked task.
+- Adapt the goal: build, automate, create, or research. Observed steps and proposed additions are distinguished.
+- Review prerequisites, missing evidence, source timestamps, and outcome checks.
+- Pair the Mac companion using a session token. Choose a guided browser walkthrough or a Terminal build.
+- In browser mode, see the current page and highlighted target. Approve or decline each navigation, click, or fill; scrolling and inspection proceed automatically. Enter logins and private fields directly in the browser, then continue.
+- In Terminal mode, Codex works in a fresh project folder with normal approval and workspace restrictions.
+- Download the plan as JSON or Markdown. Agent-reported completion is explicitly **unverified** until the output is checked.
 
-## Repository structure
+Browser mode uses an isolated Chromium session. It can navigate, click, fill ordinary fields, scroll, go back, and save downloads. It does not automate CAPTCHA, payment/private fields, native Mac apps, arbitrary JavaScript from the model, or file uploads. A visible browser can remain open for manual review; Stop closes it without undoing actions already performed.
 
-```
-/
-├── src/                  # Telegram bot (Node.js + TypeScript)
-│   ├── bot/              # Bot handlers, commands, onboarding
-│   ├── pipeline/         # Orchestrator, URL router, analysis types
-│   ├── services/         # Transcriber, visual analyzer, verdict generator
-│   └── db/               # Supabase queries (users, analyses, credits)
-│
-└── web/                  # Landing page + dashboard (Next.js 15)
-    └── src/
-        ├── app/          # Next.js App Router pages & API routes
-        ├── components/
-        │   ├── landing/  # Landing page sections
-        │   └── dashboard/# User dashboard components
-        └── hooks/        # Scroll animation, etc.
-```
+## Local setup
 
----
+Requires Node.js 22+, npm, git, ffmpeg/ffprobe via the included packages, and a maintained `yt-dlp` executable with its matching EJS package for social media ingestion. The worker explicitly enables the existing Node.js runtime for YouTube challenges. For pip-based installations, use `python3 -m pip install -U "yt-dlp[default]"` in your chosen Python environment. The local companion requires macOS. Terminal mode uses an installed and signed-in Codex CLI; browser guidance uses your `OPENAI_API_KEY`.
 
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Bot runtime | Node.js + TypeScript + Telegraf |
-| AI pipeline | OpenAI Whisper · GPT-5.4-mini Vision · GPT-5.4 |
-| Database | Supabase (PostgreSQL) |
-| Storage | Supabase Storage |
-| Landing page | Next.js 15 · Tailwind CSS 4 · React 19 |
-| Integrations | Notion API |
-
----
-
-## Getting started
-
-### Bot
-
-```bash
-# Install dependencies
-npm install
-
-# Copy environment variables
+```sh
+npm ci
+npm --prefix web ci
+npx playwright install chromium
 cp .env.example .env
-# Fill in TELEGRAM_BOT_TOKEN, OPENAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY
-
-# Run in development
-npm run dev
+cp web/.env.example web/.env.local
 ```
 
-### Web
+Planning is capped at 20 provider attempts per user per day (shared with free chat). Each reserved attempt counts even if its provider call fails. `REPLICATION_MODEL` optionally selects the planning model.
 
-```bash
-cd web
-npm install
+Fill the environment files locally; never paste secrets into the frontend or a plan. The bot/worker and web app share Supabase settings and `JWT_SECRET`. Browser guidance reads `OPENAI_API_KEY` from the root environment. Apply the checked-in Supabase migrations, including `022_atomic_analysis_billing.sql`, before using the updated analysis submission and refunds. Existing production data must be reviewed before applying migrations; tests here do not apply changes to your live database.
+
+Start each in a separate Terminal:
+
+```sh
+# Worker + Telegram bot (requires configured .env)
 npm run dev
-# Open http://localhost:3000
+
+# Web dashboard
+npm --prefix web run dev
+
+# Mac companion. Origin must exactly match the address in your browser.
+npm run companion -- --origin http://localhost:3000
 ```
 
----
+Paste the companion's token into the execution panel. The token lasts only for that companion session and is kept in browser memory, not local storage. Output folders are created under `~/Developer/contextdrop-runs/<run-id>/project`. Keep the companion Terminal open. A custom port and output root are available with `--port` and `--root`.
 
-## Environment variables
+The development-only `/replicate/demo` page uses labelled fixture content for UI inspection without provider credentials. It does not analyze a live video and does not enable real execution.
 
-See `.env.example` for the full list. Key variables:
+### Local content studio
 
-| Variable | Description |
-|---|---|
-| `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) |
-| `OPENAI_API_KEY` | For transcription and analysis |
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase service role key |
+The optional `/replicate/local` development studio starts with a conversation, then offers relevant links or reviewed tasks. Its interface uses the installed `apple-design` skill: restrained surfaces, system typography, keyboard-accessible dialogs, and a compact mobile composer. It saves sources, conversations, drafts, your project profile and draft workflows on this Mac.
 
----
+Automatic reading uses Gemini for public YouTube videos up to sixty minutes when configured, the existing saved-frame/transcript path for other social videos up to ten minutes, and public text extraction for websites and GitHub READMEs. Uploads provide a fallback when a link cannot be retrieved: video/audio up to sixty minutes and 200 MB, images/PDFs up to 20 MB (PDFs up to 100 pages), or UTF-8 text up to 1 MB. See [upload formats, privacy and actual coverage](docs/UPLOADED-CONTENT.md). Source access still varies by post; “any kind of content” is a reader architecture, not guaranteed access to every URL.
 
-<div align="center">
-  <sub>Built with ☕ and orange accents.</sub>
-</div>
+Use **My project** to tell the assistant your goal, preferences and coding app. Ask it to compare items in **Library**; it reads them without replacing the current source and cites them separately. Choose **Save workflow** under a useful answer to reuse it with another source or download a draft `SKILL.md`. Saving a workflow does not execute or verify it. See the [architecture, concrete examples, costs and current boundaries](docs/CONTENT-COMPANION.md).
+
+Set `CONTEXTDROP_LOCAL_STUDIO=1` and `OPENAI_API_KEY` in `web/.env.local`, and configure `OPENAI_API_KEY` in the root `.env`. Add `GEMINI_API_KEY` to both local environment files for native YouTube understanding and short high-resolution reinspection. The other social-video capture path uses yt-dlp; the production worker additionally supports Apify fallback through `APIFY_TOKEN`. `CONTENT_CHAT_MODEL` selects the conversational model (default `gpt-5.4-mini`). Then run `npm run local:studio` and `npm run local:companion` in separate terminals. Visit `http://127.0.0.1:3127/replicate/local`. The private companion session enables an explicit **Connect this Mac** button; it does not authorize a task automatically. This studio rejects production mode, remote hostnames, and cross-origin mutations. Bind development servers to loopback.
+
+For streamed local builds, set `CONTEXTDROP_TERMINAL_MODE=exec` and a supported `CONTEXTDROP_CODEX_MODEL` in the root `.env` before starting the companion. Exec mode ignores stale user model/plugin configuration but keeps signed-in CLI authentication, workspace sandboxing, and on-request approval policy. A zero exit still means the result needs review.
+
+Captures and run state are private, ignored files under `.contextdrop/`. The downloader uses explicit `YTDLP_PATH`, then `.contextdrop/media-runtime/bin/yt-dlp` when installed, then the system executable. See [video evidence and runtime setup](docs/VIDEO_EVIDENCE.md). Browser guidance sends the isolated browser's screenshots and visible text to the configured OpenAI model; keep private fields for manual input.
+
+The **Start rehearsal** button at `/replicate/demo` is a separate recorded-example walkthrough that makes no provider or companion requests. It is available as a clearly labelled offline fallback for presentations.
+
+## Verification
+
+```sh
+npm test
+npm run build
+npm run check:companion
+npm --prefix web run build
+# With the development server running on 127.0.0.1:3127:
+npm run test:ui
+npm --prefix web run test:content
+```
+
+Tests include synthetic video extraction, structured evidence validation, retries and persistence failures, URL/proxy/account boundaries, local companion pairing, and a real Chromium approval/click flow using a deterministic test planner. Those offline tests do not establish the quality of a live model on arbitrary tutorials.
+
+See [the implementation audit](docs/IMPLEMENTATION-AUDIT.md) for evidence, known limits and the next release gates, and [the product direction](docs/PRODUCT-DIRECTION.md) for the intended full experience.
+
+## Repository
+
+- `src/`: worker, bot, media retrieval, transcription, evidence analysis, persistence.
+- `web/`: Next.js dashboard, authenticated planning API, review and execution UI.
+- `shared/`: bounded, data-only replication plan contract.
+- `companion/`: loopback pairing server, guided browser, checked-IP network proxy, Terminal runner.
+- `supabase/migrations/`: database schema and transactional credit functions.
+- `tests/`: offline regressions and controlled browser workflows.

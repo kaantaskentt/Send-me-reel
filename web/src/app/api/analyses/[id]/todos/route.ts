@@ -41,6 +41,16 @@ export async function POST(
 
   const supabase = getSupabase();
 
+  const { data: ownedAnalysis } = await supabase
+    .from("analyses")
+    .select("id")
+    .eq("id", analysisId)
+    .eq("user_id", session.sub)
+    .single();
+  if (!ownedAnalysis) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Get the next position
   const { data: existing } = await supabase
     .from("analysis_todos")

@@ -1,10 +1,12 @@
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import { ServiceError } from "../pipeline/types.js";
 import type { Platform, ScrapedVideo, ScrapedArticle } from "../pipeline/types.js";
 import { scrapeWithApify } from "./apifyScraper.js";
+import { resolveYtDlpExecutable } from "./mediaRuntime.js";
+import { ytDlpMetadataArgs, parseYtDlpMetadata, YTDLP_METADATA_MAX_BYTES } from "./ytDlpMetadata.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 3000;
@@ -29,9 +31,10 @@ export async function scrapeVideo(
       console.log(`[scraper] yt-dlp metadata for ${platform}: ${url}`);
 
       // Use stderr to capture errors, don't suppress them
-      const { stdout, stderr } = await execAsync(
-        `yt-dlp --dump-json --no-download "${url}" 2>&1 || true`,
-        { timeout: 45000, maxBuffer: 10 * 1024 * 1024 },
+      const { stdout, stderr } = await execFileAsync(
+        resolveYtDlpExecutable(),
+        ytDlpMetadataArgs(url),
+        { timeout: 45000, maxBuffer: YTDLP_METADATA_MAX_BYTES },
       );
 
       const output = stdout.trim();
@@ -42,9 +45,7 @@ export async function scrapeVideo(
         const combined = (stdout + stderr).toLowerCase();
         if (
           combined.includes("no video") ||
-          combined.includes("not a video") ||
-          combined.includes("unable to extract") ||
-          combined.includes("unsupported url")
+          combined.includes("not a video")
         ) {
           throw new ServiceError(
             "NOT_A_VIDEO",
@@ -69,9 +70,7 @@ export async function scrapeVideo(
 
         // Check if it's a "not a video" situation
         if (
-          output.includes("no video formats") ||
-          output.includes("Unsupported URL") ||
-          output.includes("Unable to extract")
+          output.includes("no video formats")
         ) {
           throw new ServiceError(
             "NOT_A_VIDEO",
@@ -83,7 +82,7 @@ export async function scrapeVideo(
         throw new Error("No JSON found in yt-dlp output");
       }
 
-      const data = JSON.parse(jsonLine);
+      const data = parseYtDlpMetadata(jsonLine);
 
       // Check if there's actually video content
       if (!data.duration && !data.formats?.length) {
@@ -114,6 +113,13 @@ export async function scrapeVideo(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
 
+      // yt-dlp reports genuine text-only tweets through stderr and a nonzero exit.
+      // Generic extractor/auth/network failures do not establish that video is absent.
+      const stderr = err && typeof err === "object" && "stderr" in err ? String(err.stderr) : "";
+      if (platform === "x" && /no video could be found in this tweet|does not contain (?:a )?video/i.test(stderr)) {
+        throw new ServiceError("NOT_A_VIDEO", "This X post has no video; analyze its public text instead", false);
+      }
+
       // Don't retry non-retryable errors
       if (err instanceof ServiceError && !err.retryable) {
         throw err;
@@ -134,7 +140,7 @@ export async function scrapeVideo(
  * Verify scraped content actually matches the requested URL.
  * Prevents silent wrong-content bugs (e.g. Apify returning a random post).
  */
-function verifyScrapedContent(
+export function verifyScrapedContent(
   platform: Platform,
   url: string,
   scraped: ScrapedVideo,
@@ -191,13 +197,6 @@ export async function scrapeVideoWithFallback(
       throw new ServiceError("NOT_A_VIDEO", "LinkedIn post — no video content");
     }
 
-    // X/Twitter: Apify actor doesn't support single tweet fetching — skip it entirely.
-    // Jina can read public tweet text; article pipeline handles the rest.
-    if (platform === "x") {
-      console.log(`[scraper] yt-dlp failed for x — routing to article pipeline via Jina`);
-      throw new ServiceError("NOT_A_VIDEO", "X post — falling back to text analysis", false);
-    }
-
     // No Apify actors for YouTube — skip straight to article fallback
     if (platform === "youtube") {
       console.log(`[scraper] yt-dlp failed for youtube — no Apify fallback`);
@@ -216,6 +215,9 @@ export async function scrapeVideoWithFallback(
       // Preserve specific error codes so orchestrator can route correctly
       if (apifyErr instanceof ServiceError && (apifyErr.code === "SCRAPE_MISMATCH" || apifyErr.code === "APIFY_NO_MATCH")) {
         throw apifyErr;
+      }
+      if (platform === "x") {
+        throw new ServiceError("NOT_A_VIDEO", "X video retrieval was unavailable; only public post text can be analyzed", false);
       }
       throw new ServiceError(
         "SCRAPE_FAILED",

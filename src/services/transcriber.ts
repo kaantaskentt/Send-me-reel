@@ -1,24 +1,25 @@
 import fs from "fs";
 import path from "path";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import OpenAI from "openai";
 import ffmpegPath from "ffmpeg-static";
-import { config } from "../config.js";
+import "dotenv/config";
 import { ServiceError } from "../pipeline/types.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const FFMPEG = ffmpegPath || "ffmpeg";
-const openai = new OpenAI({ apiKey: config.openaiApiKey });
+const openai = new OpenAI();
 
-export async function transcribe(videoPath: string): Promise<string> {
+export async function transcribe(videoPath: string, signal?: AbortSignal): Promise<string> {
   const audioPath = videoPath.replace(/\.[^.]+$/, ".mp3");
 
   try {
     // Extract audio from video using ffmpeg
-    await execAsync(
-      `"${FFMPEG}" -i "${videoPath}" -vn -acodec libmp3lame -q:a 4 -y "${audioPath}"`,
-      { timeout: 60000 },
+    await execFileAsync(
+      FFMPEG,
+      ["-i", videoPath, "-vn", "-acodec", "libmp3lame", "-q:a", "4", "-y", audioPath],
+      { timeout: 60000, signal },
     );
 
     // Check if audio file was created and has content
@@ -32,7 +33,7 @@ export async function transcribe(videoPath: string): Promise<string> {
       file: fs.createReadStream(audioPath),
       model: "whisper-1",
       response_format: "text",
-    });
+    }, { signal });
 
     return typeof transcription === "string"
       ? transcription
