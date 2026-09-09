@@ -11,14 +11,17 @@ export function pageCaptureOptions(argv: string[]) {
   if (!url) throw new Error("Supply a public HTTPS website or GitHub repository URL.");
   let output = path.resolve(".contextdrop/local-analysis.json");
   let timeoutSeconds = 90;
+  let note = "";
   for (let index = 1; index < argv.length; index += 2) {
     if (!argv[index + 1]) throw new Error(`Missing value for ${argv[index]}`);
     if (argv[index] === "--output") output = path.resolve(argv[index + 1]);
     else if (argv[index] === "--timeout-seconds") timeoutSeconds = Number(argv[index + 1]);
+    else if (argv[index] === "--note") note = argv[index + 1];
     else throw new Error(`Unknown option ${argv[index]}`);
   }
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 1 || timeoutSeconds > 90) throw new Error("Timeout must be between 1 and 90 seconds.");
-  return { url, output, timeoutSeconds };
+  if (note.length > 2000) throw new Error("Keep the capture question under 2,000 characters.");
+  return { url, output, timeoutSeconds, note };
 }
 
 export async function main(argv = process.argv.slice(2)): Promise<void> {
@@ -32,7 +35,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     verdict: null, verdict_intent: null, credits_charged: 0, error_message: null as string | null, action_items: null,
     created_at: startedAt, completed_at: null as string | null,
     metadata: {
-      capture_mode: "local", database_writes: false, title: null as string | null, repository: undefined as CapturedPage["repository"],
+      capture_mode: "local", database_writes: false, ...(input.note ? { userNote: input.note } : {}), title: null as string | null, repository: undefined as CapturedPage["repository"],
       source_evidence: { version: 1, media_kind: "article", capture_complete: false, warnings: [] as string[], text: { status: "pending", characters: 0, coverage: "reader_extract", truncated: false }, transcript: { status: "not_applicable", timing: "none", characters: 0 }, visuals: { status: "not_applicable", extracted_frames: 0, analyzed_frames: 0 } },
       local_evidence: { framePaths: [], timestampsSec: [], capturedAt: startedAt, sourceUrl: input.url },
       local_capture: { startedAt, timeoutSeconds: input.timeoutSeconds, stage: "page_capture", processId: process.pid, errorCode: null as string | null },

@@ -54,7 +54,8 @@ export function parseReplicationPlan(input: unknown): ReplicationPlan {
   const sourceUrl = text(p.sourceUrl, "Source URL", 2_048);
   let url: URL;
   try { url = new URL(sourceUrl); } catch { throw new Error("Source URL is invalid"); }
-  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) throw new Error("Source URL must be an HTTP(S) URL without credentials");
+  const uploadedSource = /^contextdrop:\/\/upload\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(sourceUrl);
+  if ((!uploadedSource && !["https:", "http:"].includes(url.protocol)) || url.username || url.password) throw new Error("Source URL must be HTTP(S) or a ContextDrop upload identity without credentials");
   const evidence = list(p.evidence, "Evidence", 80, 1).map((item) => {
     const e = record(item, ["id", "kind", "text", "timestampSec"], "Evidence item");
     if (!["transcript", "frame", "caption", "article"].includes(e.kind as string)) throw new Error("Invalid evidence kind");
@@ -81,6 +82,7 @@ interface SourceAnalysis {
   transcript: string | null;
   frame_descriptions: unknown[] | null;
   caption: string | null;
+  visual_summary?: string | null;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -109,6 +111,7 @@ export function buildSourceEvidence(source: SourceAnalysis): { evidence: Replica
     if (typeof frame.description !== "string" || !frame.description.trim()) continue;
     const time = frame.timestampSec;
     const details = [frame.description];
+    if (typeof frame.speech === "string" && frame.speech.trim()) details.push(`Speech paraphrase (not a verbatim transcript): ${frame.speech}`);
     for (const [key, label] of [["onScreenText", "Visible text"], ["tools", "Visible tools"], ["urls", "Visible URLs"]]) {
       if (Array.isArray(frame[key])) {
         const items = (frame[key] as unknown[]).filter((item): item is string => typeof item === "string").slice(0, 20);
@@ -122,6 +125,9 @@ export function buildSourceEvidence(source: SourceAnalysis): { evidence: Replica
   }
   if (shortenedFrames) warnings.push(`${shortenedFrames} frame descriptions were shortened for the planning limit. Some visible text may be omitted.`);
   addText(source.caption, source.platform === "article" ? "article" : "caption", 8_000);
+  if (evidence.length && source.visual_summary?.trim()) {
+    evidence.push({ id: "visual-summary", kind: "article", text: `Model-generated source overview (fallible): ${source.visual_summary}`.slice(0, 2000), timestampSec: null });
+  }
   const capture = source.metadata?.source_evidence;
   if (capture && typeof capture === "object" && !Array.isArray(capture)) {
     const captureWarnings = (capture as Record<string, unknown>).warnings;
@@ -129,10 +135,11 @@ export function buildSourceEvidence(source: SourceAnalysis): { evidence: Replica
       if (typeof warning === "string" && warning.trim()) warnings.push(`Capture: ${warning.slice(0, 900)}`);
     }
   } else warnings.push("This older analysis has no capture metadata. Stored frame timing and coverage have not been independently verified.");
-  if (source.platform === "article") {
+  const mediaKind = capture && typeof capture === "object" ? (capture as Record<string, unknown>).media_kind : undefined;
+  if (source.platform === "article" || ["article", "document", "image"].includes(String(mediaKind))) {
     warnings.push("Stored article text may be an excerpt. Refer to the original for omitted steps.");
   } else {
-    if (!source.transcript?.trim()) warnings.push("No transcript was captured. Spoken prerequisites or instructions may be missing.");
+    if (!source.transcript?.trim()) warnings.push("No separate transcript was captured. Any speech paraphrases in the evidence are model observations, not exact quotations.");
     else warnings.push("Transcript excerpts have no verified word timestamps; no timing has been invented.");
     if (!evidence.some((e) => e.kind === "frame")) warnings.push("No frame evidence was captured. The plan cannot establish what happened on screen.");
     else warnings.push("Frame descriptions are model-generated observations of sampled images, not a complete video recording. Brief steps, code, and small text can be missed.");

@@ -15,6 +15,8 @@ export function selectCaptureReader(input: unknown, reader: unknown = "auto", ge
 
 export function captureIsActive(analysis: { status: string; created_at: string; metadata?: Record<string, unknown> | null } | null, now = Date.now()) {
   if (!analysis || ["done", "failed"].includes(analysis.status)) return false;
-  const startedAt = (analysis.metadata?.local_capture as { startedAt?: string } | undefined)?.startedAt ?? analysis.created_at;
-  return now - Date.parse(startedAt) < 15 * 60_000;
+  const capture = analysis.metadata?.local_capture as { startedAt?: string; timeoutSeconds?: number } | undefined;
+  const startedAt = capture?.startedAt ?? analysis.created_at;
+  const timeout = typeof capture?.timeoutSeconds === "number" && Number.isFinite(capture.timeoutSeconds) ? Math.min(1800, Math.max(840, capture.timeoutSeconds)) : 840;
+  return now - Date.parse(startedAt) < (timeout + 60) * 1000;
 }
