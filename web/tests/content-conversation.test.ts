@@ -46,3 +46,23 @@ test('research in a coding harness is a terminal inspection, not a browser walk'
   assert.equal(data.actions[0].executor,'terminal');
   assert.equal(data.actions[0].harness,'claude');
 });
+
+test('long-source overview distributes excerpts and includes visual summary and explicit coverage', () => {
+  const analysis = { id:'long', source_url:'https://example.com/long', transcript:'beginning '+ 'text '.repeat(30000) + ' late ending', caption:'description '.repeat(9000)+'caption ending', visual_summary:'Distinctive visual style', frame_descriptions:Array.from({length:2101},(_,i)=>({timestampSec:i,description:`frame${i}`})), metadata:{source_evidence:{media_kind:'video',capture_complete:true,native_video:{coverage:{complete:true}},warnings:['Sampled']}} } as unknown as Analysis;
+  const context = evidenceContext(analysis);
+  assert.equal(context.transcriptTruncated,true);
+  assert.ok(context.transcript.includes('beginning'));
+  assert.ok(context.transcript.endsWith('late ending'));
+  assert.ok(context.caption.endsWith('caption ending'));
+  assert.equal(context.visualSummary,'Distinctive visual style');
+  assert.equal(context.observations.at(-1)?.index,2100);
+  assert.equal(context.captureCoverage.mediaKind,'video');
+  assert.deepEqual(context.captureCoverage.warnings,['Sampled']);
+});
+
+test('secondary-source citations use canonical read identities and separate observation bounds', () => {
+  const saved={id:'source-b',source_url:'https://example.com/real',metadata:{title:'Actual saved source'},frame_descriptions:[{},{}]} as unknown as Analysis;
+  const data=parseContentReply(reply({evidence:[0,1,2],sourceReferences:[{analysisId:'source-b',title:'Invented title',sourceUrl:'https://evil.example',evidence:[1,2,99,-1,1]},{analysisId:'not-read',evidence:[0]},{analysisId:'source-b',evidence:[0]}]}),1,new Set(),new Map([['source-b',saved]]));
+  assert.deepEqual(data.evidence,[0]);
+  assert.deepEqual(data.sourceReferences,[{analysisId:'source-b',title:'Actual saved source',sourceUrl:'https://example.com/real',evidence:[1]}]);
+});

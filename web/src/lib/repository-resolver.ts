@@ -4,6 +4,7 @@ export interface RepositorySourceClue {
   source: "visual" | "transcript" | "caption";
   timestampSeconds?: number;
   frameId?: string;
+  uncertain?: boolean;
 }
 
 export interface PublicRepository {
@@ -22,6 +23,7 @@ export interface RepositoryResolution {
   sourceMatch: "confirmed" | "candidate" | "unknown";
   repository: PublicRepository | null;
   matchedClues: RepositorySourceClue[];
+  conflictingIdentities?: string[];
   reason: string;
   checkedAt: string;
 }
@@ -156,9 +158,31 @@ function exactClues(clues: RepositorySourceClue[], repository: PublicRepository)
       source: clue.source,
       ...(clue.timestampSeconds !== undefined ? { timestampSeconds: clue.timestampSeconds } : {}),
       ...(typeof clue.frameId === "string" ? { frameId: clue.frameId.slice(0, 200) } : {}),
+      ...(clue.uncertain === true ? { uncertain: true } : {}),
     });
   }
   return matches;
+}
+
+function conflictingRepositoryIdentities(clues: RepositorySourceClue[], repository: PublicRepository): string[] {
+  const conflicting = new Set<string>();
+  let remaining = 2_000_000;
+  // The same repository name attributed to two owners is an unresolved source
+  // extraction conflict, even when one of the public repositories exists.
+  const pair = /(?:^|[\s(["'])(?:(?:https?:\/\/)?(?:www\.)?github\.com\/)?([a-zA-Z0-9][a-zA-Z0-9-]{0,38})\/([a-zA-Z0-9_.-]{1,100})(?=$|[\s/)\]?,"'#])/g;
+  for (const clue of clues.slice(0, 2000)) {
+    if (!clue || !["visual", "transcript", "caption"].includes(clue.source) || typeof clue.text !== "string") continue;
+    if (clue.timestampSeconds !== undefined && (!Number.isFinite(clue.timestampSeconds) || clue.timestampSeconds < 0)) continue;
+    const text = clue.text.slice(0, remaining);
+    remaining -= text.length;
+    for (const match of text.matchAll(pair)) {
+      const [, owner, rawName] = match;
+      const name = rawName.replace(/\.git$/, "");
+      if (name.toLowerCase() === repository.name.toLowerCase() && owner.toLowerCase() !== repository.owner.toLowerCase() && validParts(owner, name)) conflicting.add(`${owner}/${name}`);
+    }
+    if (remaining <= 0) break;
+  }
+  return [...conflicting].slice(0, 8);
 }
 
 export async function verifyPublicRepository(proposedUrl: string, sourceClues: RepositorySourceClue[] = [], options: LookupOptions = {}): Promise<RepositoryResolution> {
@@ -174,12 +198,15 @@ export async function verifyPublicRepository(proposedUrl: string, sourceClues: R
     const repository = parseRepository(result.value);
     if (!repository || repository.fullName.toLowerCase() !== fullName.toLowerCase()) return unresolved("unavailable", "GitHub returned an unexpected repository identity. No match was confirmed.");
     const matchedClues = exactClues(Array.isArray(sourceClues) ? sourceClues : [], repository);
+    const conflictingIdentities = conflictingRepositoryIdentities(Array.isArray(sourceClues) ? sourceClues : [], repository);
+    const confirmed = matchedClues.some(clue => !clue.uncertain) && !conflictingIdentities.length;
     return {
       existence: "verified",
-      sourceMatch: matchedClues.length ? "confirmed" : "candidate",
+      sourceMatch: confirmed ? "confirmed" : "candidate",
       repository,
       matchedClues,
-      reason: matchedClues.length ? "This public repository exists and its exact owner/name appears in the supplied source evidence." : "This public repository exists. The available source evidence does not confirm it is the one shown or discussed.",
+      conflictingIdentities,
+      reason: conflictingIdentities.length ? "This public repository exists, but the captured source attributes the same repository name to different owners. Reinspect the original moment or report this as a candidate; existence does not resolve the conflicting identity." : confirmed ? "This public repository exists and its exact owner/name appears in the supplied source evidence." : matchedClues.length ? "This public repository exists, but its source identity is marked uncertain. Reinspect the source before claiming a confirmed match." : "This public repository exists. The available source evidence does not confirm it is the one shown or discussed.",
       checkedAt,
     };
   } catch { return unresolved("unavailable", "The public GitHub lookup failed or exceeded its limits. No match was confirmed."); }

@@ -17,7 +17,7 @@ const MODES = [
 ] as const;
 
 type Harness = "codex" | "claude";
-interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness }
+interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[] }
 
 function timestamp(seconds: number | null) {
   if (seconds === null) return "No timestamp";
@@ -38,7 +38,7 @@ function download(content: string, name: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export default function ReplicationPanel({ analysis, initialPlan, demo = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex" }: Props) {
+export default function ReplicationPanel({ analysis, initialPlan, demo = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex", contextSourceIds = [] }: Props) {
   const captured = buildSourceEvidence(analysis);
   const [mode, setMode] = useState<ReplicationPlan["mode"]>(initialPlan?.mode ?? initialMode);
   const [goal, setGoal] = useState(initialPlan?.goal ?? initialGoal);
@@ -106,7 +106,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
     setBusy(true); setError(""); setReviewed(false);
     const controller = new AbortController(); generationController.current = controller;
     try {
-      const response = await fetch(planningEndpoint ?? `/api/analyses/${analysis.id}/replicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal: goal.trim(), mode }), signal: controller.signal });
+      const response = await fetch(planningEndpoint ?? `/api/analyses/${analysis.id}/replicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal: goal.trim(), mode, ...(planningEndpoint === "/api/local/replicate" ? { analysisId: analysis.id, contextSourceIds } : {}) }), signal: controller.signal });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not prepare this plan.");
       setPlan(parseReplicationPlan(data.plan)); setTab("plan"); setRun(null);

@@ -148,3 +148,22 @@ test("search rejects huge/empty clues and strips arbitrary query operators", asy
   };
   assert.equal((await searchPublicRepositories("Agent-Reach user:someone", { fetch: fetcher })).status, "ok");
 });
+
+test("conflicting owner identities remain candidates even when one public repository exists", async () => {
+  const result = await verifyPublicRepository(url, [
+    { source:"visual", text: url, timestampSeconds: 10 },
+    { source:"visual", text:"GitHub: https://github.com/OtherOwner/Agent-Reach", timestampSeconds: 100 },
+  ], {fetch:reply()});
+  assert.equal(result.existence,"verified");
+  assert.equal(result.sourceMatch,"candidate");
+  assert.deepEqual(result.conflictingIdentities,["OtherOwner/Agent-Reach"]);
+  assert.match(result.reason,/different owners/);
+  const unrelated = await verifyPublicRepository(url,[{source:"visual",text:`${url} and https://github.com/OtherOwner/unrelated`}],{fetch:reply()});
+  assert.equal(unrelated.sourceMatch,"confirmed");
+});
+
+test("uncertain visual OCR never becomes a confirmed repository identity", async () => {
+  const result=await verifyPublicRepository(url,[{source:"visual",text:url,uncertain:true}],{fetch:reply()});
+  assert.equal(result.sourceMatch,"candidate");
+  assert.equal(result.matchedClues[0].uncertain,true);
+});

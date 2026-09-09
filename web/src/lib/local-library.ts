@@ -1,5 +1,6 @@
 import { constants, promises as fs } from "node:fs";
 import path from "node:path";
+import type { Analysis } from "./types";
 
 const ID = /^[a-zA-Z0-9-]{1,80}$/;
 const MAX_CAPTURE_BYTES = 4_000_000;
@@ -39,6 +40,14 @@ async function captureFile(root: string, filename: string, expectedId?: string):
     return capture as Capture;
   } catch { return null; }
   finally { await handle?.close(); }
+}
+
+/** Read source evidence without switching the user's open source or conversation. */
+export async function readLocalLibrarySource(root: string, analysisId: string): Promise<Analysis | null> {
+  if (!ID.test(analysisId)) return null;
+  const current = await captureFile(root, path.join(root, "local-analysis.json"));
+  const capture = current?.id === analysisId ? current : await captureFile(root, path.join(root, "library", `${analysisId}.json`), analysisId);
+  return capture?.status === "done" ? capture as Analysis : null;
 }
 
 function item(capture: Capture): LibraryItem {

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     await fs.writeFile(usageFile, JSON.stringify({ day, count: count + 1 }), { mode: 0o600 });
     const message = body.brief ? quickTakePrompt : body.message!.trim();
     const result = await answerContent(analysis, conversation, message);
-    if (body.brief) result.reply.actions = [];
+    if (body.brief) { result.reply.actions = []; result.reply.sourceReferences = []; }
     // A completed reply belongs to its captured source even if another capture
     // finishes during the model request. Never merge two sources' conversations.
     if (!body.brief) conversation.messages.push(contentMessage("user", message));

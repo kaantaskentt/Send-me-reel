@@ -3,9 +3,12 @@ import OpenAI from "openai";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { isLocalStudioRequest, readLocalAnalysis, localStudioRoot, writeLocalJson } from "@/lib/local-studio";
-import { buildSourceEvidence, PLAN_MODES } from "@/lib/execution-plan";
+import { PLAN_MODES } from "@/lib/execution-plan";
 import { parseReplicationDraft, requestReplicationDraft } from "@/lib/plan-generator";
 import { readBoundedJson } from "@/lib/bounded-json";
+import { readLocalLibrarySource } from "@/lib/local-library";
+import { readWorkspace } from "@/lib/local-workspace";
+import { buildLocalTaskEvidence } from "@/lib/local-task-context";
 
 export const runtime = "nodejs";
 let active = false;
@@ -17,12 +20,16 @@ export async function POST(request: NextRequest) {
   try {
     // Local studio is opt-in and loopback-only. Never bypass production account routes.
     let body;
-    try { body = await readBoundedJson(request) as { goal: string; mode: (typeof PLAN_MODES)[number] }; } catch { return NextResponse.json({ error: "Invalid or oversized JSON." }, { status: 400 }); }
-    if (!body || typeof body !== "object" || Object.keys(body).some(k => !["goal", "mode"].includes(k)) || typeof body.goal !== "string" || body.goal.trim().length < 8 || body.goal.length > 1_200 || /[\u0000-\u001f\u007f]/.test(body.goal) || !PLAN_MODES.includes(body.mode)) return NextResponse.json({ error: "Choose an outcome and describe it in 8–1,200 characters." }, { status: 400 });
+    try { body = await readBoundedJson(request) as { goal: string; mode: (typeof PLAN_MODES)[number]; analysisId?: string; contextSourceIds?: string[] }; } catch { return NextResponse.json({ error: "Invalid or oversized JSON." }, { status: 400 }); }
+    if (!body || typeof body !== "object" || Object.keys(body).some(k => !["goal", "mode", "analysisId", "contextSourceIds"].includes(k)) || typeof body.goal !== "string" || body.goal.trim().length < 8 || body.goal.length > 1_200 || /[\u0000-\u001f\u007f]/.test(body.goal) || !PLAN_MODES.includes(body.mode) || (body.analysisId !== undefined && typeof body.analysisId !== "string") || (body.contextSourceIds !== undefined && (!Array.isArray(body.contextSourceIds) || body.contextSourceIds.length > 3 || body.contextSourceIds.some(id => typeof id !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(id))))) return NextResponse.json({ error: "Choose an outcome and describe it in 8–1,200 characters, with up to three saved reference sources." }, { status: 400 });
     const analysis = await readLocalAnalysis();
     if (!analysis) return NextResponse.json({ error: "Capture a real source first. Local analysis is not ready." }, { status: 409 });
+    if (body.analysisId !== undefined && body.analysisId !== analysis.id) return NextResponse.json({ error: "The source changed. Reopen the action from the content you want to use." }, { status: 409 });
     if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: "The local server needs OPENAI_API_KEY." }, { status: 503 });
-    const { evidence, warnings } = buildSourceEvidence(analysis);
+    const otherSources = await Promise.all((body.contextSourceIds ?? []).map(id => readLocalLibrarySource(localStudioRoot, id)));
+    if (otherSources.some(source => !source)) return NextResponse.json({ error: "One of this task's saved sources is no longer available. Reopen the conversation and choose the references again." }, { status: 409 });
+    const { profile } = await readWorkspace();
+    const { evidence, warnings } = buildLocalTaskEvidence(analysis, otherSources.filter(source => source !== null), profile, body.goal);
     if (!evidence.length) return NextResponse.json({ error: "No source evidence was captured." }, { status: 422 });
     const day = new Date().toISOString().slice(0, 10);
     let count = 0;
