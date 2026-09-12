@@ -63,6 +63,7 @@ export default function HowItWorksSection() {
   return (
     <section
       ref={ref}
+      id="preview"
       className="py-24"
       style={{ background: "#111111", borderTop: "1px solid rgba(255,255,255,0.06)" }}
     >

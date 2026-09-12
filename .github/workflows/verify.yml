@@ -1,0 +1,66 @@
+name: Release checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "codex/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hosted-build:
+    name: Clean hosted build and smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # Match Vercel's web-only install; no root dependencies are installed here.
+      - run: npm run check:hosted
+
+  worker-and-audits:
+    name: Node 22 worker and dependency audits
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      # Railway's Dockerfile uses node:22-slim.
+      - run: npm ci
+      - run: npm run build
+      - name: Verify native image processing
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import sharp from 'sharp';
+          const image = await sharp({ create: { width: 8, height: 8, channels: 3, background: 'white' } }).resize(4, 4).png().toBuffer();
+          const metadata = await sharp(image).metadata();
+          assert.equal(metadata.width, 4);
+          assert.equal(metadata.height, 4);
+          console.log(JSON.stringify({ node: process.version, sharp: sharp.versions.sharp, width: metadata.width, height: metadata.height }));
+          JS
+      - name: Audit root dependencies
+        run: npm audit --package-lock-only --registry=https://registry.npmjs.org
+      - name: Audit root production dependencies
+        run: npm audit --package-lock-only --omit=dev --registry=https://registry.npmjs.org
+      - name: Audit web dependencies
+        run: npm --prefix web audit --package-lock-only --registry=https://registry.npmjs.org
+      - name: Audit web production dependencies
+        run: npm --prefix web audit --package-lock-only --omit=dev --registry=https://registry.npmjs.org
