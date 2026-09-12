@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function TermsPage() {
   const h2 = { fontSize: 16, fontWeight: 700, color: "#1c1917", margin: "0 0 8px" } as const;
   const p = { margin: "0 0 12px" } as const;
@@ -7,14 +9,14 @@ export default function TermsPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "80px 20px 60px" }}>
-        <a href="/" style={{ color: "#f97316", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>← Back</a>
+        <Link href="/" style={{ color: "#f97316", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>← Back</Link>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1c1917", margin: "24px 0 8px", letterSpacing: "-0.02em" }}>Terms of Service</h1>
         <p style={{ fontSize: 13, color: "#a8a29e", marginBottom: 32 }}>Last updated: 3 May 2026</p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 28, fontSize: 14, color: "#44403c", lineHeight: 1.75 }}>
 
           <section>
-            <p style={p}>These Terms of Service ("Terms") form a binding agreement between you and Kaan Taskent (operating as ContextDrop) regarding your use of the ContextDrop Telegram bot, website, and dashboard at contextdrop.ai (the "Service").</p>
+            <p style={p}>These Terms of Service (&quot;Terms&quot;) form a binding agreement between you and Kaan Taskent (operating as ContextDrop) regarding your use of the ContextDrop Telegram bot, website, and dashboard at contextdrop.ai (the &quot;Service&quot;).</p>
             <p style={p}>By using the Service, you confirm that you have read, understood, and agreed to these Terms. If you do not agree, do not use the Service.</p>
             <p style={{ margin: 0 }}>Questions? Contact us at <a href="mailto:taskentbusiness@gmail.com" style={{ color: "#f97316", textDecoration: "none", fontWeight: 600 }}>taskentbusiness@gmail.com</a>.</p>
           </section>
@@ -75,7 +77,7 @@ export default function TermsPage() {
           <section>
             <h2 style={h2}>7. AI outputs and reliability</h2>
             <p style={p}>The Service generates verdicts using artificial intelligence. AI outputs may contain errors, hallucinations, or factual inaccuracies. They should not be treated as professional advice (financial, legal, medical, or otherwise) and should not be used as the sole basis for decisions with significant consequences.</p>
-            <p style={{ margin: 0 }}>Outputs are provided "as is" without warranty of accuracy or fitness for a particular purpose. You acknowledge that AI is an evolving technology and that we cannot guarantee any particular quality of output.</p>
+            <p style={{ margin: 0 }}>Outputs are provided &quot;as is&quot; without warranty of accuracy or fitness for a particular purpose. You acknowledge that AI is an evolving technology and that we cannot guarantee any particular quality of output.</p>
           </section>
 
           <section>
@@ -87,7 +89,7 @@ export default function TermsPage() {
 
           <section>
             <h2 style={h2}>9. Service availability</h2>
-            <p style={{ margin: 0 }}>We aim to keep the Service running reliably but do not guarantee uninterrupted availability. The Service is provided on an "as available" basis and may be temporarily unavailable for maintenance, affected by outages of third-party providers, or subject to changes, suspensions, or discontinuation at any time. We are not liable for losses caused by unavailability or downtime.</p>
+            <p style={{ margin: 0 }}>We aim to keep the Service running reliably but do not guarantee uninterrupted availability. The Service is provided on an &quot;as available&quot; basis and may be temporarily unavailable for maintenance, affected by outages of third-party providers, or subject to changes, suspensions, or discontinuation at any time. We are not liable for losses caused by unavailability or downtime.</p>
           </section>
 
           <section>
@@ -99,7 +101,7 @@ export default function TermsPage() {
 
           <section>
             <h2 style={h2}>11. Disclaimers</h2>
-            <p style={p}>THE SERVICE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.</p>
+            <p style={p}>THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot;, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.</p>
             <p style={{ margin: 0 }}>TO THE FULLEST EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, INCLUDING WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, WARRANTIES OF NON-INFRINGEMENT, AND WARRANTIES THAT THE SERVICE WILL BE UNINTERRUPTED, ACCURATE, OR ERROR-FREE. You use the Service at your own risk.</p>
           </section>
 
@@ -112,12 +114,12 @@ export default function TermsPage() {
 
           <section>
             <h2 style={h2}>13. Indemnification</h2>
-            <p style={{ margin: 0 }}>You agree to indemnify and hold harmless Kaan Taskent (operating as ContextDrop) from any claims, damages, liabilities, costs, and expenses (including reasonable legal fees) arising out of your use of the Service, your violation of these Terms, your violation of any third party's rights, or content you submit to the Service.</p>
+            <p style={{ margin: 0 }}>You agree to indemnify and hold harmless Kaan Taskent (operating as ContextDrop) from any claims, damages, liabilities, costs, and expenses (including reasonable legal fees) arising out of your use of the Service, your violation of these Terms, your violation of any third party&apos;s rights, or content you submit to the Service.</p>
           </section>
 
           <section>
             <h2 style={h2}>14. Changes to these Terms</h2>
-            <p style={{ margin: 0 }}>We may update these Terms from time to time. When we make material changes, we will update the "Last updated" date and notify you via email or in-app notification at least 14 days before the changes take effect. Continued use of the Service after changes take effect means you accept the new Terms.</p>
+            <p style={{ margin: 0 }}>We may update these Terms from time to time. When we make material changes, we will update the &quot;Last updated&quot; date and notify you via email or in-app notification at least 14 days before the changes take effect. Continued use of the Service after changes take effect means you accept the new Terms.</p>
           </section>
 
           <section>

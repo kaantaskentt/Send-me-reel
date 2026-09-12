@@ -9,6 +9,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 const FEED_ITEMS = [
   {
@@ -281,11 +282,10 @@ function InteractiveDashboard({
   const animTaskAdded = animStep >= 7;
   const showNewCard = animStep >= 5;
 
-  useEffect(() => {
-    if (animTaskAdded && !tasks.includes(animItem.id)) {
-      setTasks((prev) => [...prev, animItem.id]);
-    }
-  }, [animTaskAdded, animItem.id, tasks]);
+  // Remember a newly completed animation before rendering the task list.
+  if (animTaskAdded && !tasks.includes(animItem.id)) {
+    setTasks([...tasks, animItem.id]);
+  }
 
   const addTask = useCallback((id: string) => {
     setTasks((prev) => (prev.includes(id) ? prev : [...prev, id]));
@@ -714,7 +714,7 @@ function InteractiveDashboard({
                       maxWidth: "85%",
                     }}
                   >
-                    What's the most important takeaway from this?
+                    What&apos;s the most important takeaway from this?
                   </div>
                 </motion.div>
 
@@ -812,13 +812,13 @@ function InteractiveDashboard({
                         >
                           This is a preview. Sign up to get web search + full analysis on every link you send.
                         </p>
-                        <a
+                        <Link
                           href="/signup"
                           className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md text-[10px] font-semibold transition-all"
                           style={{ background: "#F97316", color: "white", fontFamily: "'Inter', sans-serif", textDecoration: "none" }}
                         >
                           Sign up free →
-                        </a>
+                        </Link>
                       </div>
                     </motion.div>
                   )}

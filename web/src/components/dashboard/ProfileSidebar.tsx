@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { UserProfile } from "@/lib/types";
 import { ExternalLink, LogOut, Home, CheckSquare, MessageSquare, Link2, ChevronUp, ChevronDown } from "lucide-react";
 import { type PremiumModalSource } from "@/components/PremiumModal";
+import Link from "next/link";
 
 interface Props { profile: UserProfile; onUpgrade: (source: PremiumModalSource) => void; }
 
@@ -58,31 +59,31 @@ export default function ProfileSidebar({ profile, onUpgrade }: Props) {
       )}
 
       {/* Edit profile — always available, free or paid */}
-      <a href="/context" style={{ display: "inline-block", fontSize: 11, color: "#f97316", textDecoration: "none", fontWeight: 600, marginBottom: 14 }}>
+      <Link href="/context" style={{ display: "inline-block", fontSize: 11, color: "#f97316", textDecoration: "none", fontWeight: 600, marginBottom: 14 }}>
         Edit profile →
-      </a>
+      </Link>
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
 
       {/* Nav items */}
       <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 14 }}>
-        <a href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600, color: "#f97316", background: "rgba(249,115,22,0.06)", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif" }}>
+        <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 600, color: "#f97316", background: "rgba(249,115,22,0.06)", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif" }}>
           <Home style={{ width: 15, height: 15 }} /> Feed
           <span style={{ marginLeft: "auto", fontSize: 11, color: "#a8a29e" }}>{creditsUsed || ""}</span>
-        </a>
-        <a href="/tasks" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+        </Link>
+        <Link href="/tasks" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f1eb"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
           <CheckSquare style={{ width: 15, height: 15 }} /> Tasks
-        </a>
-        <a href="/chat" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+        </Link>
+        <Link href="/chat" style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, fontWeight: 500, color: "#78716c", textDecoration: "none", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "#f5f1eb"; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
         >
           <MessageSquare style={{ width: 15, height: 15 }} /> Chat
           {user.premium && <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700, background: "#fff7ed", color: "#f97316", border: "1px solid #fed7aa", padding: "2px 6px", borderRadius: 20 }}>NEW</span>}
-        </a>
+        </Link>
       </div>
 
       <div style={{ height: 1, background: "#f0ebe4", margin: "14px 0" }} />
@@ -143,7 +144,8 @@ export default function ProfileSidebar({ profile, onUpgrade }: Props) {
         <button
           onClick={() => {
             fetch("/api/auth/logout", { method: "POST" }).then(() => {
-              window.location.href = "/login";
+              // Drop cached authenticated routes after clearing the session.
+              window.location.replace(new URL("/login", window.location.origin).href);
             });
           }}
           style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#a8a29e", background: "none", border: "none", cursor: "pointer", padding: "8px 10px", borderRadius: 10, fontFamily: "'DM Sans', sans-serif", width: "100%", textAlign: "left" }}
@@ -156,7 +158,7 @@ export default function ProfileSidebar({ profile, onUpgrade }: Props) {
   );
 }
 
-function ConnectorsSection({ notionConnected, isPremium, onUpgrade }: { notionConnected: boolean; isPremium: boolean; onUpgrade: (source: PremiumModalSource) => void }) {
+function ConnectorsSection({ notionConnected, onUpgrade }: { notionConnected: boolean; isPremium: boolean; onUpgrade: (source: PremiumModalSource) => void }) {
   const [open, setOpen] = useState(false);
   const connectedCount = notionConnected ? 1 : 0;
 

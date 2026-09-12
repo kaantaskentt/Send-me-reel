@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { BOT_LINK } from "@/lib/constants";
+import Link from "next/link";
 
 const DASHBOARD_LINK = `${BOT_LINK}?start=dashboard`;
 
@@ -22,7 +23,7 @@ export default function ConnectPrompt() {
           Open Telegram bot
           <ArrowRight style={{ width: 15, height: 15 }} />
         </a>
-        <a href="/" style={{ fontSize: 13, color: "#c4bdb5", textDecoration: "none" }}>← Back to home</a>
+        <Link href="/" style={{ fontSize: 13, color: "#c4bdb5", textDecoration: "none" }}>← Back to home</Link>
       </div>
     </div>
   );

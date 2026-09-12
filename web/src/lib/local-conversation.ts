@@ -8,7 +8,7 @@ import { contentReplySchema, evidenceContext, parseContentReply, publicLink, typ
 import { searchPublicRepositories, verifyPublicRepository, type RepositorySourceClue } from "./repository-resolver";
 import type { Analysis } from "./types";
 import { inspectGeminiVideoMoment } from "../../../src/services/geminiVideo";
-import { inspectUploadedContent } from "../../../src/services/uploadedContent";
+import { inspectLocalUpload } from "./local-upload-inspector";
 import { listLocalLibrary, readLocalLibrarySource } from "./local-library";
 import { searchSavedSources, searchSourceEvidence } from "./source-retrieval";
 import { readWorkspaceContext } from "./local-workspace";
@@ -125,11 +125,11 @@ export async function answerContent(analysis: Analysis, conversation: ContentCon
             const cacheKey = createHash("sha256").update(JSON.stringify({ source: analysis.source_url, sha256: upload.sha256, ...request })).digest("hex");
             const directory = path.join(studioRoot, "inspections", analysis.id);
             const filename = path.join(directory, `${cacheKey}.json`);
-            let inspected: Awaited<ReturnType<typeof inspectUploadedContent>> | undefined;
+            let inspected: Awaited<ReturnType<typeof inspectLocalUpload>> | undefined;
             try { if ((await fs.stat(filename)).size <= 100_000) { const cached = JSON.parse(await fs.readFile(filename, "utf8")); if (cached.status === "complete" && cached.sourceUrl === analysis.source_url) inspected = cached; } } catch { /* no completed inspection */ }
             const cached = !!inspected;
             if (!inspected) {
-              inspected = await inspectUploadedContent({ uploadRoot: path.join(studioRoot, "uploads"), uploadId: upload.id, ...request, apiKey: key, signal: deadline });
+              inspected = await inspectLocalUpload({ uploadRoot: path.join(studioRoot, "uploads"), uploadId: upload.id, ...request, apiKey: key, signal: deadline });
               await fs.mkdir(directory, { recursive: true, mode: 0o700 });
               await fs.writeFile(filename, JSON.stringify(inspected), { mode: 0o600 });
             }

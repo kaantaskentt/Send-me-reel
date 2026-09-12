@@ -29,7 +29,7 @@ export async function GET() {
   }
 
   const threadIds = (threads ?? []).map((t) => t.id);
-  let countMap: Record<string, number> = {};
+  const countMap: Record<string, number> = {};
 
   if (threadIds.length > 0) {
     const { data: counts } = await db

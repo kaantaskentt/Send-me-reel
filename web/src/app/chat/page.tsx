@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import ChatMessage from "@/components/chat/ChatMessage";
 import ChatInput from "@/components/chat/ChatInput";
 import ChatSidebar from "@/components/chat/ChatSidebar";
+import Link from "next/link";
 
 interface Analysis {
   id: string;
@@ -193,7 +194,7 @@ function ChatContent() {
   const abortRef = useRef<AbortController | null>(null);
 
   // Current conversation (derived from map)
-  const messages = selectedId ? (chatHistory[selectedId] || []) : [];
+  const messages = useMemo(() => selectedId ? (chatHistory[selectedId] || []) : [], [selectedId, chatHistory]);
   const setMessages = (msgs: Message[]) => {
     if (!selectedId) return;
     setChatHistory((prev) => ({ ...prev, [selectedId]: msgs }));
@@ -481,13 +482,13 @@ function ChatContent() {
                 <p style={{ fontSize: 13, color: "#78716c", lineHeight: 1.6, margin: "0 0 20px 0" }}>
                   {formatResetIn(chatUsage?.resetAt ?? null) ? `Resets in ${formatResetIn(chatUsage?.resetAt ?? null)}` : "Resets soon"} — or upgrade for unlimited chat with every analysis.
                 </p>
-                <a href="/pricing" style={{
+                <Link href="/pricing" style={{
                   display: "inline-block", padding: "11px 28px", background: "#f97316", color: "#fff",
                   fontWeight: 700, fontSize: 14, borderRadius: 100, textDecoration: "none",
                   fontFamily: "'DM Sans', sans-serif",
                 }}>
                   Upgrade for unlimited
-                </a>
+                </Link>
               </div>
             </div>
           )}
@@ -694,14 +695,14 @@ function ChatHeader({
           <polyline points="15 18 9 12 15 6" />
         </svg>
       </button>
-      <a className="cd-chat-header-logo" href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+      <Link className="cd-chat-header-logo" href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
         <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "#1c1917" }}>
           Context<span style={{ color: "#f97316" }}>Drop</span>
         </span>
-      </a>
+      </Link>
       <span className="cd-chat-header-logo" style={{ fontSize: 13, color: "#c4bdb5" }}>/</span>
       <span className="cd-chat-header-logo" style={{ fontSize: 14, fontWeight: 600, color: "#78716c" }}>Chat</span>
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
@@ -717,7 +718,7 @@ function ChatHeader({
           ← Dashboard
         </button>
       {usagePill && (
-        <a
+        <Link
           href="/pricing"
           title="Upgrade for unlimited chat"
           style={{
@@ -736,7 +737,7 @@ function ChatHeader({
           }}
         >
           {usagePill.remaining}/{usagePill.limit} left today
-        </a>
+        </Link>
       )}
       </div>
     </header>

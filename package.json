@@ -10,6 +10,7 @@
     "start": "node dist/index.js",
     "companion": "tsx companion/server.ts",
     "check:companion": "tsc -p companion/tsconfig.json",
+    "check:hosted": "node scripts/check-hosted-build.mjs",
     "test:ui": "npm --prefix web run test:replication",
     "local:companion": "tsx scripts/start-local-companion.ts",
     "local:result": "node scripts/serve-demo-result.mjs",

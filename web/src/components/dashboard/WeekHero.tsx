@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import type { Analysis, AnalysisState } from "@/lib/types";
 import { parseVerdict } from "@/lib/verdict-parser";
 import { useTheme } from "@/lib/theme";
+import Link from "next/link";
 
 interface Props {
   analysis: Analysis;
@@ -154,12 +155,12 @@ export default function WeekHero({ analysis }: Props) {
                 {taskAdded ? "✓ Added to tasks" : addingTask ? "Adding…" : "+ Add to tasks"}
               </button>
               {taskAdded && (
-                <a
+                <Link
                   href="/tasks"
                   style={{ fontSize: 12, color: "#f97316", textDecoration: "none", fontWeight: 600, opacity: 0.8 }}
                 >
                   View all tasks →
-                </a>
+                </Link>
               )}
             </div>
           </div>

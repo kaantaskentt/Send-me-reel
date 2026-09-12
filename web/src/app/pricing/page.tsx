@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PremiumModal from "@/components/PremiumModal";
+import Link from "next/link";
 
 export default function PricingPage() {
   const [premiumOpen, setPremiumOpen] = useState(false);
@@ -11,10 +12,10 @@ export default function PricingPage() {
       {/* Header */}
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,248,245,0.88)", backdropFilter: "blur(16px)", borderBottom: "1px solid #e7e2d9" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 56, maxWidth: 960, margin: "0 auto" }}>
-          <a href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "#1c1917" }}>
+          <Link href="/" style={{ textDecoration: "none", fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", color: "#1c1917" }}>
             Context<span style={{ color: "#f97316" }}>Drop</span>
-          </a>
-          <a href="/dashboard" style={{ fontSize: 13, color: "#78716c", textDecoration: "none", fontWeight: 500 }}>← Back to dashboard</a>
+          </Link>
+          <Link href="/dashboard" style={{ fontSize: 13, color: "#78716c", textDecoration: "none", fontWeight: 500 }}>← Back to dashboard</Link>
         </div>
       </header>
 

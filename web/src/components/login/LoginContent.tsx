@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 const ERROR_MESSAGES: Record<string, string> = {
   expired_token: "Your sign-in link has expired.",
@@ -45,7 +46,8 @@ export default function LoginContent({
           </div>
         )}
 
-        {/* Google */}
+        {/* OAuth must navigate the document so the provider redirect can run. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/api/auth/google" onClick={() => {
           const pendingUrl = searchParams.get("url");
           if (searchParams.get("next") === "/share" && pendingUrl) {
@@ -75,7 +77,7 @@ export default function LoginContent({
           Sign in via Telegram
         </a>
 
-        <a href="/" style={{ marginTop: 24, fontSize: 13, color: "#c4bdb5", textDecoration: "none" }}>← Back to home</a>
+        <Link href="/" style={{ marginTop: 24, fontSize: 13, color: "#c4bdb5", textDecoration: "none" }}>← Back to home</Link>
       </div>
     </div>
   );

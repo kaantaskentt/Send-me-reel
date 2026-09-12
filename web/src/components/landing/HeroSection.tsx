@@ -9,6 +9,7 @@
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HeroDemoAnimation from "./HeroDemoAnimation";
+import { useRouter } from "next/navigation";
 
 const ROTATING_WORDS = ["summarized.", "understood.", "clarified.", "actioned.", "finally useful."];
 
@@ -70,6 +71,7 @@ function isValidUrl(s: string) {
 }
 
 function HeroAnalysePanel() {
+  const router = useRouter();
   const [link, setLink] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -91,7 +93,7 @@ function HeroAnalysePanel() {
         const data = await res.json();
         if (data?.user) {
           sessionStorage.setItem("pendingLink", link.trim());
-          window.location.href = "/dashboard";
+          router.push("/dashboard");
           return;
         }
       }
@@ -154,7 +156,7 @@ function HeroAnalysePanel() {
             </div>
             {urlError && (
               <p className="mt-2 text-center text-xs" style={{ color: "#F97316" }}>
-                That doesn't look like a link — paste a URL (e.g. https://...)
+                That doesn&apos;t look like a link — paste a URL (e.g. https://...)
               </p>
             )}
             <p className="mt-3 text-center text-xs" style={{ color: "#52525B" }}>
@@ -192,6 +194,8 @@ function HeroAnalysePanel() {
               <p className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>Got it — analysing your link…</p>
               <p className="text-xs mt-1" style={{ color: "#A1A1AA" }}>Sign in to see your card. Takes about 30 seconds.</p>
               <div className="flex flex-col items-stretch gap-3 mt-3">
+                {/* OAuth must navigate the document so the provider redirect can run. */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                 <a
                   href="/api/auth/google"
                   style={{

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { ArrowUp, ArrowUpRight, Bookmark, Check, ChevronDown, Clock3, FileText, Film, Loader2, MessageCircle, Search, X } from "lucide-react";
 import Markdown from "@/components/chat/Markdown";
 import type { Analysis } from "@/lib/types";
@@ -141,7 +142,7 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
       </section>
       <aside aria-label="Current source" className={styles.source}>
         <div className={styles.sourceLabel}>{duration > 0 ? <Film size={14} /> : <FileText size={14} />} Your source</div>
-        {local?.framePaths?.length ? <button type="button" onClick={() => setFrame(0)} className={styles.sourcePreview}><img src={imageUrl(0)} alt="First sampled source frame" /></button> : null}
+        {local?.framePaths?.length ? <button type="button" onClick={() => setFrame(0)} className={styles.sourcePreview}><Image unoptimized src={imageUrl(0)} width={1280} height={720} alt="First sampled source frame" /></button> : null}
         <h2>{title}</h2>
         <div className={styles.sourceMeta}><span>{analysis.source_url.startsWith("contextdrop:") ? "Uploaded file" : analysis.platform}</span>{duration > 0 && <><span>·</span><Clock3 size={12} /><span>{time(duration)}</span></>}</div>
         {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open original <ArrowUpRight size={13} /></a>}
@@ -154,6 +155,6 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
       </aside>
     </div>
     {action && <div ref={task} className={styles.task}><div className={styles.taskHeader}><div><p className={styles.eyebrow}>Your chosen action</p><h2>{action.label}</h2></div><button type="button" aria-label="Close task preparation" onClick={() => { setAction(null); composer.current?.focus(); }} className={styles.iconButton}><X size={18} /></button></div><ReplicationPanel key={action.id} analysis={analysis} contextSourceIds={action.contextSourceIds} initialPlan={!action.contextSourceIds?.length && !savedPlan?.evidence.some(item => item.id.startsWith("source2-")) && savedPlan?.goal === action.goal && savedPlan?.mode === action.mode ? savedPlan : undefined} initialGoal={action.goal ?? ""} initialMode={action.mode} initialHarness={action.harness ?? "claude"} planningEndpoint="/api/local/replicate" initialExecutor={action.executor ?? (/\b(claude code|codex)\b/i.test(action.goal ?? "") ? "terminal" : action.mode === "research" ? "browser" : "terminal")} initialPairingToken={pairingToken} planningNotice="A reviewed task can open your Mac browser or coding agent. This is local execution, not a cloud sandbox." /></div>}
-    {selectedObservation && frame !== null && <StudioDialog title={`Source evidence · ${time(selectedObservation.timestampSec ?? 0)}`} wide onClose={() => setFrame(null)}>{local?.framePaths?.[frame] && <img src={imageUrl(frame)} alt={`Captured source at ${time(selectedObservation.timestampSec ?? 0)}`} className={styles.evidenceImage} />}<p className={styles.evidenceText}>{selectedObservation.description}</p>{!!selectedObservation.onScreenText?.length && <p className={styles.evidenceNote}>Visible text: {selectedObservation.onScreenText.join(" · ")}</p>}<p className={styles.evidenceNote}>AI-extracted observation{selectedObservation.uncertain ? " · marked uncertain" : " · check the original for exact details"}.</p>{originalMoment && <a href={originalMoment} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open this moment in the source <ArrowUpRight size={14} /></a>}</StudioDialog>}
+    {selectedObservation && frame !== null && <StudioDialog title={`Source evidence · ${time(selectedObservation.timestampSec ?? 0)}`} wide onClose={() => setFrame(null)}>{local?.framePaths?.[frame] && <Image unoptimized src={imageUrl(frame)} width={1280} height={720} style={{ height: "auto" }} alt={`Captured source at ${time(selectedObservation.timestampSec ?? 0)}`} className={styles.evidenceImage} />}<p className={styles.evidenceText}>{selectedObservation.description}</p>{!!selectedObservation.onScreenText?.length && <p className={styles.evidenceNote}>Visible text: {selectedObservation.onScreenText.join(" · ")}</p>}<p className={styles.evidenceNote}>AI-extracted observation{selectedObservation.uncertain ? " · marked uncertain" : " · check the original for exact details"}.</p>{originalMoment && <a href={originalMoment} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open this moment in the source <ArrowUpRight size={14} /></a>}</StudioDialog>}
   </>;
 }

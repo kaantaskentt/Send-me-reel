@@ -38,7 +38,7 @@ export default function WorkspaceTools({ canUseWorkflow = false }: { canUseWorkf
     } catch (error) { setError(error instanceof Error ? error.message : "Could not save your project."); }
     finally { setSaving(false); }
   }
-  function useWorkflow(workflow: Workflow) {
+  function applyWorkflow(workflow: Workflow) {
     window.dispatchEvent(new CustomEvent("contextdrop:workflow", { detail: { id: workflow.id, title: workflow.title, instructions: workflow.instructions } }));
     setPanel(null);
   }
@@ -59,7 +59,7 @@ export default function WorkspaceTools({ canUseWorkflow = false }: { canUseWorkf
       </> : <>
         <p className={styles.dialogDescription}>Keep a useful answer as a recipe for next time. Saved workflows are drafts; actions still start with a reviewed plan.</p>
         {!canUseWorkflow && <p className={styles.dialogDescription}>Open or finish reading a source to use a workflow in its conversation.</p>}
-        <div className={styles.list}>{workflows.map(workflow => <article key={workflow.id} className={styles.workflowCard}><h3>{workflow.title}</h3><p>{workflow.sourceTitles.join(" · ") || "Saved from a conversation"}</p><details className={styles.captureOptions}><summary>Read workflow</summary><p style={{ whiteSpace: "pre-wrap" }}>{workflow.instructions}</p></details><div className={styles.inline}><button type="button" className={styles.secondaryButton} disabled={!canUseWorkflow} onClick={() => useWorkflow(workflow)}><MessageCircle size={14} /> Use in chat</button><a className={styles.textButton} href={`/api/local/workflows/${encodeURIComponent(workflow.id)}/export`} download><Download size={14} /> Download skill</a></div></article>)}</div>
+        <div className={styles.list}>{workflows.map(workflow => <article key={workflow.id} className={styles.workflowCard}><h3>{workflow.title}</h3><p>{workflow.sourceTitles.join(" · ") || "Saved from a conversation"}</p><details className={styles.captureOptions}><summary>Read workflow</summary><p style={{ whiteSpace: "pre-wrap" }}>{workflow.instructions}</p></details><div className={styles.inline}><button type="button" className={styles.secondaryButton} disabled={!canUseWorkflow} onClick={() => applyWorkflow(workflow)}><MessageCircle size={14} /> Use in chat</button><a className={styles.textButton} href={`/api/local/workflows/${encodeURIComponent(workflow.id)}/export`} download><Download size={14} /> Download skill</a></div></article>)}</div>
         {!workflows.length && <p className={styles.empty}>When an answer is worth keeping, choose “Save workflow” below it. You can reuse it with another source.</p>}
       </>}
       {error && <p role="alert" className={styles.error}>{error}</p>}

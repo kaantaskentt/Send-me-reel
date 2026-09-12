@@ -34,7 +34,7 @@ test('visible browser loop highlights an observed control, waits for approval, d
     await run.start();assert.equal(state.status,'awaiting_approval',state.message);assert.equal(state.pendingAction?.type,'navigate');assert.equal(attempts,1);
     await run.approve(state.pendingAction!.id,true);
     assert.equal(state.status,'awaiting_approval',state.message);assert.equal(state.pendingAction?.type,'click');assert.ok(state.screenshot?.startsWith('data:image/jpeg;base64,'));assert.equal(attempts,2);
-    await fs.writeFile('/private/tmp/contextdrop-guided-browser-proof.jpg',Buffer.from(state.screenshot!.split(',')[1],'base64'));
+    await fs.writeFile(path.join(workspace,'guided-browser-proof.jpg'),Buffer.from(state.screenshot!.split(',')[1],'base64'));
     const id=state.pendingAction!.id;
     await assert.rejects(run.approve('stale-action-id',true),/stale/);
     assert.equal(state.status,'awaiting_approval',state.message);

@@ -9,7 +9,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 // ─── prompt ────────────────────────────────────────────────────────────────
 
@@ -562,7 +561,6 @@ function parseAIOutput(raw: string): Partial<Profile> {
 // ─── main ────────────────────────────────────────────────────────────────────
 
 export default function ProfileSetup() {
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [aiMode, setAiMode] = useState(true);

@@ -40,7 +40,7 @@ export async function GET(
 
   // Attach message counts in a single query to avoid N+1.
   const threadIds = (threads ?? []).map((t) => t.id);
-  let countMap: Record<string, number> = {};
+  const countMap: Record<string, number> = {};
 
   if (threadIds.length > 0) {
     const { data: counts } = await db

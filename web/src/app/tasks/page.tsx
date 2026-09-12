@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import Link from "next/link";
 
 interface TaskWithSource {
   id: string;
@@ -141,20 +142,20 @@ export default function TasksPage() {
         borderBottom: "1px solid #e7e2d9",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 20px", height: 56, maxWidth: 760, margin: "0 auto" }}>
-          <a href="/dashboard" style={{ color: "#a8a29e", textDecoration: "none", display: "flex", alignItems: "center", padding: 6, borderRadius: 8, transition: "background 0.15s" }}
+          <Link href="/dashboard" style={{ color: "#a8a29e", textDecoration: "none", display: "flex", alignItems: "center", padding: 6, borderRadius: 8, transition: "background 0.15s" }}
             onMouseEnter={(e) => { e.currentTarget.style.background = "#f0ebe4"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-          </a>
-          <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+          </Link>
+          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 26, height: 26, borderRadius: 7, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.02em", color: "#1c1917" }}>
               Context<span style={{ color: "#f97316" }}>Drop</span>
             </span>
-          </a>
+          </Link>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d6d3d1" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
           <span style={{ fontSize: 14, fontWeight: 600, color: "#78716c" }}>Tasks</span>
         </div>
@@ -328,7 +329,7 @@ export default function TasksPage() {
                 <div style={{ fontSize: 32, marginBottom: 12 }}>📋</div>
                 <p style={{ fontSize: 15, fontWeight: 600, color: "#78716c", marginBottom: 6 }}>No tasks yet.</p>
                 <p style={{ fontSize: 13, color: "#a8a29e" }}>Open an analysis on your feed and add a task from there.</p>
-                <a href="/dashboard" style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "#f97316", textDecoration: "none" }}>Go to Feed →</a>
+                <Link href="/dashboard" style={{ display: "inline-block", marginTop: 16, fontSize: 13, fontWeight: 700, color: "#f97316", textDecoration: "none" }}>Go to Feed →</Link>
               </>
             ) : (
               <>
@@ -353,7 +354,7 @@ export default function TasksPage() {
           </div>
         )}
       </main>
-      <MobileBottomNav onProfileTap={() => { window.location.href = "/context"; }} />
+      <MobileBottomNav onProfileTap={() => { router.push("/context"); }} />
     </div>
   );
 }

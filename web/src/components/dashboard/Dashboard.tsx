@@ -7,7 +7,7 @@ import { X, Sun, Moon } from "lucide-react";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import PremiumModal, { type PremiumModalSource } from "@/components/PremiumModal";
 import { useTheme } from "@/lib/theme";
-import type { Analysis, AnalysisFeedResponse, UserProfile, AnalysisState } from "@/lib/types";
+import type { Analysis, UserProfile, AnalysisState } from "@/lib/types";
 import { getAnalysisState } from "@/lib/types";
 
 type ActiveFilter = "all" | "starred" | "tried";
@@ -18,6 +18,7 @@ import EmptyState from "./EmptyState";
 import PasteLinkInput from "./PasteLinkInput";
 import WeekHero from "./WeekHero";
 import AnalysisCard from "./AnalysisCard";
+import Link from "next/link";
 
 function FilterChips({
   value,
@@ -110,25 +111,25 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pendingUrl, setPendingUrl] = useState<string | undefined>(undefined);
+  const [pendingUrl] = useState<string | undefined>(() => {
+    try { return window.sessionStorage.getItem("pendingLink") || undefined; } catch { return undefined; }
+  });
+  const [openCardId, setOpenCardId] = useState<string | null>(expandId);
+  const [previousExpandId, setPreviousExpandId] = useState(expandId);
+  if (previousExpandId !== expandId) {
+    setPreviousExpandId(expandId);
+    setOpenCardId(expandId);
+  }
+  const [feedTime, setFeedTime] = useState(() => Date.now());
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = sessionStorage.getItem("pendingLink");
-    if (stored) {
-      sessionStorage.removeItem("pendingLink");
-      setPendingUrl(stored);
+    if (pendingUrl) {
+      try { sessionStorage.removeItem("pendingLink"); } catch { /* Storage can be unavailable. */ }
     }
-  }, []);
+  }, [pendingUrl]);
   const [premiumOpen, setPremiumOpen] = useState(false);
   const [premiumSource, setPremiumSource] = useState<PremiumModalSource>("sidebar_upgrade_card");
   function openPremium(source: PremiumModalSource) { setPremiumSource(source); setPremiumOpen(true); }
-
-  useEffect(() => {
-    if (expandId && analyses.some((a) => a.id === expandId)) {
-      setOpenCardId(expandId);
-    }
-  }, [expandId, analyses]);
 
   useEffect(() => {
     if (sidebarOpen) {
@@ -142,15 +143,10 @@ export default function Dashboard() {
   const [platform, setPlatform] = useState("all");
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
-  const [openCardId, setOpenCardId] = useState<string | null>(null);
 
-  const [heroDismissed, setHeroDismissed] = useState<boolean>(false);
-  useEffect(() => {
-    try {
-      const flag = typeof window !== "undefined" && localStorage.getItem("cd_hero_dismissed");
-      if (flag === "1") setHeroDismissed(true);
-    } catch { /* ignore */ }
-  }, []);
+  const [heroDismissed, setHeroDismissed] = useState(() => {
+    try { return window.localStorage.getItem("cd_hero_dismissed") === "1"; } catch { return false; }
+  });
   const dismissHero = () => {
     setHeroDismissed(true);
     try { localStorage.setItem("cd_hero_dismissed", "1"); } catch { /* ignore */ }
@@ -166,36 +162,38 @@ export default function Dashboard() {
     fetch("/api/user").then((r) => r.json()).then(setProfile).catch(console.error);
   }, []);
 
-  const fetchAnalyses = useCallback(async (pageNum: number, append = false) => {
-    setLoading(true);
+  const fetchAnalyses = useCallback((pageNum: number, append = false, signal?: AbortSignal) => {
     const params = new URLSearchParams({ page: String(pageNum), limit: "50" });
     if (platform !== "all") params.set("platform", platform);
     if (search) params.set("search", search);
-    try {
-      const res = await fetch(`/api/analyses?${params}`);
-      const data = await res.json();
+    return fetch(`/api/analyses?${params}`, { signal }).then(res => res.json()).then(data => {
+      if (signal?.aborted) return;
       if (data.analyses) {
+        if (!append) setPage(pageNum);
+        setFeedTime(Date.now());
         setAnalyses((prev) => append ? [...prev, ...data.analyses] : data.analyses);
         setTotal(data.total ?? 0);
         setHasMore(data.hasMore ?? false);
       }
-    } catch {
+    }).catch(() => {
       // ignore — empty state renders naturally
-    }
-    setLoading(false);
+    }).finally(() => { if (!signal?.aborted) setLoading(false); });
   }, [platform, search]);
 
   useEffect(() => {
-    setPage(1);
-    fetchAnalyses(1);
+    const controller = new AbortController();
+    void fetchAnalyses(1, false, controller.signal);
+    return () => controller.abort();
   }, [fetchAnalyses]);
 
-  const loadMore = () => { const next = page + 1; setPage(next); fetchAnalyses(next, true); };
+  const loadMore = () => { const next = page + 1; setLoading(true); setPage(next); fetchAnalyses(next, true); };
   const handleDeleted = (id: string) => {
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
     setTotal((t) => t - 1);
   };
-  const clearFilters = () => { setPlatform("all"); setSearch(""); setActiveFilter("all"); };
+  const changeSearch = (value: string) => { if (value !== search) setLoading(true); setSearch(value); };
+  const changePlatform = (value: string) => { if (value !== platform) setLoading(true); setPlatform(value); };
+  const clearFilters = () => { if (platform !== "all" || search) setLoading(true); setPlatform("all"); setSearch(""); setActiveFilter("all"); };
 
   const handleStateChanged = useCallback((id: string, state: AnalysisState) => {
     const now = new Date().toISOString();
@@ -214,7 +212,7 @@ export default function Dashboard() {
   }, []);
 
   const { hero, feed, counts } = useMemo(() => {
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = feedTime - 7 * 24 * 60 * 60 * 1000;
     const c = { all: analyses.length, starred: 0, tried: 0 };
     let heroPick: Analysis | null = null;
     let heroFallback: Analysis | null = null;
@@ -251,7 +249,7 @@ export default function Dashboard() {
     }
 
     return { hero: heroAnalysis, feed: filteredFeed, counts: c };
-  }, [analyses, activeFilter]);
+  }, [analyses, activeFilter, feedTime]);
 
   return (
     <div style={{ minHeight: "100vh", background: isDark ? "#0a0a0a" : "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
@@ -271,14 +269,14 @@ export default function Dashboard() {
         borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "#e7e2d9"}`,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 1.25rem", height: 56, maxWidth: 1280, margin: "0 auto" }}>
-          <a href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
+          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "#f97316", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 7L6 10.5L11.5 3.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em", fontFamily: "'DM Sans', sans-serif", color: isDark ? "#fafafa" : "#1c1917" }}>
               Context<span style={{ color: "#f97316" }}>Drop</span>
             </span>
-          </a>
+          </Link>
 
           <button
             onClick={toggle}
@@ -337,7 +335,7 @@ export default function Dashboard() {
 
         <main className="cd-main-content cd-main-mobile-pad" style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 860 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <PasteLinkInput onAnalyzed={() => fetchAnalyses(1)} autoSubmitUrl={pendingUrl} />
+            <PasteLinkInput onAnalyzed={() => { setLoading(true); void fetchAnalyses(1); }} autoSubmitUrl={pendingUrl} />
 
             <AnimatePresence initial={false} mode="wait">
               {hero && !heroDismissed && (
@@ -402,12 +400,12 @@ export default function Dashboard() {
                 )}
               </div>
 
-              <SearchBar value={search} onChange={setSearch} />
+              <SearchBar value={search} onChange={changeSearch} />
 
               <FilterChips
                 size="sm"
                 value={platform}
-                onChange={setPlatform}
+                onChange={changePlatform}
                 options={[
                   { value: "all", label: "All platforms" },
                   { value: "instagram", label: "Instagram" },

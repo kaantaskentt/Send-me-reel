@@ -7,6 +7,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 const STEPS = [
   {
@@ -154,13 +155,13 @@ export default function HowItWorksSection() {
           transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mt-12"
         >
-          <a
+          <Link
             href="/signup"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm transition-all duration-150 hover:brightness-110 active:scale-95"
             style={{ background: "#F97316", textDecoration: "none" }}
           >
             Try it free
-          </a>
+          </Link>
         </motion.div>
       </div>
     </section>

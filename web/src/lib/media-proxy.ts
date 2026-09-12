@@ -49,7 +49,6 @@ export async function downloadPublicMedia(value: string, dependencies: MediaDepe
   return new Promise<Buffer>((resolveDownload, rejectDownload) => {
     const chunks: Buffer[] = [];
     let bytes = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
     const req = request(url, {
       agent: false,
       family: target.family,
@@ -97,7 +96,7 @@ export async function downloadPublicMedia(value: string, dependencies: MediaDepe
       clearTimeout(timer);
       rejectDownload(error);
     });
-    timer = setTimeout(() => req.destroy(new Error("Media download timed out")), timeoutMs);
+    const timer = setTimeout(() => req.destroy(new Error("Media download timed out")), timeoutMs);
     req.end();
   });
 }

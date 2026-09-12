@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface ContextData {
   role: string;
@@ -240,11 +241,11 @@ export default function ContextEditor() {
       {/* Header */}
       <header style={{ position: "sticky", top: 0, zIndex: 50, background: "rgba(250,248,245,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid #e7e2d9" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 20px", height: 56, maxWidth: 640, margin: "0 auto" }}>
-          <a href="/dashboard" style={{ color: "#78716c", textDecoration: "none", display: "flex", alignItems: "center", padding: 4 }}>
+          <Link href="/dashboard" style={{ color: "#78716c", textDecoration: "none", display: "flex", alignItems: "center", padding: 4 }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
-          </a>
+          </Link>
           <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.02em" }}>
             Context<span style={{ color: "#f97316" }}>Drop</span>
           </span>

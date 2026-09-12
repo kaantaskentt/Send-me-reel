@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function PrivacyPage() {
   const h2 = { fontSize: 16, fontWeight: 700, color: "#1c1917", margin: "0 0 8px" } as const;
   const p = { margin: "0 0 12px" } as const;
@@ -7,15 +9,15 @@ export default function PrivacyPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", fontFamily: "'DM Sans', sans-serif" }}>
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "80px 20px 60px" }}>
-        <a href="/" style={{ color: "#f97316", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>← Back</a>
+        <Link href="/" style={{ color: "#f97316", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>← Back</Link>
         <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1c1917", margin: "24px 0 8px", letterSpacing: "-0.02em" }}>Privacy Policy</h1>
         <p style={{ fontSize: 13, color: "#a8a29e", marginBottom: 32 }}>Last updated: 3 May 2026</p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 28, fontSize: 14, color: "#44403c", lineHeight: 1.75 }}>
 
           <section>
-            <p style={p}>This Privacy Policy explains how ContextDrop ("we", "us", "our") collects, uses, and protects your personal information when you use our Telegram bot, website, and dashboard at contextdrop.ai (the "Service").</p>
-            <p style={p}>ContextDrop is operated by Kaan Taskent, an individual based in the United Kingdom (the "Operator"). For the purposes of UK GDPR, the Operator is the data controller responsible for your personal information.</p>
+            <p style={p}>This Privacy Policy explains how ContextDrop (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) collects, uses, and protects your personal information when you use our Telegram bot, website, and dashboard at contextdrop.ai (the &quot;Service&quot;).</p>
+            <p style={p}>ContextDrop is operated by Kaan Taskent, an individual based in the United Kingdom (the &quot;Operator&quot;). For the purposes of UK GDPR, the Operator is the data controller responsible for your personal information.</p>
             <p style={{ margin: 0 }}>Questions? Contact us at <a href="mailto:taskentbusiness@gmail.com" style={{ color: "#f97316", textDecoration: "none", fontWeight: 600 }}>taskentbusiness@gmail.com</a>.</p>
           </section>
 
@@ -96,7 +98,7 @@ export default function PrivacyPage() {
             <ul style={ul}>
               <li style={li}>Your email address, name, or Telegram username</li>
               <li style={li}>Your Google or Notion account details</li>
-              <li style={li}>Other users' content</li>
+              <li style={li}>Other users&apos; content</li>
             </ul>
             <p style={{ margin: 0 }}><strong>AI training:</strong> We do not currently train AI models on your data. If we change this practice, we will update this Privacy Policy and notify users in advance. Our AI providers (OpenAI, Anthropic) have their own data handling policies, which prohibit training on API inputs by default.</p>
           </section>
@@ -138,7 +140,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 style={h2}>6. International data transfers</h2>
-            <p style={p}>Most of our service providers are based in the United States. When we transfer your personal information outside the UK or EEA, we rely on the UK's adequacy decisions, standard contractual clauses (SCCs) approved by the UK ICO, or the UK Extension to the EU-US Data Privacy Framework where applicable.</p>
+            <p style={p}>Most of our service providers are based in the United States. When we transfer your personal information outside the UK or EEA, we rely on the UK&apos;s adequacy decisions, standard contractual clauses (SCCs) approved by the UK ICO, or the UK Extension to the EU-US Data Privacy Framework where applicable.</p>
             <p style={{ margin: 0 }}>You can request a copy of the safeguards we use by emailing <a href="mailto:taskentbusiness@gmail.com" style={{ color: "#f97316", textDecoration: "none" }}>taskentbusiness@gmail.com</a>.</p>
           </section>
 
@@ -203,13 +205,13 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 style={h2}>11. Children's privacy</h2>
+            <h2 style={h2}>11. Children&apos;s privacy</h2>
             <p style={{ margin: 0 }}>ContextDrop is not intended for users under 16. We do not knowingly collect personal information from children under 16. If you believe a child has provided us with personal information, contact us and we will delete it.</p>
           </section>
 
           <section>
             <h2 style={h2}>12. Changes to this policy</h2>
-            <p style={{ margin: 0 }}>We may update this Privacy Policy from time to time. When we make material changes, we will update the "Last updated" date and notify you via email or in-app notification before the changes take effect. Continued use of the Service after changes take effect constitutes acceptance of the updated policy.</p>
+            <p style={{ margin: 0 }}>We may update this Privacy Policy from time to time. When we make material changes, we will update the &quot;Last updated&quot; date and notify you via email or in-app notification before the changes take effect. Continued use of the Service after changes take effect constitutes acceptance of the updated policy.</p>
           </section>
 
           <section>

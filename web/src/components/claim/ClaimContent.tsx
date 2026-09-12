@@ -6,7 +6,7 @@ interface Props {
   analysisCount: number;
 }
 
-export default function ClaimContent({ token, firstName, analysisCount }: Props) {
+export default function ClaimContent({ token, analysisCount }: Props) {
   const googleHref = `/api/auth/google?claim_token=${encodeURIComponent(token)}`;
 
   const headline =

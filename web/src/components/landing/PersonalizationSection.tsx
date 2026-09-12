@@ -1,6 +1,7 @@
 "use client";
 
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+import Link from "next/link";
 
 export default function PersonalizationSection() {
   const headlineRef = useScrollAnimation(0.2);
@@ -93,7 +94,7 @@ export default function PersonalizationSection() {
           </div>
 
           <div className="text-center mt-8">
-            <a
+            <Link
               href="/context"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-orange-100"
               style={{
@@ -103,7 +104,7 @@ export default function PersonalizationSection() {
               }}
             >
               Set up your profile →
-            </a>
+            </Link>
           </div>
         </div>
       </div>

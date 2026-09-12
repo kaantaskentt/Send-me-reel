@@ -91,7 +91,7 @@ export default function PersonasSection() {
             className="text-[11px] font-semibold uppercase tracking-widest mb-4"
             style={{ color: "#F97316", fontFamily: "'JetBrains Mono', monospace" }}
           >
-            Who it's for
+            Who it&apos;s for
           </p>
           <h2
             className="text-white"

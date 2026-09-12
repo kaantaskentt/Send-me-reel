@@ -7,6 +7,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
@@ -79,7 +80,7 @@ export default function PricingSection() {
               lineHeight: 1.1,
             }}
           >
-            Start free. Go Pro when you're ready.
+            Start free. Go Pro when you&apos;re ready.
           </h2>
           <p className="mt-3" style={{ color: "#71717A", fontSize: "15px" }}>
             No credit card needed to start. Cancel anytime.
@@ -120,7 +121,7 @@ export default function PricingSection() {
                 </li>
               ))}
             </ul>
-            <a
+            <Link
               href="/signup"
               className="block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all duration-150 hover:brightness-110"
               style={{
@@ -131,7 +132,7 @@ export default function PricingSection() {
               }}
             >
               Start free
-            </a>
+            </Link>
           </motion.div>
 
           <motion.div
@@ -177,13 +178,13 @@ export default function PricingSection() {
                 </li>
               ))}
             </ul>
-            <a
+            <Link
               href="/signup"
               className="block w-full text-center py-3 rounded-xl font-semibold text-sm transition-all duration-150 hover:brightness-110 active:scale-95"
               style={{ background: "#F97316", color: "white", textDecoration: "none" }}
             >
               Go Pro
-            </a>
+            </Link>
           </motion.div>
         </div>
       </div>

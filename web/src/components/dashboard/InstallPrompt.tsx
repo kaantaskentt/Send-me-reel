@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Platform = "ios" | "android" | "desktop" | null;
+interface InstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+}
 
 function detectPlatform(): Platform {
   if (typeof navigator === "undefined") return null;
@@ -16,34 +20,41 @@ function detectPlatform(): Platform {
 function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
-  if ("standalone" in navigator && (navigator as any).standalone) return true;
+  if ("standalone" in navigator && navigator.standalone === true) return true;
   return false;
 }
 
+function readInstallPlatform(): Platform {
+  if (isStandalone()) return null;
+  try {
+    const dismissedAt = Number(window.localStorage.getItem("installPromptDismissed"));
+    if (dismissedAt && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return null;
+  } catch { /* Offer installation even when persistence is unavailable. */ }
+  return detectPlatform();
+}
+
+function subscribeInstallPlatform(listener: () => void) {
+  window.addEventListener("storage", listener);
+  window.addEventListener("appinstalled", listener);
+  return () => {
+    window.removeEventListener("storage", listener);
+    window.removeEventListener("appinstalled", listener);
+  };
+}
+
+function serverInstallPlatform(): Platform { return null; }
+
 export default function InstallPrompt() {
-  const [visible, setVisible] = useState(false);
-  const [platform, setPlatform] = useState<Platform>(null);
+  const [visible, setVisible] = useState(true);
+  const platform = useSyncExternalStore(subscribeInstallPlatform, readInstallPlatform, serverInstallPlatform);
   const [step, setStep] = useState<"install" | "pin">("install");
-  const deferredPromptRef = useRef<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<InstallPromptEvent | null>(null);
 
   useEffect(() => {
-    // Don't show if already installed or dismissed recently
-    if (isStandalone()) return;
-
-    const dismissed = localStorage.getItem("installPromptDismissed");
-    if (dismissed) {
-      const dismissedAt = parseInt(dismissed, 10);
-      if (Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000) return; // 7 days
-    }
-
-    const p = detectPlatform();
-    setPlatform(p);
-    setVisible(true);
-
     // Listen for Android install prompt
     const handler = (e: Event) => {
       e.preventDefault();
-      deferredPromptRef.current = e;
+      setDeferredPrompt(e as InstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
@@ -52,20 +63,21 @@ export default function InstallPrompt() {
 
   const dismiss = () => {
     setVisible(false);
-    localStorage.setItem("installPromptDismissed", String(Date.now()));
+    try { localStorage.setItem("installPromptDismissed", String(Date.now())); } catch { /* Dismiss for this visit when persistence is unavailable. */ }
   };
 
   const handleInstall = async () => {
-    if (deferredPromptRef.current) {
-      deferredPromptRef.current.prompt();
-      const result = await deferredPromptRef.current.userChoice;
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const result = await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
       if (result.outcome === "accepted") {
         setStep("pin");
       }
     }
   };
 
-  if (!visible) return null;
+  if (!visible || !platform) return null;
 
   return (
     <AnimatePresence>
@@ -134,7 +146,7 @@ export default function InstallPrompt() {
                 <p style={{ fontSize: 13, color: "#78716c", margin: "0 0 14px 0", lineHeight: 1.5 }}>
                   Install ContextDrop so it appears in your share menu. Then just tap Share on any link.
                 </p>
-                {deferredPromptRef.current ? (
+                {deferredPrompt ? (
                   <button
                     onClick={handleInstall}
                     style={{
@@ -153,7 +165,7 @@ export default function InstallPrompt() {
                   </button>
                 ) : (
                   <p style={{ fontSize: 13, color: "#a8a29e", margin: 0 }}>
-                    Tap your browser menu (three dots) and select "Add to Home screen".
+                    Tap your browser menu (three dots) and select &quot;Add to Home screen&quot;.
                   </p>
                 )}
               </>
@@ -176,10 +188,10 @@ export default function InstallPrompt() {
                       <line x1="12" y1="2" x2="12" y2="15" />
                     </svg>
                   </span>{" "}
-                  Share button, then <strong>"Add to Home Screen"</strong>.
+                  Share button, then <strong>&quot;Add to Home Screen&quot;</strong>.
                 </p>
                 <p style={{ margin: "0 0 10px 0" }}>
-                  <strong>Step 2:</strong> To add to your share sheet — share any link, scroll the app row right, tap <strong>"More"</strong>, then drag <strong>ContextDrop</strong> to the top of the list.
+                  <strong>Step 2:</strong> To add to your share sheet — share any link, scroll the app row right, tap <strong>&quot;More&quot;</strong>, then drag <strong>ContextDrop</strong> to the top of the list.
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: "#a8a29e" }}>
                   After setup, sharing any link to ContextDrop starts an analysis instantly.

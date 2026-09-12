@@ -15,14 +15,6 @@ interface Props {
   source: PremiumModalSource;
 }
 
-const FREE_PERKS = [
-  "20 analyses to start",
-  "All platforms (Instagram, TikTok, X, YouTube, LinkedIn, articles)",
-  "Summary + action item per link",
-  "Personal dashboard",
-  "Telegram bot",
-];
-
 const PRO_PERKS = [
   "Everything in Free",
   "Unlimited analyses",
@@ -36,20 +28,19 @@ type Step = "perks" | "requesting" | "done" | "already";
 const MAX_REASON = 1500;
 
 export default function PremiumModal({ open, onClose, source }: Props) {
+  return open ? <PremiumModalContent onClose={onClose} source={source} /> : null;
+}
+
+function PremiumModalContent({ onClose, source }: Omit<Props, "open">) {
   const [step, setStep] = useState<Step>("perks");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (open) { setStep("perks"); setReason(""); }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, onClose]);
+  }, [onClose]);
 
   const handleSubmit = async () => {
     if (submitting || !reason.trim()) return;
@@ -62,8 +53,6 @@ export default function PremiumModal({ open, onClose, source }: Props) {
     setSubmitting(false);
     setStep(res.status === 409 ? "already" : "done");
   };
-
-  if (!open) return null;
 
   const nearLimit = reason.length >= MAX_REASON - 100;
 
