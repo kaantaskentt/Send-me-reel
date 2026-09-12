@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -32,11 +32,13 @@ jobs:
   verification:
     name: Tests, worker and companion types, web lint
     needs: hosted-build
-    runs-on: ubuntu-latest
+    # Playwright supports 22.04. Newer Ubuntu runner AppArmor defaults block
+    # Chromium's user namespace; keep the companion's chromiumSandbox enabled.
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: npm
@@ -46,7 +48,7 @@ jobs:
       - run: npm ci
       - run: npm --prefix web ci
       - run: npx playwright install --with-deps chromium
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       # Exercise the real offline metadata-template regression instead of
