@@ -2,14 +2,11 @@
 
 /*
  * ProblemSection — Manus "Dark Signal" port (Apr 26)
- * Blurred thumbnail-grid bg with scroll-linked zoom + 4 timestamp pain cards.
+ * Local grid background with scroll-linked zoom + 4 timestamp pain cards.
  */
 
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-
-const THUMBNAIL_GRID_URL =
-  "https://d2xsxph8kpxj0f.cloudfront.net/310419663029819932/PLcAoykFsSXnZwd5KnAU3Y/contextdrop-thumbnail-grid-real_b66db384.png";
 
 const PROBLEMS = [
   {
@@ -88,16 +85,15 @@ export default function ProblemSection() {
       className="relative py-28 overflow-hidden"
     >
       <div className="absolute inset-0 z-0">
-        <motion.img
-          src={THUMBNAIL_GRID_URL}
-          alt=""
+        <motion.div
           aria-hidden="true"
           style={{
             scale,
             width: "100%",
             height: "100%",
-            objectFit: "cover",
-            filter: "blur(4px) saturate(0.65)",
+            backgroundColor: "#111113",
+            backgroundImage: "linear-gradient(rgba(249,115,22,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(249,115,22,0.12) 1px, transparent 1px), radial-gradient(ellipse at 30% 40%, rgba(249,115,22,0.15), transparent 65%)",
+            backgroundSize: "160px 220px, 160px 220px, 100% 100%",
             transformOrigin: "center center",
           }}
         />

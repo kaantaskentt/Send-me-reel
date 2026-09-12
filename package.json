@@ -14,7 +14,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.82.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@grammyjs/conversations": "^2.1.1",
     "@notionhq/client": "^5.16.0",
     "@supabase/supabase-js": "^2.101.1",
@@ -27,14 +27,14 @@
     "grammy": "^1.42.0",
     "jose": "^6.2.2",
     "openai": "^6.33.0",
-    "sharp": "^0.34.5"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/ffprobe-static": "^2.0.3",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^25.5.2",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.13",
     "typescript": "^6.0.2"
   }
 }
