@@ -1,0 +1,2643 @@
+{
+  "status": "offline_synthetic_ocr_observations",
+  "createdAt": "2026-09-12T15:14:45.351Z",
+  "cases": [
+    {
+      "id": "static-large-lossless",
+      "encodedSha256": "77b20d970f3e4dd3aaa4c1d4e57f7471bc694a4e76ae136ab5a3f3cc07f37db3",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "static-small-lossy",
+      "encodedSha256": "97968cff24462d7046e027a3bd4b0e106e896fdb3652de0fa78d453dd5cdf564",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tiny-heavy-compression",
+      "encodedSha256": "46705311c1d32c30779c0e44186c0d7ddbd0313be7cbb45abb4fd8c054232982",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "ithab compracaampmibax-Jramme"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "ithab compracaampmibax-Jramme"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "Sha empranninedre"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "low-contrast-static",
+      "encodedSha256": "6aa61012e9d69426d39b173e17adf39f9396a4194ff8fe8b0e239a85193cdf74",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "moving-background",
+      "encodedSha256": "24d7885b75c2d18436326137361f87f93207a25696f7491055613edce44d90f6",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-001.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-002.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-003.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-004.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-005.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-006.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-007.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-008.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-009.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-010.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-011.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-012.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-013.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-014.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-015.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-016.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-019.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-020.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-021.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-022.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-023.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-024.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-025.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-026.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-027.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-028.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-029.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-030.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-031.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-032.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-033.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-034.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-035.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-036.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-037.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-038.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-039.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-040.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-041.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-042.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-043.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-044.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-045.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-046.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-047.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-048.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-049.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-050.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-051.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-052.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-053.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-054.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-055.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-056.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-057.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-058.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-059.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scrolling-small",
+      "encodedSha256": "e90885cba92f5cb3daa27a17562c6efcd678c79498d77bcb0255c5327292a774",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-001.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-002.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Seroling decumentation row3",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-003.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-004.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-005.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Saralling docamntation mu",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-006.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-007.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Serelling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-008.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-009.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Saralling dodamntation mu"
+          ]
+        },
+        {
+          "file": "candidate-010.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-011.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seralling documentation m bau"
+          ]
+        },
+        {
+          "file": "candidate-012.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 9",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 4"
+          ]
+        },
+        {
+          "file": "candidate-013.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 9",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 4"
+          ]
+        },
+        {
+          "file": "candidate-014.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seroing decumentation ow1",
+            "Seroling decumentation row3"
+          ]
+        },
+        {
+          "file": "candidate-015.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seralling documentation m"
+          ]
+        },
+        {
+          "file": "candidate-016.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-019.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 8",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-020.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 8",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-021.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Saralling docamntation mu",
+            "Scrolling documentation row 5",
+            "Serelling documentation ow 3"
+          ]
+        },
+        {
+          "file": "candidate-022.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seroling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-023.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Saralling do cementation om 1",
+            "Serelling documentation w3"
+          ]
+        },
+        {
+          "file": "candidate-024.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-025.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Serolling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-026.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-027.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 7",
+            "Scrolling documentation row 5",
+            "Saralling do cemntation om 1",
+            "Scrolling documentation row 2"
+          ]
+        },
+        {
+          "file": "candidate-028.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 7",
+            "Scrolling documentation row 5",
+            "Seroig decumentation ow1",
+            "Scrolling documentation row 2"
+          ]
+        },
+        {
+          "file": "candidate-029.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Serolling docementation ow6"
+          ]
+        },
+        {
+          "file": "candidate-030.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seroing decumentation ow1"
+          ]
+        },
+        {
+          "file": "candidate-031.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seralling documntation mbu"
+          ]
+        },
+        {
+          "file": "candidate-032.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-033.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seralling documentation m bu"
+          ]
+        },
+        {
+          "file": "candidate-034.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 6",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 1"
+          ]
+        },
+        {
+          "file": "candidate-035.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 6",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 1"
+          ]
+        },
+        {
+          "file": "candidate-036.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-037.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-038.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Seroing decumentation ow",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-039.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-040.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-041.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Saralling docamntation mu",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-042.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-043.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Serelling documentation row"
+          ]
+        },
+        {
+          "file": "candidate-044.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-045.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Saralling dodamntation mu"
+          ]
+        },
+        {
+          "file": "candidate-046.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-047.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seralling documntation mbu"
+          ]
+        },
+        {
+          "file": "candidate-048.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 9",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 4"
+          ]
+        },
+        {
+          "file": "candidate-049.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 9",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 4"
+          ]
+        },
+        {
+          "file": "candidate-050.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seroing decumentation ow1",
+            "Seroing decumentation ow"
+          ]
+        },
+        {
+          "file": "candidate-051.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seralling documentation m"
+          ]
+        },
+        {
+          "file": "candidate-052.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-053.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-054.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "candidate-055.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 8",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-056.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 8",
+            "Scrolling documentation row 5",
+            "Scrolling documentation row 3"
+          ]
+        },
+        {
+          "file": "candidate-057.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Serelling docementation om3"
+          ]
+        },
+        {
+          "file": "candidate-058.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Seroling documentation row3"
+          ]
+        },
+        {
+          "file": "candidate-059.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Scrolling documentation row 5",
+            "Saralling do cemntation m",
+            "Seralling documentation w3"
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame",
+            "Scrolling documentation row 5"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "moving-tiny-compressed",
+      "encodedSha256": "63aebe5a432167b1e45a2bf60eea833cfa103c37b64b215b787d7e9bfcb1874b",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-001.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-002.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-003.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-004.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-005.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-006.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-007.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-008.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-009.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-010.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-011.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-012.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-013.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-014.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-015.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-016.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "ithab comaexamomibax-lomm"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-019.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-020.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-021.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-022.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-023.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-024.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-025.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-026.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-027.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-028.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-029.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-030.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-031.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-032.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-033.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-034.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-035.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-036.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-037.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-038.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-039.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-040.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-041.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-042.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-043.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-044.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-045.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-046.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-047.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-048.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-049.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-050.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-051.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-052.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-053.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-054.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-055.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-056.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-057.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-058.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-059.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "ithab comaexamomibax-lomm"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": []
+        }
+      ]
+    },
+    {
+      "id": "blurred",
+      "encodedSha256": "1386984f97e600038e123d65cdfb3c5297cd6aa4851ceed41c1e311b9bb3154b",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "single-frame-60fps",
+      "encodedSha256": "ee08fd256af7bd676ca30fbea75ebc95236ea04901ba4ea5cd643b5a3f4d6bf7",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/q7x-frame"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/q7x-frame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "two-frame-prompt",
+      "encodedSha256": "38a0aef772cb5be50fd28cc78b1925a05b345bfc8119d1cc67e59b6069351b63",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Use warm paper and one blue button."
+          ]
+        },
+        {
+          "file": "candidate-019.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "Use warm paper and one blue button."
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "Use warm paper and one blue button."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "low-contrast-moving",
+      "encodedSha256": "3151964c337fc9b93dce1bde04aafb5b3f63b2135bac4c16a95eb3547fafa65d",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-001.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-002.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-003.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-004.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-005.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-006.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-007.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-008.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-009.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-010.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-011.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-012.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-013.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-014.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-015.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-016.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-019.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-020.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-021.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-022.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-023.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-024.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-025.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-026.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-027.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-028.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-029.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-030.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-031.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-032.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-033.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-034.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-035.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-036.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-037.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-038.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-039.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-040.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-041.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-042.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-043.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-044.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-045.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-046.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-047.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-048.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-049.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-050.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-051.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-052.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-053.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-054.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-055.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-056.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-057.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-058.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-059.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "giltub comlexampleln7x-Jramne"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "confusable-characters",
+      "encodedSha256": "ab8ef3f4d8c765195a6c920cc0aa4c65c780fd68d71843b3facb72b38daea42f",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/l01-q10"
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "oracle-full.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator.",
+            "github.com/example/l01-q10"
+          ]
+        },
+        {
+          "file": "oracle-crop-3x.png",
+          "text": [
+            "github.com/example/101-q10"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "absent-static",
+      "encodedSha256": "d68ff5531ab946dc5982e02b24ec69a1fd7e18f4ec672223a7c8d9bcc0ddc386",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "absent-moving",
+      "encodedSha256": "78d706fc1e4c1e4c4fc8ea6d602dfd4bfeca3406fc8cdb271d94be44db0c7f82",
+      "readings": [
+        {
+          "file": "candidate-000.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-001.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-002.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-003.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-004.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-005.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-006.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-007.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-008.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-009.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-010.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-011.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-012.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-013.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-014.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-015.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-016.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-017.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-018.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-019.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-020.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-021.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-022.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-023.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-024.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-025.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-026.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-027.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-028.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-029.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-030.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-031.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-032.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-033.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-034.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-035.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-036.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-037.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-038.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-039.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-040.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-041.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-042.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-043.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-044.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-045.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-046.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-047.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-048.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-049.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-050.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-051.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-052.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-053.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-054.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-055.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-056.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-057.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-058.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        },
+        {
+          "file": "candidate-059.png",
+          "text": [
+            "Synthetic tutorial",
+            "Offline stress fixture. No real project or creator."
+          ]
+        }
+      ]
+    }
+  ]
+}

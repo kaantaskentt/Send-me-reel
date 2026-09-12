@@ -1,5 +1,7 @@
 # ContextDrop: from a saved idea to a working result
 
+**First research pass.** The [second research decision](deeper/README.md) supersedes the initial product emphasis and narrows the first build to an evidence tool inside existing agents. It adds a live competitor check, a demand ledger, pinned upstream inspection, a fuller cost model and a harder frame/OCR experiment. The audit below remains useful; its clean-frame result is not the latest robustness evidence.
+
 **Recommendation:** build a premium Mac companion that turns AI content into a useful outcome in the user's own project. Own the difficult part—acquiring the real content, finding visual evidence, identifying the resource, and checking the result. Use an existing agent harness for reasoning and execution.
 
 This report combines public market research, current provider documentation, an implementation audit and a small offline experiment. Research was checked on 12 September 2026. Competitor claims were read, not independently benchmarked; willingness to pay and broad social-platform reliability remain unproven. The implementation branch is `codex/contextdrop-next`, created from `ed2ec5e`. This report is a build decision, not a claim that the new application is finished.

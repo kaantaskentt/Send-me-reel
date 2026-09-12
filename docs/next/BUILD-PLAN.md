@@ -2,7 +2,7 @@
 
 Build the first complete Instagram-to-result journey on `codex/contextdrop-next`. Keep the existing app available while the new path is validated. A new branch does not imply deleting the working evidence modules or beginning a second unrelated product.
 
-This is the canonical implementation sequence and acceptance scorecard. Targets in the research appendices are proposals; the consolidated gates below take precedence. No gate is passed merely because this document exists. Calendar estimates should follow the capture/runtime spikes, since account access and platform behavior are the largest unknowns.
+This is the canonical implementation sequence and acceptance scorecard, revised after the [second research pass](deeper/README.md). Targets in the research appendices are proposals; the consolidated gates below take precedence. No gate is passed merely because this document exists. Calendar estimates should follow the capture/runtime spikes, since account access and platform behavior are the largest unknowns. Build the evidence capability inside an existing agent before investing in a separate elaborate interface.
 
 ## Outcome contract
 
@@ -14,11 +14,19 @@ Photos and mixed carousels are part of that contract. A tool roundup must also s
 
 Use the source URL, exact post identity, ordered assets and user's actual goal throughout. An inaccessible asset is a visible partial state. A similar repository is a candidate until source identity is established. A successful subprocess is finished work awaiting verification. These distinctions belong in the data and tests; the interface can express them in plain language.
 
+## 0. Freeze a useful outcome and compare existing tools
+
+Select six real reference tasks across resource identification, running a documented example and adapting a visible UI behavior. Define the desired result and correct source evidence before testing. Use Reelnest or an existing reader for comparable understanding questions, and Gemini plus an existing coding agent/skill for action tasks. Preserve attempts, time, interventions, unsupported claims and actual results. A paid feature must improve a measured problem beyond a prompt handoff. Do not assume the open-source competitor's published verification works until exercised.
+
+Create the smallest reusable evidence tool needed to test that difference. A local CLI/skill with source records and inspectable evidence is sufficient for the first comparison; the later Mac UI should call the same service. The public research and synthetic experiments are not this test. This phase runs alongside the bounded acquisition spike below, not a second architecture project.
+
+**Exit:** concrete comparative results and the chosen first user job. If the useful difference is only evidence acquisition, preserve it as an agent integration rather than building a second general agent interface. The initial comparison is exploratory; the later locked release corpus and user pilot remain separate gates.
+
 ## 1. Prove acquisition and choose one harness
 
-**Acquisition spike:** define an adapter result containing post identity, caption, author, ordered image/video assets, acquisition method, availability and structured failure. Exercise a real Reel, image and mixed carousel through direct/public retrieval, the relevant existing-session adapter, and a bounded paid fallback where needed. Start by adapting the existing Apify Instagram integration to its documented mixed-media output rather than forcing it into `ScrapedVideo`. Never harvest login credentials to get a test through. Compare actual assets to the visible original, including slide count/order. Retain failures in the record.
+**Acquisition spike:** define an adapter result containing post identity, caption, author, ordered image/video assets, acquisition method, availability and structured failure. Exercise a real Reel, image and mixed carousel through direct/public retrieval, a narrow pinned OpenCLI `download` reader using a connected browser, and the existing Apify fallback where needed. Compare complete correct imports, reliability and cost; neither is presumed the winner. OpenCLI's `post`/`reel` commands publish and are outside this read adapter. Adapt Apify's mixed-media output rather than forcing it into `ScrapedVideo`. Never harvest login credentials to get a test through. Compare actual assets to the visible original, including slide count/order. Retain failures in the record.
 
-**Runtime spike:** test the managed Agents API with an isolated local executor using the current official setup. Confirm compatible versions, model/effort, evidence tool calls, streamed progress, a file change, a browser observation, cancellation and reconnect. The existing installed SDK needs updating in an isolated development context before copying modern API examples. If account access or runtime maturity blocks this, use pinned local Codex app-server for private validation and record the release limitation. Select only one runtime for the next stages.
+**Runtime spike:** time-box the managed Agents API with an isolated local executor using the current official setup, which currently includes an alpha CLI. Confirm compatible versions, model/effort, evidence tool calls, streamed progress, a file change, a browser observation, cancellation and reconnect. The existing installed SDK needs updating in an isolated development context before copying modern API examples. If account access or runtime maturity blocks this, use pinned local Codex app-server for private validation and record the release limitation. Select only one execution runtime for the next stages. Ordinary content reading/chat should use the chosen Gemini model; benchmark Flash versus Lite and reserve Astra budgets for difficult reasoning/actions. Keep one durable user conversation with source/result references across provider calls.
 
 **Exit:** three correct post types, an evidence call and a real checked local artifact. Record provider/runtime versions, failure modes, time and cost. No redesign or broad migration until the acquisition path is viable.
 
@@ -45,7 +53,7 @@ Acquisition state and analysis state must be separate. A caption arriving does n
 
 Implement a measured audiovisual reader and a separate original-frame detail pass. Start with Gemini and local Apple Vision; compare native agentic and static modes before selecting defaults. Preserve actual presentation timestamps for variable-frame-rate media. Extend detailed inspection to every retained video asset, including social downloads, rather than only YouTube URLs and uploads.
 
-The original video remains available for targeted rereading. Frame/text-change candidates preserve brief events; exact crops and surrounding frames support OCR and interpretation. Negative examples must return uncertainty, not a plausible invented resource. Full original-frame accounting and correct recognition are separate metrics.
+The original video remains available for targeted rereading. Frame/text-change candidates must be measured for brief-event preservation; exact crops and surrounding frames support OCR and interpretation. The [harder synthetic experiment](deeper/FRAME-STRESS.md) found the existing simple detector discards readable low-contrast text and retains every frame under motion. Do not promote it to production as-is. Test region-aware alternatives, preserve uncertain intervals for exhaustive rereading, and never disguise a candidate budget cap as complete inspection. Negative examples must return uncertainty, not a plausible invented resource. Full original-frame accounting and correct recognition are separate metrics.
 
 Expose `read_source`, `search_evidence`, `inspect_moment`, `resolve_resource`, and `get_project_context` to the harness. A source-backed factual answer must resolve to an actual evidence record the UI can open. A claim checked online uses the external verification source as well. No provider selection menu is required in normal chat.
 
@@ -61,11 +69,19 @@ Completion requires checks appropriate to the action. A repository task checks r
 
 Native Mac control requires a separate connected capability, with app/coordinate identity, OS permissions, fresh observations and cancellation. Test each native app/action class before naming it as supported. One successful native-app case does not justify a broad “controls your computer” claim. Name the specific browser, coding and native capabilities actually verified.
 
-**Exit:** at least three unassisted real UI source-to-action sessions, including Instagram and browser work; the result and checks return to the original chat. A zero-exit/no-artifact run, failed test and premature browser finish all remain unverified.
+**Exit:** at least three unassisted real UI source-to-action sessions covering resource discovery/opening, a repo example and UI adaptation, including Instagram and browser work; the result and checks return to the original chat. A zero-exit/no-artifact run, failed test and premature browser finish all remain unverified.
 
-## 5. Package the premium experience
+## 5. Validate retention before widening scope
 
-Apply [DESIGN.md](DESIGN.md) to the proven flow. Use a single conversation with a collapsible evidence/result area. Retain useful drafts, keyboard operation, clear progress, retry and interruption. The first useful insight should arrive before optional deep indexing finishes, but its evidence limits must be explicit.
+Begin observed user attempts as soon as phase 4 supports the bounded journey; do not wait for full Mac packaging or phone delivery. Recruit ten Mac users with an active project who already save AI content and use a coding agent. Obtain their own recent examples; do not select only easy demonstration posts. For blinded output-quality scoring, use identical source/task inputs across tools. For user-effort comparisons, use matched tasks and counterbalanced tool order to reduce learning effects. Record useful results, errors, user effort, elapsed time and cost. Record assisted setup as assistance, not successful self-serve onboarding.
+
+A proposed commercial gate is that at least six of ten return voluntarily for a second useful task during two weeks and at least three accept a paid pilot after use. These are decision thresholds, not statistical proof of product-market fit. Run no outreach or payment collection until specifically authorized.
+
+If capture is valuable but execution is rarely used, prioritize the content/evidence MCP bridge. If project adaptation drives repeat use and payment, expand those actions. Additional social platforms, workflow marketplaces, team accounts, broad native control and sophisticated library indexing must earn their place through these observations.
+
+## 6. Package the premium experience
+
+Proceed with full packaging after the phase 5 pilot shows a useful comparative advantage; do not treat an attractive prototype as that evidence. Apply [DESIGN.md](DESIGN.md) to the proven flow. Use a single conversation with a collapsible evidence/result area. Retain useful drafts, keyboard operation, clear progress, retry and interruption. The first useful insight should arrive before optional deep indexing finishes, but its evidence limits must be explicit.
 
 Package the TypeScript service and React UI as a Mac app after their behavior is stable. Use a typed native boundary and the least native code necessary. Test installation, permissions, credentials, quit/relaunch and updates on a second Mac without undocumented terminal setup. The current development-only Next route is not the distributable product.
 
@@ -75,14 +91,6 @@ Record the hero demonstration from the working flow. A generated phone/brain ill
 
 **Exit:** a new user pastes or shares an eligible post, asks a question and finishes a supported action without a developer. Motion/keyboard/reduced-motion behavior works, and the landing page states only capabilities demonstrated on the release build.
 
-## 6. Validate retention before widening scope
-
-Recruit ten Mac users who already save AI content and use a coding agent. Obtain their own recent examples; do not select only easy demonstration posts. Compare the same tasks against their existing workflow and current saved-content tools. Record useful results, errors, user effort, elapsed time and cost.
-
-A proposed commercial gate is that at least six of ten return voluntarily for a second useful task during two weeks and at least three accept a paid pilot after use. These are decision thresholds, not statistical proof of product-market fit. Run no outreach or payment collection until specifically authorized.
-
-If capture is valuable but execution is rarely used, prioritize the content/evidence MCP bridge. If project adaptation drives repeat use and payment, expand those actions. Additional social platforms, workflow marketplaces, team accounts, broad native control and sophisticated library indexing must earn their place through these observations.
-
 ## Canonical acceptance scorecard
 
 Freeze the evaluation manifest before running comparisons. Expected answers stay outside model inputs. Preserve attempts, including failures. Use a separate held-out subset for the release check; do not repeatedly tune and report on the same examples.
@@ -91,10 +99,10 @@ Freeze the evaluation manifest before running comparisons. Expected answers stay
 | --- | --- |
 | Instagram | 24 independently selected eligible public AI posts: 8 Reels, 8 photos, 8 carousels. At least 23/24 fully acquired, all assets/order correct for a pass, zero wrong-post successes. Report each type and every attempt; this small set does not justify a universal reliability claim. |
 | Failure recovery | Deleted/private/login-required/rate-limited/partial cases show the right state; user-supplied fallback continues the same session without disguising a failed link import. |
-| Brief clues | 40 synthetic clips spanning 1/2/3/6/15-frame clues, resolution, motion, compression, contrast and variable FPS. At least 95% candidate recall for readable clues; publish the single-frame bucket separately. |
+| Brief clues | 40 synthetic clips spanning 1/2/3/6/15-frame clues, randomized start phases, resolution, motion, compression, contrast and variable FPS. Establish human-legibility labels independently. At least 95% candidate recall for readable clues; publish the single-frame bucket and candidate workload under motion separately. The 14-case stress test is exploratory and does not pass this gate. |
 | Recognition | At least 95% exact normalized repo/URL matches on legible targets; report prompt character errors. Zero invented “extracted” resources on negative controls. |
 | Real video | 12 additional short videos and 8 videos of 20–60 minutes; human-labeled early/middle/late questions and required visual targets. At least 90% of answerable targets correctly recovered overall, with performance reported separately for fleeting visuals and each timeline segment; misses and abstentions count against recovery. Also require at least 95% support for audited factual claims, with working evidence links. Correct abstention on genuinely absent content is scored separately. |
-| Action | At least 9/10 scoped tasks produce independently checked outputs; include 3 real end-to-end UI sessions and a browser task. Native-control claims are limited to the app/action classes separately tested. |
+| Action | Preassign 10 scoped tasks: 3 resource discovery/opening, 3 repo examples and 4 UI adaptations. At least 9/10 independently checked outputs overall; publish each class rate and require at least one checked end-to-end UI journey per class, including browser work. Native-control claims are limited to the app/action classes separately tested. |
 | Honesty | Simulated process success without result, incorrect repo, failed checks and absent text never produce a verified badge or fabricated exact extraction. |
 | Resilience | Cancel, disconnect, kill/restart, resume and duplicate submission tested at acquisition, analysis, approval and execution. No lost result or silently duplicated consequential action. |
 | Experience | Measure useful-answer and completed-analysis times separately. Initial target: median first useful short-post answer under 45s and follow-up answer under 15s; publish p95/network/hardware. No fixed total-video-length claim disguised as processing time. |
@@ -105,4 +113,4 @@ Freeze the evaluation manifest before running comparisons. Expected answers stay
 
 Implement each phase as a reviewable commit series. Run focused tests for changed behavior and real journey checks; component-test totals are not release proof. Preserve the existing checkout's saved content. If importing old private state, back it up and use an explicit, reversible migration. Retire the old runtime only after the new route passes the same source-to-result examples.
 
-The research phase has created the branch, reports and an offline mechanism experiment. The next implementation starts with phase 1. No provider runtime, production deployment or completed reboot is implied by this plan.
+The research phase has created the branch, reports, a live competitor observation and offline mechanism/stress experiments. The next implementation starts with phase 0 and the bounded phase 1 spikes. No integrated provider runtime, production deployment or completed reboot is implied by this plan.

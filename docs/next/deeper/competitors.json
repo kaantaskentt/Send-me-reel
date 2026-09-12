@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "researchedAt": "2026-09-12",
+  "scope": "Direct social-content readers, visual tutorial-to-code tools, and existing-agent substitutes for ContextDrop",
+  "method": {
+    "primarySources": true,
+    "accountsCreated": 0,
+    "purchases": 0,
+    "thirdPartyCodeExecuted": false,
+    "publicDemoSubmissions": 1,
+    "sourceAccuracyBenchmark": false,
+    "notes": "Published capabilities do not establish accuracy or reliability. Public UI checks establish only the observed response. Code inspection is not execution. Prices are displayed USD prices, not checkout totals."
+  },
+  "candidates": [
+    {
+      "id": "reelnest",
+      "name": "Reelnest",
+      "kind": "direct-social-reader",
+      "availabilityEvidence": "A no-account public demo returned content for one Instagram Reel.",
+      "pricing": {
+        "free": "50 saved reels",
+        "proUsdMonthly": 9,
+        "proSavedReels": 1000,
+        "upperUsdMonthly": 19,
+        "upperFairUseSavedReels": 10000,
+        "note": "Homepage single-reel chat described as free; pricing assigns chat to Pro. Inconsistency unresolved."
+      },
+      "advertised": [
+        "Reel audio transcription, on-screen text extraction, visual analysis and chat",
+        "Phone sharing, bulk Instagram import, structured recipe/map/product outputs"
+      ],
+      "tested": [
+        {
+          "type": "live-public-ui",
+          "date": "2026-09-12",
+          "page": "https://www.reelnest.pro/",
+          "input": "https://www.instagram.com/reel/DXk3S2QjQNd/",
+          "result": "Returned summary, transcript, on-screen course/job text, visual summary, named resources and key points.",
+          "observation": "Resource names lacked resolved official links; the returned view did not show frame or per-claim timestamp evidence. Summary repeated the creator's job-market assertion without displayed independent verification.",
+          "followUpAvailability": "No chat field in this public result; continuation was library signup, which was not performed.",
+          "limits": "May be cached. No ground-truth visual accuracy measurement, paid-feature test, or execution test."
+        }
+      ],
+      "unknown": ["Fresh import success rate", "Photo/carousel completeness", "Fleeting-frame recall", "Paid chat provenance and execution capabilities"],
+      "implication": "Visual Instagram analysis is already directly available; compare verified resource resolution and project results.",
+      "sources": [
+        {"url": "https://www.reelnest.pro/", "type": "vendor-page-and-live-ui", "accessedAt": "2026-09-12"},
+        {"url": "https://www.reelnest.pro/pricing", "type": "vendor-pricing", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "recall",
+      "name": "Recall",
+      "kind": "knowledge-library-with-social-capture",
+      "availabilityEvidence": "Current product, pricing, MCP documentation, June/July social release notes.",
+      "pricing": {"plusUsdMonthlyBilledYearly": 10, "maxUsdMonthlyBilledYearly": 38, "free": "10 monthly AI summaries; API/MCP access"},
+      "advertised": ["Instagram posts/Reels import and library chat", "Read-only MCP search, filtering, content reading and knowledge-base exploration"],
+      "tested": [],
+      "unknown": ["Full carousel image interpretation", "Brief visual-detail recall", "Actual capture reliability after July rebuild", "External-agent task completion"],
+      "implication": "Strong established capture/library substitute. Vendor acknowledges that social reliability required a rebuild.",
+      "sources": [
+        {"url": "https://www.recall.it/pricing", "type": "vendor-pricing", "accessedAt": "2026-09-12"},
+        {"url": "https://docs.recall.it/developer/mcp", "type": "official-documentation", "accessedAt": "2026-09-12"},
+        {"url": "https://feedback.recall.it/changelog/recall-release-notes-26-june-2026-instagram-linkedin-and-more", "type": "vendor-changelog", "publishedAt": "2026-06-26", "accessedAt": "2026-09-12"},
+        {"url": "https://feedback.recall.it/changelog/recall-release-notes-july-23-2026-rebuilt-social-saves-table-view-more-ai-langua", "type": "vendor-changelog", "publishedAt": "2026-07-23", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "readwise-reader",
+      "name": "Readwise Reader",
+      "kind": "reading-library-and-agent-context",
+      "availabilityEvidence": "August 2026 first-party release documents library chat and MCP/CLI.",
+      "pricing": {"usdMonthlyBilledYearly": 9.99, "usdMonthly": 12.99},
+      "advertised": ["Cited library chat and mobile document chat", "MCP/CLI and skills for external agents including Codex and Claude", "External-agent website/wiki/visualization workflows"],
+      "tested": [],
+      "unknown": ["Instagram carousel visual fidelity", "Frame-level video coverage", "Completion rate for source-derived local builds"],
+      "implication": "Sending saved content to an agent is already documented functionality.",
+      "sources": [
+        {"url": "https://readwise.io/reader/update-aug2026", "type": "vendor-release", "publishedAt": "2026-08-06", "accessedAt": "2026-09-12"},
+        {"url": "https://readwise.io/pricing", "type": "vendor-pricing", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "stasht",
+      "name": "Stasht",
+      "kind": "social-save-to-structured-information",
+      "availabilityEvidence": "Current app/extension links and a rendered public AI-tool card.",
+      "pricing": {"displayed": "Free on iOS, Android and desktop"},
+      "advertised": ["Social posts/screenshots/videos with speech and screen-text extraction", "Entities, maps, calendar flow, reminders, search and bulk imports"],
+      "tested": [
+        {
+          "type": "public-sample-view",
+          "date": "2026-09-12",
+          "page": "https://stasht.app/stash/60826c96-5cb8-4891-93a7-080b57b37c03",
+          "result": "Rendered an AI web-scraping-tool card with source caption and ScrapeGraphAI/GitHub product entities.",
+          "limits": "Existing public sample only; no fresh content submitted, source identity accuracy checked, chat used, or task run. A second sample reached a signup modal."
+        }
+      ],
+      "unknown": ["Fresh import reliability", "General chat", "All-slide or brief-frame coverage", "Technical execution"],
+      "implication": "Useful extraction and reminders compete at a free advertised price.",
+      "sources": [
+        {"url": "https://stasht.app/", "type": "vendor-product", "accessedAt": "2026-09-12"},
+        {"url": "https://stasht.app/stash/60826c96-5cb8-4891-93a7-080b57b37c03", "type": "public-sample-live-ui", "accessedAt": "2026-09-12"},
+        {"url": "https://stasht.app/stash/ced411f3-f261-4910-8aec-99dbd8710468", "type": "public-sample-signup-gate", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "neoyngpt-video-to-code",
+      "name": "NeoynGPT video-to-code",
+      "kind": "open-source-video-to-coding-harness",
+      "availabilityEvidence": "Public MIT source with CLI and skill.",
+      "pricing": {"software": "MIT source", "operatingCost": "Gemini API plus selected harness usage; no subscription price documented"},
+      "advertised": ["Public YouTube/local video to visual notes then application inside an existing repo", "Codex/Claude/Cursor-compatible skill", "Sampled video, explicitly not frame-perfect"],
+      "tested": [
+        {"type": "source-inspection-only", "commit": "1b0a08a82f4c707416ae6f8ed1f56de99649f1e2", "result": "Node script sends a public YouTube reference or uploaded file to Gemini and returns model text.", "executed": false}
+      ],
+      "unknown": ["Visual correctness", "Real Instagram acquisition", "Verified task completion", "Current provider compatibility under all advertised models"],
+      "implication": "A low-complexity video-to-existing-agent bridge already has open source.",
+      "sources": [
+        {"url": "https://github.com/saurav-shakya/NeoynGPT-video-to-code", "type": "upstream-readme", "accessedAt": "2026-09-12"},
+        {"url": "https://github.com/saurav-shakya/NeoynGPT-video-to-code/blob/1b0a08a82f4c707416ae6f8ed1f56de99649f1e2/skills/neoyngpt-video-to-code/scripts/analyze.mjs", "type": "immutable-source-code", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "video-to-skill",
+      "name": "video-to-skill (brenoepics)",
+      "kind": "open-source-visual-tutorial-to-verified-skill",
+      "availabilityEvidence": "Early public MIT repository; product claims not executed in this research.",
+      "pricing": {"software": "MIT", "operatingCost": "Local extraction plus existing agent inference; no extractor API key advertised"},
+      "advertised": ["Local Whisper and visual timeline", "Frame provenance and sandboxed independent verification/repair", "Portable installable skills"],
+      "tested": [
+        {"type": "source-inspection-only", "commit": "c527aa9b64cdb7e39a9d20dae6218c7cfc513473", "result": "Default sample_fps is 1.0; sampler uses 9x8 RGB thumbnails before scene detection.", "executed": false},
+        {"type": "benchmark-methodology-review", "result": "Published automated benchmark uses synthetic speech and testsrc video to measure throughput, not task correctness.", "reproduced": false}
+      ],
+      "unknown": ["Real-source task success", "Safety enforcement under actual use", "Fine-detail recovery", "Social acquisition reliability"],
+      "implication": "Verification is not a novel headline; sparse sampling leaves a measurable precision gap to investigate.",
+      "sources": [
+        {"url": "https://github.com/brenoepics/video-to-skill", "type": "upstream-readme", "accessedAt": "2026-09-12"},
+        {"url": "https://github.com/brenoepics/video-to-skill/blob/main/BENCHMARK.md", "type": "upstream-benchmark-methodology", "accessedAt": "2026-09-12"},
+        {"url": "https://github.com/brenoepics/video-to-skill/blob/c527aa9b64cdb7e39a9d20dae6218c7cfc513473/crates/extractor/src/frames/mod.rs", "type": "immutable-source-code", "accessedAt": "2026-09-12"},
+        {"url": "https://github.com/brenoepics/video-to-skill/blob/c527aa9b64cdb7e39a9d20dae6218c7cfc513473/crates/extractor/src/frames/sample.rs", "type": "immutable-source-code", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "eyeroll",
+      "name": "eyeroll",
+      "kind": "open-source-video-to-code-action",
+      "availabilityEvidence": "Public MIT Claude Code plugin and Python CLI.",
+      "pricing": {"software": "MIT", "operatingCost": "Choose one supported hosted provider or local Ollama; README estimates not used as current prices"},
+      "advertised": ["Video/screenshots to repo-aware analysis, fixes and skills", "Cached analyses", "Optional Gemini/TwelveLabs/OpenAI-compatible/local backends"],
+      "tested": [
+        {"type": "source-inspection-only", "commit": "cc23e340614449fd1eaf015c661bc98aa25c5c34", "result": "Fallback frame extraction uses two-second candidates, then optional scene filtering/deduplication, then a default cap of 20 frames.", "scope": "Frame fallback only; direct video provider paths differ.", "executed": false}
+      ],
+      "unknown": ["Direct video quality", "Task success rate", "Fine-detail recall", "Complete Instagram post capture"],
+      "implication": "Closest reusable challenge baseline for project-aware video actions; audit before adopting.",
+      "sources": [
+        {"url": "https://github.com/mnvsk97/eyeroll", "type": "upstream-readme", "accessedAt": "2026-09-12"},
+        {"url": "https://github.com/mnvsk97/eyeroll/blob/cc23e340614449fd1eaf015c661bc98aa25c5c34/eyeroll/extract.py", "type": "immutable-source-code", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "gemini-codex-baseline",
+      "name": "Gemini plus existing Codex",
+      "kind": "manual-or-one-skill-substitute",
+      "availabilityEvidence": "Official Gemini upload and Codex local CLI documentation.",
+      "pricing": {"softwareBridge": "Could be a small local skill", "operatingCost": "Existing Codex plan/API plus Gemini usage; no new multi-tool subscription stack required"},
+      "advertised": ["Gemini can analyze uploaded media and code/repository context", "Codex runs locally with supported ChatGPT plan or API key"],
+      "tested": [],
+      "documentedLimits": ["Gemini Apps video total 5 minutes on basic path, 1 hour Pro/Ultra", "Gemini static API defaults to 1 FPS; this is not a claim about undocumented app sampling"],
+      "unknown": ["Percentage of ContextDrop jobs solved", "Single-frame recovery", "Instagram acquisition without manual work", "End-to-end effort and correctness"],
+      "implication": "Benchmark before building a second general agent; 80 percent replacement is an untested hypothesis.",
+      "sources": [
+        {"url": "https://support.google.com/gemini/answer/14903178?hl=en", "type": "official-documentation", "accessedAt": "2026-09-12"},
+        {"url": "https://github.com/openai/codex", "type": "official-upstream-repository", "accessedAt": "2026-09-12"},
+        {"url": "https://ai.google.dev/gemini-api/docs/video-understanding", "type": "official-documentation", "updatedAt": "2026-09-10", "accessedAt": "2026-09-12"}
+      ]
+    },
+    {
+      "id": "agent-reach",
+      "name": "Agent Reach",
+      "kind": "adjacent-acquisition-routing-layer",
+      "availabilityEvidence": "Public MIT routing/setup project.",
+      "pricing": {"software": "MIT", "operatingCost": "Upstream tools, optional authentication and any provider charges remain separate"},
+      "advertised": ["Upstream tool selection, installation checks, diagnostics and routing", "YouTube captions/search; Instagram via logged-in desktop OpenCLI route"],
+      "tested": [],
+      "unknown": ["Direct Reel/ordered carousel media extraction", "Capture SLA", "Fine-frame interpretation", "Local task correctness"],
+      "implication": "Useful adapter/doctor design; zero API fee headline is not a complete product architecture or reliability guarantee.",
+      "sources": [
+        {"url": "https://github.com/Panniantong/agent-reach", "type": "upstream-readme", "accessedAt": "2026-09-12"}
+      ]
+    }
+  ],
+  "watchlist": [
+    {
+      "name": "ReelMind",
+      "url": "https://reelmind.io/",
+      "accessedAt": "2026-09-12",
+      "advertised": "Cross-platform transcript summaries, plans, persistent memory; $19/month Starter.",
+      "tested": false,
+      "unknown": "Launch status and functional availability; retained July launch copy is ambiguous.",
+      "countedAsEstablishedCompetitor": false
+    },
+    {
+      "name": "Recollect AI",
+      "url": "https://recollectai.app/",
+      "accessedAt": "2026-09-12",
+      "advertised": "Visual social search and timestamp chat.",
+      "tested": false,
+      "unknown": "Working production availability; site presents a waitlist.",
+      "countedAsEstablishedCompetitor": false
+    }
+  ],
+  "excluded": [
+    {"name": "ReelsVault viral-content store", "reason": "Name collision; ready-to-post clip library is not the social-knowledge product sought."},
+    {"name": "Rewind", "reason": "Not used as a currently active independent competitor."}
+  ],
+  "decision": {
+    "changed": "Generic social chat, vision, action plans, agent handoff and even verified video-to-skill claims already exist.",
+    "smallestPaidBenefitHypothesis": "Reliable phone-to-project workflow: recover source evidence, resolve the actual resource, assess project fit, and return a checked local result with little user repair.",
+    "initialTaskClasses": ["Resolve and open a source-supported resource", "Run an existing repository demo", "Adapt a visible UI effect in a selected project"],
+    "mustBenchmarkAgainst": ["Reelnest public/eligible plan", "Gemini plus existing Codex", "One audited open-source visual skill"],
+    "notEstablished": ["Willingness to pay", "Retention", "Competitor-wide failure rates", "ContextDrop superiority", "A defensible moat"]
+  }
+}

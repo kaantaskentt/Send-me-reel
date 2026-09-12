@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "as_of": "2026-09-12",
+  "currency": "USD",
+  "period": "per user per 30-day month",
+  "rates": {
+    "gemini_lite_input_per_million": 0.3,
+    "gemini_lite_output_per_million": 2.5,
+    "gemini_flash_input_per_million_until_2026_12_31": 0.75,
+    "gemini_flash_output_per_million_until_2026_12_31": 3.75,
+    "gemini_flash_input_per_million_from_2027_01_01": 1.5,
+    "gemini_flash_output_per_million_from_2027_01_01": 7.5,
+    "astra_standard_short_input_per_million": 10,
+    "astra_standard_short_output_per_million": 50,
+    "astra_standard_long_input_per_million": 20,
+    "astra_standard_long_output_per_million": 75,
+    "google_search_per_individual_billable_query": 0.014,
+    "apify_instagram_result_event_free_account_tier": 0.0027
+  },
+  "assumptions": {
+    "status": "Proposed scenarios, not measured token usage, success rates, throughput, or bills. All outputs include reasoning/thinking where billed.",
+    "static_video_tokens_per_second": 100,
+    "overview_prompt_tokens_per_link": 1000,
+    "overview_output_tokens_per_link": 1500,
+    "chat_input_tokens_per_turn_including_retrieved_evidence_and_search_content": 8000,
+    "chat_output_tokens_per_turn": 800,
+    "focused_inspections_per_link": 0.2,
+    "focused_inspection_input_tokens": 6000,
+    "focused_inspection_output_tokens": 1000,
+    "reader_and_chat_retry_cost_multiplier": 1.15,
+    "action_input_tokens_across_entire_run_including_tool_results": 60000,
+    "action_output_tokens_across_entire_run_including_verification": 10000,
+    "action_retry_cost_multiplier": 1.15,
+    "apify_duplicate_billable_result_multiplier": 1.2,
+    "free_tier_credits_included": false,
+    "prompt_caching_savings_included": false,
+    "agentic_video_discount_included": false,
+    "local_compute_minutes_per_video_minute": 1.5,
+    "incremental_device_watts": 20,
+    "electricity_usd_per_kwh": 0.2,
+    "media_bitrate_megabits_per_second": 4,
+    "evidence_megabytes_per_link": 5,
+    "raw_media_retention_days": 7,
+    "assumed_month_days": 30,
+    "support_labor_usd_per_hour": 30,
+    "excluded": [
+      "Taxes",
+      "Payment processing",
+      "Customer acquisition",
+      "Engineering and platform repair labor",
+      "Hardware purchase and depreciation",
+      "User lost time",
+      "Relay hosting beyond the explicit allocation",
+      "Astra long-context or Fast-mode uplifts",
+      "Hosted containers",
+      "Extra paid MCPs or third-party execution APIs"
+    ],
+    "scope_notes": [
+      "Video seconds are the sum of video media durations. Non-video image input token overhead beyond the generic per-link budget must be added for carousel-heavy usage.",
+      "Google Search counts individual billed queries, not chat turns; one grounding request may generate multiple queries.",
+      "Astra token budgets are totals across all calls in the action, not the initial prompt length. Partial failed runs are covered by the retry cost multiplier but real distributions may be much heavier.",
+      "Local energy, processing speed, bitrate, support time and relay allocation are explicit invented planning assumptions, not measured or quoted vendor prices.",
+      "A fresh source can have multiple media items and multiple billable results. Apify count is billed dataset result events, not successful user imports.",
+      "Native video 100 tokens/second is the documentation low-resolution 1FPS planning estimate. Exact-frame inspection cost is separately budgeted. This is not a claim of full-frame native API processing.",
+      "The managed local-executor path assumes no hosted container. No separate Agents orchestration fee is listed in the observed overview; model and tools still charge.",
+      "Cost per successful action with all product cost allocated is accounting only; it also allocates useful read-only chat costs to action outcomes."
+    ]
+  },
+  "sources": [
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "supports": "Gemini standard input/output, thinking billing, Google Search individual query billing, Flash promotion expiry"
+    },
+    {
+      "url": "https://ai.google.dev/gemini-api/docs/tokens#video-token-usage-by-processing-mode",
+      "supports": "Approximate low-resolution static100tokens/second; actual agentic usage varies"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/pricing",
+      "supports": "Astra Standard short/long-context input/output rates"
+    },
+    {
+      "url": "https://developers.openai.com/api/docs/guides/agents-api/overview",
+      "supports": "Managed Agents billed at model/tool rates; hosted containers separate"
+    },
+    {
+      "url": "https://api.apify.com/v2/acts/apify~instagram-scraper",
+      "supports": "Public actor metadata pricingInfos latest effective2026-02-20: PAY_PER_EVENT result FREE0.0027 BRONZE0.0023 GOLD0.0015; actual tier matters"
+    },
+    {
+      "url": "https://apify.com/apify/instagram-scraper/pricing",
+      "supports": "Advertised from1.50per1000results is a lower qualifying tier, not universal rate"
+    }
+  ],
+  "formulas": {
+    "reader_input": "video_minutes*60*100 + links*1000 + links*0.2*6000 + chat_turns*8000",
+    "reader_output": "links*1500 + links*0.2*1000 + chat_turns*800",
+    "reader_cost": "(reader_input*0.30 + reader_output*2.50)/1000000*1.15",
+    "action_cost": "actions_requested*(60000*10 + 10000*50)/1000000*1.15",
+    "search_cost": "google_search_billable_queries*0.014",
+    "optional_acquisition_cost": "apify_fallback_result_events*0.0027*1.2",
+    "service_cost": "reader_cost+action_cost+search_cost+optional_acquisition_cost+relay_and_operations_allocation_usd+support_minutes/60*30",
+    "action_cost_per_verified_action": "action_cost/(actions_requested*action_verified_fraction)",
+    "all_service_cost_allocated_per_verified_action": "service_cost/(actions_requested*action_verified_fraction)",
+    "frame_aware_local_compute_hours": "video_minutes*1.5/60; planning-only, must benchmark",
+    "raw_media_gb_per_month": "video_minutes*60*4/8/1000; decimalGB, assumed4Mbps",
+    "energy": "local_compute_hours*20/1000*0.20; planning-only, paid by device owner, not includedservicecost"
+  },
+  "scenarios": [
+    {
+      "name": "low",
+      "links": 30,
+      "video_minutes": 60,
+      "chat_turns": 40,
+      "actions_requested": 2,
+      "action_verified_fraction": 0.95,
+      "google_search_billable_queries": 20,
+      "apify_fallback_result_events": 10,
+      "relay_and_operations_allocation_usd": 0.5,
+      "support_minutes": 2,
+      "calculated": {
+        "reader_chat_and_inspection_api_usd": 0.495995,
+        "astra_action_api_usd": 2.53,
+        "google_search_usd": 0.28,
+        "optional_apify_usd": 0.0324,
+        "total_variable_vendor_usd": 3.338395,
+        "support_labor_allocation_usd": 1.0,
+        "service_cost_with_support_and_relay_usd": 4.838395,
+        "expected_verified_actions": 1.9,
+        "action_model_cost_per_verified_action_usd": 1.331579,
+        "all_service_cost_allocated_per_verified_action_usd": 2.546524,
+        "local_processing_hours_assumption": 1.5,
+        "local_electricity_usd_not_in_service_cost": 0.006,
+        "raw_media_gigabytes_ingested": 1.8,
+        "raw_media_steady_retained_gigabytes": 0.42,
+        "evidence_gigabytes_added_monthly": 0.15,
+        "service_cost_if_astra_handles_every_chat_usd": 10.155995,
+        "service_cost_if_reader_chat_use_flash_promotional_usd": 5.343763,
+        "service_cost_if_reader_chat_use_flash_2027_usd": 6.345125,
+        "service_cost_if_all_actions_long_context_priced_usd": 6.793395
+      }
+    },
+    {
+      "name": "base",
+      "links": 150,
+      "video_minutes": 450,
+      "chat_turns": 300,
+      "actions_requested": 12,
+      "action_verified_fraction": 0.9,
+      "google_search_billable_queries": 100,
+      "apify_fallback_result_events": 60,
+      "relay_and_operations_allocation_usd": 1,
+      "support_minutes": 5,
+      "calculated": {
+        "reader_chat_and_inspection_api_usd": 3.296475,
+        "astra_action_api_usd": 15.18,
+        "google_search_usd": 1.4,
+        "optional_apify_usd": 0.1944,
+        "total_variable_vendor_usd": 20.070875,
+        "support_labor_allocation_usd": 2.5,
+        "service_cost_with_support_and_relay_usd": 23.570875,
+        "expected_verified_actions": 10.8,
+        "action_model_cost_per_verified_action_usd": 1.405556,
+        "all_service_cost_allocated_per_verified_action_usd": 2.182488,
+        "local_processing_hours_assumption": 11.25,
+        "local_electricity_usd_not_in_service_cost": 0.045,
+        "raw_media_gigabytes_ingested": 13.5,
+        "raw_media_steady_retained_gigabytes": 3.15,
+        "evidence_gigabytes_added_monthly": 0.75,
+        "service_cost_if_astra_handles_every_chat_usd": 63.452875,
+        "service_cost_if_reader_chat_use_flash_promotional_usd": 27.092462,
+        "service_cost_if_reader_chat_use_flash_2027_usd": 33.910525,
+        "service_cost_if_all_actions_long_context_priced_usd": 35.300875
+      }
+    },
+    {
+      "name": "heavy",
+      "links": 500,
+      "video_minutes": 2400,
+      "chat_turns": 1200,
+      "actions_requested": 60,
+      "action_verified_fraction": 0.85,
+      "google_search_billable_queries": 400,
+      "apify_fallback_result_events": 250,
+      "relay_and_operations_allocation_usd": 3,
+      "support_minutes": 12,
+      "calculated": {
+        "reader_chat_and_inspection_api_usd": 13.86325,
+        "astra_action_api_usd": 75.9,
+        "google_search_usd": 5.6,
+        "optional_apify_usd": 0.81,
+        "total_variable_vendor_usd": 96.17325,
+        "support_labor_allocation_usd": 6.0,
+        "service_cost_with_support_and_relay_usd": 105.17325,
+        "expected_verified_actions": 51.0,
+        "action_model_cost_per_verified_action_usd": 1.488235,
+        "all_service_cost_allocated_per_verified_action_usd": 2.062221,
+        "local_processing_hours_assumption": 60.0,
+        "local_electricity_usd_not_in_service_cost": 0.24,
+        "raw_media_gigabytes_ingested": 72.0,
+        "raw_media_steady_retained_gigabytes": 16.8,
+        "evidence_gigabytes_added_monthly": 2.5,
+        "service_cost_if_astra_handles_every_chat_usd": 264.70125,
+        "service_cost_if_reader_chat_use_flash_promotional_usd": 120.764375,
+        "service_cost_if_reader_chat_use_flash_2027_usd": 150.21875,
+        "service_cost_if_all_actions_long_context_priced_usd": 163.82325
+      }
+    }
+  ]
+}
