@@ -1,0 +1,76 @@
+{
+  "status": "offline_synthetic_experiment",
+  "fixture": {
+    "fps": 30,
+    "durationSeconds": 4,
+    "width": 960,
+    "height": 540,
+    "frameCount": 120,
+    "encoding": "H.264 lossless",
+    "sha256": "c2d91d6f550ff03d946b77623f9f800aa975a72a4075df8155f54c7661f34b4e"
+  },
+  "clues": [
+    {
+      "id": "one-frame-repository",
+      "first": 17,
+      "last": 17,
+      "text": "github.com/example/brief-repo",
+      "startSeconds": 0.5666666666666667,
+      "durationMs": 33.333333333333336
+    },
+    {
+      "id": "two-frame-prompt",
+      "first": 61,
+      "last": 62,
+      "text": "Use a warm paper background and a single blue action.",
+      "startSeconds": 2.033333333333333,
+      "durationMs": 66.66666666666667
+    },
+    {
+      "id": "half-second-command",
+      "first": 97,
+      "last": 111,
+      "text": "npm run preview",
+      "startSeconds": 3.2333333333333334,
+      "durationMs": 500
+    }
+  ],
+  "actualFfmpegSampling": {
+    "1fps": {
+      "frames": 4,
+      "cluesRetained": [
+        "half-second-command"
+      ]
+    },
+    "2fps": {
+      "frames": 8,
+      "cluesRetained": [
+        "half-second-command"
+      ]
+    }
+  },
+  "allFrameChangeDetector": {
+    "candidates": [
+      0,
+      17,
+      18,
+      61,
+      63,
+      97,
+      112
+    ],
+    "cluesRetained": [
+      "one-frame-repository",
+      "two-frame-prompt",
+      "half-second-command"
+    ],
+    "decodeAndDetectorMs": 131
+  },
+  "elapsedMs": 669,
+  "limitations": [
+    "Three synthetic clues on a static background only.",
+    "Candidate retention is not OCR or semantic comprehension.",
+    "Real videos, motion, compression, unreadable text, rotated or partial prompts require a separate benchmark.",
+    "An available video frame is the temporal limit; missing or hidden pixels cannot be recovered."
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "file" : "candidate-017.png",
+    "text" : [
+      "Synthetic Al tutorial",
+      "Test fixture. No creator content or real repository.",
+      "github.com\/example\/brief-repo"
+    ]
+  },
+  {
+    "file" : "candidate-061.png",
+    "text" : [
+      "Synthetic Al tutorial",
+      "Test fixture. No creator content or real repository.",
+      "Use a warm paper background and a single blue action."
+    ]
+  },
+  {
+    "file" : "candidate-097.png",
+    "text" : [
+      "Synthetic Al tutorial",
+      "Test fixture. No creator content or real repository.",
+      "npm run preview"
+    ]
+  }
+]
