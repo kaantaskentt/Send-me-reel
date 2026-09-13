@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isLocalStudioRequest, validateLocalSourceUrl } from "../src/lib/local-studio";
+import { isLocalStudioRequest, validateLocalSourceUrl, localFramePath } from "../src/lib/local-studio";
 import { readBoundedJson } from "../src/lib/bounded-json";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import type { Analysis } from "../src/lib/types";
 
 const env = { NODE_ENV: "development", CONTEXTDROP_LOCAL_STUDIO: "1" } as NodeJS.ProcessEnv;
 test("local studio requires explicit development opt-in and loopback host", () => {
@@ -24,4 +28,38 @@ test("local JSON reader stops oversized chunked input without trusting Content-L
   const request = new Request("http://127.0.0.1/api/local/capture", { method: "POST", body: "x".repeat(4_001) });
   await assert.rejects(readBoundedJson(request, 4_000), /too large/);
   assert.deepEqual(await readBoundedJson(new Request("http://127.0.0.1", { method: "POST", body: '{"url":"https://youtu.be/x"}' })), { url: "https://youtu.be/x" });
+});
+
+test("frame inspection follows measured timestamps after an earlier vision batch fails", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-frame-alignment-"));
+  try {
+    const frames = [0, 3, 6].map(time => path.join(root, `frame-${time}.jpg`));
+    await Promise.all(frames.map(filename => fs.writeFile(filename, "fixture image")));
+    const analysis = { source_url: "https://example.com/video", frame_descriptions: [{ timestampSec: 6 }], metadata: { local_evidence: { framePaths: frames, timestampsSec: [0, 3, 6], sourceUrl: "https://example.com/video" } } } as unknown as Analysis;
+    assert.equal(await localFramePath(analysis, 0, root), await fs.realpath(frames[2]));
+    assert.equal(await localFramePath(analysis, 1, root), null);
+    analysis.frame_descriptions = [{ timestampSec: 7 }] as Analysis["frame_descriptions"];
+    assert.equal(await localFramePath(analysis, 0, root), null);
+    analysis.frame_descriptions = [{ timestampSec: 3 }] as Analysis["frame_descriptions"];
+    analysis.metadata!.local_evidence = { framePaths: frames, timestampsSec: [0, 3, 3] };
+    assert.equal(await localFramePath(analysis, 0, root), null);
+    analysis.metadata!.local_evidence = { framePaths: frames, timestampsSec: [] };
+    assert.equal(await localFramePath(analysis, 0, root), null);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("still-image evidence works while mismatched sources and escaped paths fail closed", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-frame-source-"));
+  try {
+    const filename = path.join(root, "preview.jpg");
+    await fs.writeFile(filename, "fixture image");
+    const analysis = { source_url: "contextdrop://upload/sample", frame_descriptions: [{ description: "A design" }], metadata: { local_evidence: { framePaths: [filename], timestampsSec: [], sourceUrl: "contextdrop://upload/sample" } } } as unknown as Analysis;
+    assert.equal(await localFramePath(analysis, 0, root), await fs.realpath(filename));
+    analysis.metadata!.local_evidence = { framePaths: [filename], sourceUrl: "contextdrop://upload/other" };
+    assert.equal(await localFramePath(analysis, 0, root), null);
+    analysis.metadata!.local_evidence = { framePaths: [filename] };
+    const inner = path.join(root, "inner");
+    await fs.mkdir(inner);
+    assert.equal(await localFramePath(analysis, 0, inner), null);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
 });

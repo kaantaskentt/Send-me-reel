@@ -71,12 +71,29 @@ export async function writeLocalJson(name: "local-plan.json" | "local-plan-usage
   await fs.rename(temporary, path.join(localStudioRoot, name));
 }
 
-export async function localFramePath(analysis: Analysis, index: number): Promise<string | null> {
-  const local = analysis.metadata?.local_evidence as { framePaths?: unknown[] } | undefined;
-  const selected = local?.framePaths?.[index];
-  if (!Number.isInteger(index) || index < 0 || index >= 96 || typeof selected !== "string") return null;
+export async function localFramePath(analysis: Analysis, index: number, studioRoot = localStudioRoot): Promise<string | null> {
+  const local = analysis.metadata?.local_evidence as { framePaths?: unknown[]; timestampsSec?: unknown[]; sourceUrl?: unknown } | undefined;
+  const observations = analysis.frame_descriptions ?? [];
+  if (!Number.isInteger(index) || index < 0 || index >= observations.length || index >= 96 || !Array.isArray(local?.framePaths)) return null;
+  if (local.sourceUrl !== undefined && local.sourceUrl !== analysis.source_url) return null;
+  let imageIndex = index;
+  if (Array.isArray(local.timestampsSec) && local.timestampsSec.length) {
+    // A failed vision batch removes observations, not extracted JPEGs. Associate
+    // by measured time so a surviving observation never opens an earlier image.
+    const observation = observations[index] as { timestampSec?: unknown } | null;
+    const timestamp = observation?.timestampSec;
+    if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || local.timestampsSec.length !== local.framePaths.length) return null;
+    const matches = local.timestampsSec.flatMap((time, candidate) => typeof time === "number" && Number.isFinite(time) && Math.abs(time - timestamp) <= 0.001 ? [candidate] : []);
+    if (matches.length !== 1) return null;
+    imageIndex = matches[0];
+  } else if (local.framePaths.length !== observations.length) {
+    // Legacy captures without timestamps are safe to align only when complete.
+    return null;
+  }
+  const selected = local.framePaths[imageIndex];
+  if (typeof selected !== "string") return null;
   try {
-    const root = await fs.realpath(localStudioRoot);
+    const root = await fs.realpath(studioRoot);
     const filename = await fs.realpath(selected);
     if (!filename.startsWith(root + path.sep) || !/\.jpe?g$/i.test(filename)) return null;
     return filename;

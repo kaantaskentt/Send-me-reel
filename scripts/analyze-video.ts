@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 import ffmpegPath from "ffmpeg-static";
 import { detectPlatform, parseSourceUrl } from "../src/pipeline/urlRouter.js";
 import { extractFrames, getVideoDuration, validateVideoDuration, MAX_ANALYSIS_FRAMES, FRAME_MAX_WIDTH } from "../src/services/frameExtractor.js";
-import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT } from "../src/services/mediaRuntime.js";
+import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT, ANALYSIS_VIDEO_SORT, validateAnalysisVideoSize } from "../src/services/mediaRuntime.js";
 import { ytDlpMetadataArgs, parseYtDlpMetadata, YTDLP_METADATA_MAX_BYTES } from "../src/services/ytDlpMetadata.js";
 
 const execFileAsync = promisify(execFile);
@@ -115,22 +115,30 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       authorUsername: metadata.uploader_id || metadata.channel_id, duration: metadata.duration,
       webpage_url: metadata.webpage_url, thumbnail: metadata.thumbnail, chapters: metadata.chapters || [],
     });
-    validateVideoDuration(Number(metadata.duration));
+    // Social extractors often omit duration. Only a known positive duration can
+    // reject early; the downloaded media must still pass the actual probe below.
+    const advertisedDuration = Number(metadata.duration);
+    if (Number.isFinite(advertisedDuration) && advertisedDuration > 0) validateVideoDuration(advertisedDuration);
     const videoPath = path.join(captureDirectory, "video.mp4");
     await stage("download", "scraping", async () => {
       await execFileAsync(ytdlpCommand, [
         "--js-runtimes", "node", "--no-playlist", "--no-progress", "--socket-timeout", "15", "--retries", "1",
-        "--max-filesize", "100M", "-f", ANALYSIS_VIDEO_FORMAT,
+        "--max-filesize", "100M", "-f", ANALYSIS_VIDEO_FORMAT, "-S", ANALYSIS_VIDEO_SORT,
         "--merge-output-format", "mp4", ...(ffmpegPath ? ["--ffmpeg-location", ffmpegPath] : []), "-o", videoPath, "--", input.url,
       ], { timeout: 180_000, maxBuffer: 5 * 1024 * 1024, signal: controller.signal });
       const file = await fs.stat(videoPath);
       if (file.size < 1000) throw new Error("Downloaded video is empty or missing");
+      validateAnalysisVideoSize(file.size);
       analysis.metadata.local_evidence.videoPath = videoPath;
       analysis.metadata.local_evidence.videoBytes = file.size;
     });
-    const duration = await getVideoDuration(videoPath);
-    validateVideoDuration(duration);
-    analysis.metadata.source_evidence.duration_seconds = duration;
+    const duration = await stage("duration_check", "scraping", async () => {
+      const measured = await getVideoDuration(videoPath);
+      validateVideoDuration(measured);
+      analysis.metadata.duration = measured;
+      analysis.metadata.source_evidence.duration_seconds = measured;
+      return measured;
+    });
     analysis.metadata.source_evidence.scrape_provider = "yt-dlp";
     analysis.metadata.source_evidence.download_provider = "yt-dlp";
 

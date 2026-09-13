@@ -11,6 +11,8 @@ import { isPublicAddress, resolvePublicUrl } from "../src/services/publicUrl.ts"
 import * as mediaModule from "../web/src/lib/media-proxy.ts";
 import * as notionStateModule from "../web/src/lib/notion-oauth-state.ts";
 import * as ytDlpMetadata from "../src/services/ytDlpMetadata.ts";
+import { validateAnalysisVideoSize, MAX_ANALYSIS_VIDEO_BYTES } from "../src/services/mediaRuntime.ts";
+import { ServiceError } from "../src/pipeline/types.ts";
 
 // The nested web package is CommonJS when imported by the worker's ESM tests.
 const { detectPlatform: webPlatform } = (webUrlModule as any).default || webUrlModule;
@@ -97,7 +99,7 @@ test("downloads use literal arguments, restore certificate verification, and cap
     path: { join: (...parts: string[]) => parts.join("/") },
     "../pipeline/types.js": { ServiceError: Error },
     "ffmpeg-static": "/fixture/ffmpeg",
-    "./mediaRuntime.js": { resolveYtDlpExecutable: () => "yt-dlp", ANALYSIS_VIDEO_FORMAT: "bv*[height<=1080]+ba/b[height<=1080]" },
+    "./mediaRuntime.js": { resolveYtDlpExecutable: () => "yt-dlp", ANALYSIS_VIDEO_FORMAT: "bv*+ba/b/bv*", ANALYSIS_VIDEO_SORT: "res:1080,codec:h264", validateAnalysisVideoSize },
   });
   const url = "https://youtube.com/watch?v=$(:)";
   await service.downloadVideo(url, "analysis-demo");
@@ -106,8 +108,30 @@ test("downloads use literal arguments, restore certificate verification, and cap
   assert.ok(Array.from(call[1]).includes("--js-runtimes"));
   assert.ok(Array.from(call[1]).includes("node"));
   assert.ok(call[1].includes("--max-filesize"));
+  assert.equal(call[1][call[1].indexOf("-S") + 1], "res:1080,codec:h264");
   assert.ok(call[1].includes("--no-playlist"));
   assert.ok(!call[1].includes("--no-check-certificates"));
+});
+
+test("an oversized merged download fails before retry or CDN fallback, while exactly 100 MiB remains valid", async () => {
+  let downloads = 0;
+  let bytes = MAX_ANALYSIS_VIDEO_BYTES + 1;
+  const service = loadIsolated("src/services/storage.ts", {
+    child_process: { execFile: (...args: any[]) => { downloads++; args[3](null, { stdout: "", stderr: "" }); } },
+    util: { promisify: (fn: (...args: any[]) => void) => (...args: any[]) => new Promise((resolve, reject) => fn(...args, (err: Error | null, result: unknown) => err ? reject(err) : resolve(result))) },
+    "fs/promises": { mkdir: async () => {} },
+    fs: { existsSync: () => true, statSync: () => ({ size: bytes }) },
+    path: { join: (...parts: string[]) => parts.join("/") },
+    "../pipeline/types.js": { ServiceError },
+    "ffmpeg-static": "/fixture/ffmpeg",
+    "./mediaRuntime.js": { resolveYtDlpExecutable: () => "yt-dlp", ANALYSIS_VIDEO_FORMAT: "bv*+ba/b/bv*", ANALYSIS_VIDEO_SORT: "res:1080,codec:h264", validateAnalysisVideoSize },
+    "./apifyScraper.js": { downloadFromCdn() { throw new Error("Known oversize must not redownload from CDN"); } },
+  });
+  await assert.rejects(service.downloadWithFallback("https://example.invalid/video", "merged-fixture", "https://example.invalid/cdn"), error => error instanceof ServiceError && error.code === "VIDEO_TOO_LARGE" && error.retryable === false);
+  assert.equal(downloads, 1);
+  bytes = MAX_ANALYSIS_VIDEO_BYTES;
+  assert.equal(await service.downloadVideo("https://example.invalid/video", "boundary-fixture"), "/tmp/contextdrop/boundary-fixture/video.mp4");
+  assert.equal(downloads, 2);
 });
 
 test("proxy credential fails closed for missing, empty, and wrong secrets", () => {

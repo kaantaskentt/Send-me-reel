@@ -3,6 +3,7 @@ import { createWriteStream } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createInterface } from 'node:readline';
+import { randomUUID } from 'node:crypto';
 
 // Only the local companion creates this control file. Tutorial data is never a command.
 const configPath = process.argv[2];
@@ -19,8 +20,27 @@ if (claude && config.terminalMode === 'exec') throw new Error('Claude Code hando
 const execMode = !claude && config.terminalMode === 'exec';
 const controlDir = path.dirname(configPath);
 const statusPath = path.join(controlDir, 'status.json');
+const stopPath = path.join(controlDir, 'stop-request.json');
+let statusWrites = Promise.resolve();
 async function status(state, extra = {}) {
-  await fs.writeFile(statusPath, JSON.stringify({ id: config.id, harness, status: state, workspace: config.workspace, updatedAt: new Date().toISOString(), ...extra }), { mode: 0o600 });
+  const value = JSON.stringify({ id: config.id, harness, status: state, workspace: config.workspace, updatedAt: new Date().toISOString(), ...extra });
+  statusWrites = statusWrites.then(async () => {
+    const temporary = `${statusPath}.${randomUUID()}.tmp`;
+    try {
+      await fs.writeFile(temporary, value, { mode: 0o600, flag: 'wx' });
+      await fs.rename(temporary, statusPath);
+    } finally { await fs.rm(temporary, { force: true }).catch(() => {}); }
+  });
+  await statusWrites;
+}
+async function hasStopRequest() {
+  try { return JSON.parse(await fs.readFile(stopPath, 'utf8')).id === config.id; }
+  catch { return false; }
+}
+// A cancelled launch may open in Terminal late. It must never start the task.
+if (await hasStopRequest()) {
+  await status('stopped', { message: 'Stopped before the coding agent was launched.' });
+  process.exit(0);
 }
 // Strip terminal control characters from model/tool text, including OSC escape
 // introductions. The original JSON event stream is saved for local inspection.
@@ -49,17 +69,26 @@ const inheritedKeys = new Set(['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TERM
 const childEnv = Object.fromEntries(Object.entries(process.env).filter(([key, value]) => value !== undefined && (inheritedKeys.has(key) || /^LC_[A-Z_]+$/.test(key))));
 // exec is noninteractive: never accidentally append piped terminal input to the
 // reviewed task. Unsupported permission prompts fail closed in Codex.
-const child = spawn(binary, argv, { stdio: execMode ? ['ignore', 'pipe', 'pipe'] : 'inherit', shell: false, cwd: config.workspace, env: childEnv });
+const child = spawn(binary, argv, { stdio: execMode ? ['ignore', 'pipe', 'pipe'] : 'inherit', detached: execMode && process.platform !== 'win32', shell: false, cwd: config.workspace, env: childEnv });
 let forceKillTimer;
+let stopRequested = false;
+function signalChild(signal) {
+  try {
+    // Exec mode owns a separate process group, including its local tool children.
+    if (execMode && process.platform !== 'win32' && child.pid) process.kill(-child.pid, signal);
+    else child.kill(signal);
+  } catch (error) { if (error.code !== 'ESRCH') throw error; }
+}
 function stopChild(signal) {
-  child.kill(signal);
+  signalChild(signal);
   if (execMode && !forceKillTimer) {
-    forceKillTimer = setTimeout(() => child.kill('SIGKILL'), 5000);
+    forceKillTimer = setTimeout(() => signalChild('SIGKILL'), 5000);
     forceKillTimer.unref();
   }
 }
 const logs = [];
 let limitError;
+let turnError;
 let outputBytes = 0;
 if (execMode) {
   const stdoutLog = createWriteStream(path.join(controlDir, 'codex-events.jsonl'), { mode: 0o600 });
@@ -83,7 +112,11 @@ if (execMode) {
         if (item.aggregated_output) console.log(plain(item.aggregated_output));
         console.log(`[Command exit: ${item.exit_code ?? 'unknown'}]`);
       }
-      if (event.type === 'error' || event.type === 'turn.failed') console.error(plain(event.message || event.error?.message || 'Codex reported an execution error'));
+      if (event.type === 'error' || event.type === 'turn.failed') {
+        const message = plain(event.message || event.error?.message || 'Codex reported an execution error');
+        if (event.type === 'turn.failed') turnError = message;
+        console.error(message);
+      }
       if (event.type === 'turn.completed') console.log('[Codex finished; result still needs review.]');
     } catch { console.log(plain(line)); }
   });
@@ -92,11 +125,31 @@ if (execMode) {
 const timer = execMode ? setTimeout(() => { limitError = 'Execution reached the 20-minute limit'; stopChild('SIGTERM'); }, 20 * 60 * 1000) : undefined;
 timer?.unref();
 let settled = false;
+let checkingStop = false;
+const stopPoll = setInterval(async () => {
+  if (settled || stopRequested || checkingStop) return;
+  checkingStop = true;
+  try {
+    if (await hasStopRequest() && !settled) {
+      stopRequested = true;
+      await status('stopping', { pid: process.pid, message: 'Stopping the coding agent. Previous workspace changes remain.' });
+      if (!settled) stopChild('SIGTERM');
+    }
+  } catch { stopChild('SIGTERM'); }
+  finally { checkingStop = false; }
+}, 500);
+stopPoll.unref();
+const heartbeat = setInterval(() => {
+  if (!settled) void status(stopRequested ? 'stopping' : 'running', { pid: process.pid }).catch(() => { limitError = 'Runner status could not be saved'; stopChild('SIGTERM'); });
+}, 5000);
+heartbeat.unref();
 async function finish(state, extra) {
   if (settled) return;
   settled = true;
   if (timer) clearTimeout(timer);
   if (forceKillTimer) clearTimeout(forceKillTimer);
+  clearInterval(stopPoll);
+  clearInterval(heartbeat);
   await status(state, extra);
 }
 child.on('error', async error => {
@@ -107,8 +160,11 @@ child.on('error', async error => {
 child.on('close', async (code, signal) => {
   // close waits for subprocess output. Its zero exit is NOT independent proof.
   await Promise.all(logs.map(log => log.closed ? undefined : new Promise(resolve => log.once('close', resolve))));
-  await finish(limitError ? 'failed' : signal ? 'stopped' : code === 0 ? 'finished_unverified' : 'failed', { exitCode: code, signal, ...(limitError ? { error: limitError } : {}) });
-  if (code !== 0 || signal || limitError) process.exitCode = 1;
+  const failure = limitError || (!stopRequested && !signal ? turnError || (code !== 0 ? `${claude ? 'Claude Code' : 'Codex'} exited with code ${code}. Review the saved output or Terminal for details.` : undefined) : undefined);
+  await finish(failure ? 'failed' : stopRequested || signal ? 'stopped' : 'finished_unverified', { exitCode: code, signal, ...(failure ? { error: failure } : {}) });
+  if (code !== 0 || signal || failure) process.exitCode = 1;
   console.log(claude ? '\nClaude Code session ended. Inspect its plan and any actual files before accepting a result. A completed handoff does not prove a build.' : '\nSession ended. Review CONTEXTDROP-RESULT.md and the actual artifact before accepting the result.');
 });
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stopChild(signal); });
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stopRequested = true; stopChild(signal); });
+// Closing the Terminal window must not orphan a detached exec process group.
+process.on('SIGHUP', () => { stopRequested = true; stopChild('SIGTERM'); });

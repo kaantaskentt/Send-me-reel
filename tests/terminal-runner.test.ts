@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 const execute = promisify(execFile);
 
@@ -86,6 +86,47 @@ test('exec nonzero exit is a failed run even if a report was written', async () 
     const state = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
     assert.equal(state.status, 'failed'); assert.equal(state.exitCode, 7);
   } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('an explicit failed Codex turn is not reported as finished when its CLI exits zero', async () => {
+  const f = await fixture('exec');
+  try {
+    await fs.writeFile(path.join(f.folder, 'fake-codex'), `#!${process.execPath}\nconsole.log(JSON.stringify({type:'turn.failed',error:{message:'Fixture permission cannot be requested noninteractively'}}));\n`, { mode: 0o700 });
+    await assert.rejects(execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 }));
+    const state = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+    assert.equal(state.status, 'failed'); assert.equal(state.exitCode, 0);
+    assert.match(state.error, /cannot be requested noninteractively/);
+  } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('a stopped launch cannot start the coding agent when Terminal eventually opens', async () => {
+  const f = await fixture('exec');
+  try {
+    await fs.writeFile(path.join(f.control, 'stop-request.json'), JSON.stringify({ id: 'fixture-run' }));
+    await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 });
+    const state = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+    assert.equal(state.status, 'stopped');
+    await assert.rejects(fs.access(path.join(f.control, 'argv.json')));
+  } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('closing Terminal stops its owned exec process group instead of abandoning background work', async () => {
+  const f = await fixture('exec');
+  const marker = path.join(f.control, 'fixture-ready');
+  await fs.writeFile(path.join(f.folder, 'fake-codex'), `#!${process.execPath}\nimport fs from 'node:fs';\nfs.writeFileSync(${JSON.stringify(marker)},'ready');process.on('SIGTERM',()=>process.exit(0));setInterval(()=>{},1000);\n`, { mode: 0o700 });
+  const runner = spawn(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), stdio: 'ignore' });
+  const exited = new Promise<void>(resolve => runner.once('close', () => resolve()));
+  try {
+    const deadline = Date.now() + 5000;
+    while (!await fs.access(marker).then(() => true, () => false)) {
+      assert.ok(Date.now() < deadline, 'Fixture coding agent did not start');
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    runner.kill('SIGHUP');
+    await Promise.race([exited, new Promise<never>((_, reject) => { const timer = setTimeout(() => reject(new Error('Runner did not stop after Terminal hangup')), 7000); timer.unref(); })]);
+    const state = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+    assert.equal(state.status, 'stopped');
+  } finally { runner.kill('SIGTERM'); await exited; await fs.rm(f.folder, { recursive: true, force: true }); }
 });
 
 test('interactive runner remains the separate default launch style', async () => {

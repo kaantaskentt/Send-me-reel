@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import BrowserSession, { type LocalRunState as RunState } from "./BrowserSession";
 import ReplicationRehearsal from "./ReplicationRehearsal";
 import { ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Circle, Code2, Download, ExternalLink, FileText, Film, Loader2, Monitor, RefreshCw, Sparkles, Terminal, Unplug, WandSparkles, Workflow } from "lucide-react";
 import type { Analysis } from "@/lib/types";
 import { buildSourceEvidence, parseReplicationPlan, replicationPlanMarkdown, type ReplicationPlan } from "@/lib/execution-plan";
 import { parseVerdict } from "@/lib/verdict-parser";
+import { runIsActive } from "@/lib/local-runs";
+import styles from "./studio.module.css";
 
 const COMPANION_URL = "http://127.0.0.1:43187";
 const MODES = [
@@ -17,7 +19,7 @@ const MODES = [
 ] as const;
 
 type Harness = "codex" | "claude";
-interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[] }
+interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; compact?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[] }
 
 function timestamp(seconds: number | null) {
   if (seconds === null) return "No timestamp";
@@ -38,7 +40,7 @@ function download(content: string, name: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export default function ReplicationPanel({ analysis, initialPlan, demo = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex", contextSourceIds = [] }: Props) {
+export default function ReplicationPanel({ analysis, initialPlan, demo = false, compact = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex", contextSourceIds = [] }: Props) {
   const captured = buildSourceEvidence(analysis);
   const [mode, setMode] = useState<ReplicationPlan["mode"]>(initialPlan?.mode ?? initialMode);
   const [goal, setGoal] = useState(initialPlan?.goal ?? initialGoal);
@@ -48,7 +50,10 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const [tab, setTab] = useState<"plan" | "evidence">("plan");
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
   const [token, setToken] = useState(initialPairingToken);
-  const [paired, setPaired] = useState(false);
+  const [pairConfirmed, setPaired] = useState(false);
+  const [pairedToken, setPairedToken] = useState("");
+  const effectiveToken = initialPairingToken || token;
+  const paired = pairConfirmed && !!pairedToken && pairedToken === effectiveToken.trim();
   const [pairBusy, setPairBusy] = useState(false);
   const [localError, setLocalError] = useState("");
   const [showSetup, setShowSetup] = useState(false);
@@ -65,19 +70,36 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const [remaining, setRemaining] = useState<number | null>(null);
   const browserSessionDialog = useRef<HTMLDialogElement>(null);
   const generationController = useRef<AbortController | null>(null);
+  const pairingController = useRef<AbortController | null>(null);
+  const launchAttempt = useRef<{ fingerprint: string; key: string; runId?: string } | null>(null);
+  const launchInFlight = useRef(false);
   const evidenceRefs = useRef<Record<string, HTMLLIElement | null>>({});
+  const autoPrepared = useRef(false);
   const sourceTitle = analysis.metadata?.title || (analysis.verdict ? parseVerdict(analysis.verdict).title : null) || analysis.caption?.slice(0, 100) || "Saved source";
   const stale = plan && (plan.goal !== goal.trim() || plan.mode !== mode);
-  const runActive = !!run && ["launching", "running", "awaiting_approval", "needs_input"].includes(run.status);
+  const runActive = !!run && runIsActive(run.status);
   const sessionOpen = runActive || (!!run && executor === "browser" && run.status !== "stopped");
   const harnessName = harness === "claude" ? "Claude Code" : "Codex";
   const runHarnessName = (run?.harness ?? harness) === "claude" ? "Claude Code" : "Codex";
   const terminalAvailable = macSupported && harnesses[harness];
 
-  useEffect(() => { setOrigin(window.location.origin); return () => generationController.current?.abort(); }, []);
+  useEffect(() => { setOrigin(window.location.origin); return () => { generationController.current?.abort(); pairingController.current?.abort(); }; }, []);
   useEffect(() => {
-    if (executor === "browser" && run?.id && browserSessionDialog.current && !browserSessionDialog.current.open) browserSessionDialog.current.showModal();
-  }, [executor, run?.id]);
+    if (!compact && executor === "browser" && run?.id && browserSessionDialog.current && !browserSessionDialog.current.open) browserSessionDialog.current.showModal();
+  }, [compact, executor, run?.id]);
+  useEffect(() => {
+    if (!compact || demo || autoPrepared.current) return;
+    // Defer one tick so Strict Mode's rehearsal mount can clean up without
+    // starting and aborting a paid planning call, then suppressing its retry.
+    const timer = window.setTimeout(() => {
+      autoPrepared.current = true;
+      if (!initialPlan && initialGoal.trim().length >= 8) void prepare();
+    }, 0);
+    return () => { window.clearTimeout(timer); autoPrepared.current = false; };
+    // Each selected action mounts this panel with its own key. Preparing the
+    // chosen goal once prevents duplicate provider calls when state updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact, demo]);
   useEffect(() => {
     if (tab === "evidence" && selectedEvidence) evidenceRefs.current[selectedEvidence]?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [tab, selectedEvidence]);
@@ -88,10 +110,10 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
     let cancelled = false;
     const poll = async () => {
       try {
-        const response = await fetch(`${COMPANION_URL}/runs/${encodeURIComponent(run.id)}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+        const response = await fetch(`${COMPANION_URL}/runs/${encodeURIComponent(run.id)}`, { headers: { Authorization: `Bearer ${effectiveToken.trim()}` }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8_000)]) });
         if (!response.ok) throw new Error("Could not read the local run. Check the companion terminal.");
         const state = await response.json();
-        if (!cancelled && typeof state.status === "string") setRun(state);
+        if (!cancelled && typeof state.status === "string") { setRun(state); setLocalError(""); }
       } catch (e) {
         if (!cancelled) setLocalError(e instanceof Error ? e.message : "Local connection lost. Check Terminal for the actual run state.");
       }
@@ -99,7 +121,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
     };
     timer = setTimeout(poll, 1_000);
     return () => { cancelled = true; clearTimeout(timer); controller.abort(); };
-  }, [runActive, run?.id, paired, token]);
+  }, [runActive, run?.id, paired, effectiveToken]);
 
   async function prepare() {
     if (demo || busy) return;
@@ -110,17 +132,22 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not prepare this plan.");
       setPlan(parseReplicationPlan(data.plan)); setTab("plan"); setRun(null);
+      launchAttempt.current = null;
       if (typeof data.usage?.remaining === "number") setRemaining(data.usage.remaining);
     } catch (e) { if (!controller.signal.aborted) setError(e instanceof Error ? e.message : "Could not prepare this plan."); }
     finally { if (!controller.signal.aborted) setBusy(false); }
   }
 
-  async function pair() {
+  const pair = useCallback(async () => {
+    const candidate = effectiveToken.trim();
+    pairingController.current?.abort();
+    const controller = new AbortController(); pairingController.current = controller;
     setPairBusy(true); setLocalError(""); setPaired(false);
     try {
-      const response = await fetch(`${COMPANION_URL}/health`, { headers: { Authorization: `Bearer ${token.trim()}` }, signal: AbortSignal.timeout(5_000) });
+      const response = await fetch(`${COMPANION_URL}/health`, { headers: { Authorization: `Bearer ${candidate}` }, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(5_000)]) });
       if (!response.ok) throw new Error(response.status === 401 ? "Pairing token was rejected. Copy the current token from the companion." : "The local companion is not ready.");
       const health = await response.json();
+      if (controller.signal.aborted) return;
       setMacSupported(!health.platform || health.platform === "darwin");
       const terminalConfigured = health.capabilities?.terminal !== false;
       const detected = health.capabilities?.harnesses;
@@ -129,34 +156,67 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
         claude: terminalConfigured && detected?.claude === true,
       });
       setBrowserConfigured(health.capabilities?.browser?.configured === true);
-      setToken(token.trim()); setPaired(true);
-    } catch (e) { setLocalError(e instanceof TypeError ? "Cannot reach the companion. Start it with this app’s exact origin and allow local network access if your browser asks." : e instanceof Error ? e.message : "Connection failed."); }
-    finally { setPairBusy(false); }
-  }
+      setToken(candidate); setPairedToken(candidate); setPaired(true);
+    } catch (e) { if (!controller.signal.aborted) setLocalError(e instanceof TypeError ? "Cannot reach the companion. Start it with this app’s exact origin and allow local network access if your browser asks." : e instanceof Error ? e.message : "Connection failed."); }
+    finally { if (!controller.signal.aborted) setPairBusy(false); }
+  }, [effectiveToken]);
 
-  async function launch() {
-    if (!plan || stale || !reviewed || demo || sessionOpen || launchBusy || !paired || (executor === "terminal" ? !terminalAvailable : !browserConfigured)) return;
+  useEffect(() => {
+    if (!compact || demo || !initialPairingToken) return;
+    // A server refresh can rotate the companion token without remounting this
+    // panel. Re-pair the new token while preserving the original task identity.
+    const timer = window.setTimeout(() => { void pair(); }, 0);
+    return () => { window.clearTimeout(timer); pairingController.current?.abort(); };
+  }, [compact, demo, initialPairingToken, pair]);
+
+  async function launch(approved = false) {
+    if (!plan || stale || (!reviewed && !approved) || demo || sessionOpen || launchBusy || launchInFlight.current || !paired || (executor === "terminal" ? !terminalAvailable : !browserConfigured)) return;
+    const fingerprint = JSON.stringify({ plan, executor, ...(executor === "terminal" ? { harness } : {}) });
+    const previous = launchAttempt.current;
+    const deliberateRerun = previous?.runId === run?.id && !!run && !runIsActive(run.status);
+    if (!previous || previous.fingerprint !== fingerprint || deliberateRerun) launchAttempt.current = { fingerprint, key: crypto.randomUUID() };
+    const attempt = launchAttempt.current!;
+    launchInFlight.current = true;
     setLaunchBusy(true); setLocalError("");
     try {
-      const response = await fetch(`${COMPANION_URL}/runs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ plan, executor, ...(executor === "terminal" ? { harness } : {}) }), signal: AbortSignal.timeout(15_000) });
+      const response = await fetch(`${COMPANION_URL}/runs`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${effectiveToken.trim()}`, "Idempotency-Key": attempt.key }, body: fingerprint, signal: AbortSignal.timeout(15_000) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The companion could not open a session.");
+      attempt.runId = result.id;
       setRun(result); setShowSetup(false);
+      if (compact) window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: result }));
     } catch (e) { setLocalError(e instanceof Error ? `${e.message} If the request timed out, inspect Terminal before retrying.` : "Launch failed. Check Terminal before retrying."); }
-    finally { setLaunchBusy(false); }
+    finally { launchInFlight.current = false; setLaunchBusy(false); }
   }
 
   async function controlRun(action: "approve" | "resume" | "stop", approved?: boolean) {
     if (!run || actionBusy || demo) return;
     setActionBusy(true); setLocalError("");
     try {
-      const response = await fetch(`${COMPANION_URL}/runs/${encodeURIComponent(run.id)}/${action}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(action === "approve" ? { actionId: run.pendingAction?.id, approved } : {}), signal: AbortSignal.timeout(15_000) });
+      const response = await fetch(`${COMPANION_URL}/runs/${encodeURIComponent(run.id)}/${action}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${effectiveToken.trim()}` }, body: JSON.stringify(action === "approve" ? { actionId: run.pendingAction?.id, approved } : {}), signal: AbortSignal.timeout(15_000) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "The local action could not be updated.");
       if (typeof result.status === "string" && result.id) setRun(result);
     } catch (e) { setLocalError(e instanceof Error ? e.message : "Local action failed. Check the browser before retrying."); }
     finally { setActionBusy(false); }
   }
+
+  if (compact) return <section className={styles.compactTask} aria-label="Review your task">
+    {busy ? <p className={styles.thinking} role="status"><Loader2 size={17} className={styles.spinner} />Preparing a task from your source and request…</p> : <>
+      <p className={styles.taskGoal}>{goal || "Tell me the result you want from this source."}</p>
+      <details className={styles.taskChecks}><summary>Adjust the request</summary><label className={styles.field}>Your outcome<textarea aria-label="Your task outcome" className={styles.textarea} value={goal} maxLength={1200} rows={3} onChange={event => { setGoal(event.target.value); setReviewed(false); }} /></label><button type="button" className={styles.secondaryButton} disabled={goal.trim().length < 8 || sessionOpen} onClick={() => void prepare()}>{plan ? "Update task" : "Prepare task"}</button></details>
+      {plan && <><details className={styles.taskChecks}><summary>Review the plan · {plan.steps.length} steps</summary><p>{plan.summary}</p><ol className={styles.taskSteps}>{plan.steps.map(step => <li key={step.id}>{step.instruction}<small>{step.kind === "inferred" ? "Proposed addition · " : "Source-backed · "}{step.verification}</small></li>)}</ol></details><details className={styles.taskChecks}><summary>Checks and missing details</summary><ul>{plan.successCriteria.map((item, index) => <li key={`check-${index}`}>Check: {item}</li>)}{plan.prerequisites.map((item, index) => <li key={`pre-${index}`}>{item}</li>)}{plan.warnings.map((item, index) => <li key={`gap-${index}`}>{item}</li>)}</ul></details></>}
+      {stale && <p role="status" className={styles.evidenceNote}>Update the task after changing your request.</p>}
+    </>}
+    {error && <p role="alert" className={styles.error}>{error}<button type="button" className={styles.textButton} onClick={() => void prepare()}>Try again</button></p>}
+    <div className={styles.taskLaunch}><div className={styles.inline}><label className={styles.field}>Run with<select className={styles.select} disabled={sessionOpen || launchBusy} value={executor === "browser" ? "browser" : harness} onChange={event => { const value = event.target.value; setExecutor(value === "browser" ? "browser" : "terminal"); if (value !== "browser") setHarness(value as Harness); setReviewed(false); }}><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="browser">Browser</option></select></label><p className={styles.taskConnection}>{pairBusy ? "Connecting to your Mac…" : paired ? "Mac connected" : "Mac not connected"}{!paired && <button type="button" className={styles.textButton} disabled={pairBusy || !token} onClick={() => void pair()}>Reconnect</button>}</p></div><button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={15} className={styles.spinner} /> : <Monitor size={15} />}{launchBusy ? "Starting task…" : sessionOpen ? "Task is running" : "Approve & run on my Mac"}</button></div>
+    {!initialPairingToken && <p className={styles.evidenceNote}>Open ContextDrop with the personal launcher to connect the local worker.</p>}
+    {paired && executor === "terminal" && !terminalAvailable && <p className={styles.evidenceNote}>{harnessName} is not available. Choose another runner or sign in to the coding app and restart ContextDrop.</p>}
+    {paired && executor === "browser" && !browserConfigured && <p className={styles.evidenceNote}>Browser guidance needs your configured OpenAI key.</p>}
+    <p className={styles.evidenceNote}>{executor === "browser" ? "The browser shows proposed actions for your review. Log in or enter private details directly in its window." : harness === "claude" ? "Claude Code opens in plan mode in Terminal. Review its proposal there before allowing changes." : "Codex works in a fresh local folder. Watch its actual output in Tasks; stop the run at any time."}</p>
+    {localError && <p role="alert" className={styles.error}>{localError}</p>}
+    {run && <button type="button" className={styles.secondaryButton} onClick={() => window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: run }))}><Monitor size={15} />Watch task</button>}
+  </section>;
 
   return (
     <div className="text-slate-900">
@@ -203,7 +263,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
               </>}
               {paired && executor === "terminal" && !terminalAvailable && <p className="mb-3 text-xs leading-relaxed text-amber-300">Terminal launch requires {harness === "codex" ? "Codex CLI" : "Claude Code with safe-mode support"} installed and signed in on macOS. Reconnect after starting the updated companion, or choose an available coding app.</p>}
               {paired && executor === "browser" && !browserConfigured && <p className="mb-3 text-xs leading-relaxed text-amber-300">The browser planner is not configured. Add OPENAI_API_KEY to the companion’s environment, restart it, then reconnect.</p>}
-              <label className="mb-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-300"><input type="checkbox" checked={reviewed} disabled={!plan || !!stale || sessionOpen} onChange={(e) => setReviewed(e.target.checked)} className="mt-0.5 accent-blue-500" /><span>I reviewed the plan and its gaps. Start this task on my computer.</span></label><button onClick={launch} disabled={!plan || !!stale || !paired || !reviewed || launchBusy || sessionOpen || (executor === "browser" && !browserConfigured) || (executor === "terminal" && !terminalAvailable)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">{launchBusy ? <Loader2 size={16} className="animate-spin" /> : executor === "browser" ? <Monitor size={16} /> : <Terminal size={16} />}{launchBusy ? "Opening session…" : executor === "browser" ? "Start browser walkthrough" : "Open in Terminal"}</button>
+              <label className="mb-4 flex cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-300"><input type="checkbox" checked={reviewed} disabled={!plan || !!stale || sessionOpen} onChange={(e) => setReviewed(e.target.checked)} className="mt-0.5 accent-blue-500" /><span>I reviewed the plan and its gaps. Start this task on my computer.</span></label><button onClick={() => void launch()} disabled={!plan || !!stale || !paired || !reviewed || launchBusy || sessionOpen || (executor === "browser" && !browserConfigured) || (executor === "terminal" && !terminalAvailable)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-400 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">{launchBusy ? <Loader2 size={16} className="animate-spin" /> : executor === "browser" ? <Monitor size={16} /> : <Terminal size={16} />}{launchBusy ? "Opening session…" : executor === "browser" ? "Start browser walkthrough" : "Open in Terminal"}</button>
             </>}
             {localError && <p role="alert" className="mt-3 rounded-lg border border-red-900 bg-red-950/40 p-3 text-xs leading-relaxed text-red-200">{localError}</p>}
             {run && executor === "browser" && <div className="mt-4 rounded-xl border border-blue-900 bg-blue-950/40 p-3"><p className="mb-2 text-xs text-blue-200">{run.status === "stopped" ? "Browser closed" : "Your browser session is open"}</p><button type="button" onClick={() => browserSessionDialog.current?.showModal()} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 px-3 py-2.5 text-xs font-semibold hover:bg-blue-400"><Monitor size={14} />View browser session</button></div>}

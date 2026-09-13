@@ -2,11 +2,52 @@ import type { Analysis } from "./types";
 
 export interface ContentAction { id: string; kind: "open_url" | "prepare_task"; label: string; detail: string; url: string | null; goal: string | null; mode: "research" | "build" | "automate" | "create"; executor?: "browser" | "terminal"; harness?: "claude" | "codex" }
 export interface ContentSourceReference { analysisId: string; title: string; sourceUrl: string; evidence: number[] }
-export interface ContentReply { answer: string; suggestions: string[]; actions: ContentAction[]; evidence: number[]; allowedUrls?: string[]; sourceReferences?: ContentSourceReference[] }
+export interface ContentInspection {
+  id: string; sourceUrl: string; question: string; startSec: number; endSec: number; summary: string; coverage: string;
+  observations: { timestampSec: number; description: string; onScreenText: string[]; speech: string; uncertain: boolean }[];
+}
+export interface ContentReply { answer: string; suggestions: string[]; actions: ContentAction[]; evidence: number[]; allowedUrls?: string[]; sourceReferences?: ContentSourceReference[]; inspections?: ContentInspection[] }
 export interface ContentMessage { id: string; role: "user" | "assistant"; text: string; createdAt: string; reply?: ContentReply; activity?: string[] }
 export interface ContentConversation { version: 1; analysisId: string; messages: ContentMessage[] }
 
-export const quickTakePrompt = "Give me a quick take in 2 or 3 short sentences, under 90 words. Identify what kind of content this is and the useful ideas it actually contains, whether a video, article, image, audio, design, repository, or document. Give three short questions specific to this content and my stated project if relevant: understand a concept, find something shown, adapt an idea, compare claims, or try a useful workflow. Do not force every source into a coding tutorial. No actions, no external search, and no plan yet. Cite relevant current-source observation indexes only; sourceReferences is empty.";
+/** A clear user instruction wins over model output and saved preferences.
+ * Only parse affirmative command sentences, never the source or quoted code.
+ * Ambiguous comparisons and negative requests remain for the model to interpret.
+ */
+export function applyRequestedHarness(reply: ContentReply, userMessage: string): ContentReply {
+  const sentences = userMessage.replace(/```[\s\S]*?```/g, "").split(/[.!?\n]/);
+  let harness: "codex" | "claude" | undefined;
+  for (const sentence of sentences) {
+    const match = sentence.trim().match(/^(?:please\s+)?(?:use|run (?:it|this) (?:in|with)|open (?:it|this) in)\s+(codex|claude(?: code)?)(?:\s+(?:for|to|and)\b.*)?$/i);
+    if (match) harness = match[1].toLowerCase() === "codex" ? "codex" : "claude";
+  }
+  return harness ? { ...reply, actions: reply.actions.map(action => action.kind === "prepare_task" ? { ...action, executor: "terminal", harness } : action) } : reply;
+}
+
+/** Reinspection evidence is supplied by the tool runner, never invented by the reply model.
+ * Validate again when reading a saved conversation and bound its follow-up context.
+ */
+export function parseContentInspection(value: unknown, sourceUrl: string): ContentInspection | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as ContentInspection;
+  if (typeof item.id !== "string" || !/^[a-f0-9]{64}$/.test(item.id) || item.sourceUrl !== sourceUrl ||
+      typeof item.question !== "string" || !item.question.trim() || item.question.length > 2000 ||
+      !Number.isFinite(item.startSec) || !Number.isFinite(item.endSec) || item.startSec < 0 || item.endSec <= item.startSec || item.endSec - item.startSec > 30 ||
+      typeof item.summary !== "string" || !item.summary.trim() || typeof item.coverage !== "string" || !Array.isArray(item.observations)) return null;
+  const observations: ContentInspection["observations"] = [];
+  for (const observation of item.observations.slice(0, 16)) {
+    if (!observation || !Number.isFinite(observation.timestampSec) || observation.timestampSec < item.startSec || observation.timestampSec > item.endSec ||
+        typeof observation.description !== "string" || !Array.isArray(observation.onScreenText) || !observation.onScreenText.every(text => typeof text === "string") ||
+        typeof observation.speech !== "string" || typeof observation.uncertain !== "boolean") return null;
+    observations.push({ timestampSec: observation.timestampSec, description: observation.description.slice(0, 800), onScreenText: observation.onScreenText.slice(0, 6).map(text => text.slice(0, 240)), speech: observation.speech.slice(0, 600), uncertain: observation.uncertain });
+  }
+  if (!observations.length) return null;
+  const excerpted = item.observations.length > observations.length || item.summary.length > 3000 || item.observations.slice(0, 16).some(observation => observation.description.length > 800 || observation.speech.length > 600 || observation.onScreenText.length > 6 || observation.onScreenText.some(text => text.length > 240));
+  const coverage = item.coverage.slice(0, 1000) + (excerpted ? " This saved conversation shows a bounded excerpt of the inspection; some extracted observations or text are omitted here." : "");
+  return { id: item.id, sourceUrl, question: item.question, startSec: item.startSec, endSec: item.endSec, summary: item.summary.slice(0, 3000), coverage, observations };
+}
+
+export const quickTakePrompt = "Give me a quick take in 2 short sentences, under 55 words. Identify what kind of content this is and the useful ideas it actually contains, whether a video, article, image, audio, design, repository, or document. Give up to three questions of eight words or fewer specific to this content and my stated project if relevant: understand a concept, find something shown, adapt an idea, compare claims, or try a useful workflow. Do not force every source into a coding tutorial. No actions, no external search, and no plan yet. Cite relevant current-source observation indexes only; sourceReferences is empty.";
 
 function balancedText(text: string, budget: number) {
   if (text.length <= budget) return text;
@@ -74,7 +115,7 @@ export function parseContentReply(raw: string, frameCount: number, allowedUrls: 
     if (!["research", "build", "automate", "create"].includes(action.mode)) return [];
     const explicitHarness = /\b(claude code|codex)\b/i.test(action.goal ?? "");
     const executor = explicitHarness ? "terminal" : action.executor === "browser" || action.executor === "terminal" ? action.executor : action.mode === "research" ? "browser" : "terminal";
-    return [{ id: crypto.randomUUID(), kind: action.kind, label: action.label.slice(0, 100), detail: action.detail.slice(0, 500), url, goal: action.kind === "prepare_task" ? action.goal : null, mode: action.mode, executor, harness: action.harness === "codex" ? "codex" : "claude" }];
+    return [{ id: crypto.randomUUID(), kind: action.kind, label: action.label.slice(0, 100), detail: action.detail.slice(0, 500), url, goal: action.kind === "prepare_task" ? action.goal : null, mode: action.mode, executor, harness: action.harness === "claude" ? "claude" : "codex" }];
   });
   const seen = new Set<string>();
   const sourceReferences: ContentSourceReference[] = (Array.isArray(value.sourceReferences) ? value.sourceReferences : []).slice(0, 8).flatMap((reference: { analysisId?: unknown; evidence?: unknown }) => {

@@ -7,6 +7,7 @@ const suggestions = ["Find the tools mentioned.", "Explain the useful skill.", "
 const knownUrl = "https://github.com/openai/codex";
 const taskGoal = "Inspect the referenced project and propose a small version for my Mac. Review setup before making changes.";
 let analysisId: string;
+let sourceUrl: string;
 
 test.beforeAll(async ({ request }) => {
   await mkdir(screenshots, { recursive: true });
@@ -18,6 +19,7 @@ test.beforeAll(async ({ request }) => {
   expect(capture.status, "Keep a completed local capture active while these UI tests run").toBe("done");
   expect(typeof capture.id).toBe("string");
   analysisId = capture.id;
+  sourceUrl = capture.sourceUrl;
 });
 
 function quickReply(): ContentReply {
@@ -29,7 +31,7 @@ async function fixture(page: Page, initial?: ContentReply) {
   let nextId = 0;
   const appendAssistant = (reply: ContentReply) => conversation.messages.push({ id: `fixture-assistant-${++nextId}`, role: "assistant", text: reply.answer, reply, createdAt: "2026-09-06T18:00:00Z" });
   if (initial) appendAssistant(initial);
-  const state = { briefs: 0, failNext: false, holdReply: null as Promise<void> | null, messages: [] as string[], mutations: [] as string[], unsafeRequests: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], imageRequests: [] as string[] };
+  const state = { briefs: 0, plans: 0, failNext: false, holdReply: null as Promise<void> | null, messages: [] as string[], mutations: [] as string[], unsafeRequests: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], imageRequests: [] as string[] };
   const workspace = { profile: { name: "", goal: "", preferences: "", harness: "claude" }, workflows: [] as Array<{ id: string; title: string; instructions: string; sourceTitles: string[]; status: "draft"; createdAt: string }> };
   page.on("pageerror", error => state.pageErrors.push(error.message));
   page.on("console", message => { if (message.type() === "error") state.consoleErrors.push(message.text()); });
@@ -42,11 +44,23 @@ async function fixture(page: Page, initial?: ContentReply) {
     const request = route.request();
     const url = new URL(request.url());
     if (["unverified.example", "tracker.example"].includes(url.hostname)) return route.abort();
+    if (url.port === "43187" && request.method() === "GET" && ["/health", "/runs"].includes(url.pathname)) {
+      const headers = { "Access-Control-Allow-Origin": new URL(page.url()).origin, "Access-Control-Allow-Headers": "Authorization, Content-Type" };
+      return route.fulfill({ headers, json: url.pathname === "/runs" ? { runs: [] } : { version: 1, status: "ready", platform: "darwin", execution: "streaming-terminal", capabilities: { terminal: true, harnesses: { codex: true, claude: true }, browser: { configured: true } } } });
+    }
     if (url.port === "43187" || /(^|\.)(openai\.com|anthropic\.com|generativelanguage\.googleapis\.com)$/.test(url.hostname)) {
       state.mutations.push(`blocked external operation: ${url.origin}${url.pathname}`);
       return route.fulfill({ status: 409, json: { error: "UI fixture never runs a provider or companion." } });
     }
     if (!url.pathname.startsWith("/api/local/")) return route.continue();
+    if (url.pathname === "/api/local/inbox" && request.method() === "GET") return route.fulfill({ json: { available: true, shortcutAvailable: true, items: [], lastSyncedAt: null } });
+    if (url.pathname === "/api/local/phone" && request.method() === "GET") return route.fulfill({ json: { paired: false, configured: true, workerOnline: true, importedTotal: 0, newCount: 0, pendingCount: 0, failedCount: 0, hasMore: false, lastSyncedAt: null, lastError: null } });
+    if (url.pathname === "/api/local/replicate" && request.method() === "POST") {
+      state.plans++;
+      const body = request.postDataJSON();
+      expect(body.analysisId).toBe(analysisId); expect(body.goal).toBe(taskGoal);
+      return route.fulfill({ json: { plan: { version: 1, analysisId, sourceUrl, title: "Inspect the source project", goal: taskGoal, mode: "build", summary: "Inspect the referenced project before changing anything.", prerequisites: ["Claude Code"], steps: [{ id: "step-1", instruction: "Inspect the public repository setup instructions.", evidenceIds: [], kind: "inferred", verification: "Report prerequisites and missing information." }], evidence: [{ id: "frame-1", kind: "frame", text: "Fixture source shows a GitHub project page.", timestampSec: 12 }], warnings: ["UI fixture; nothing is executed."], successCriteria: ["Return an inspection report."] } } });
+    }
     if (url.pathname === "/api/local/workspace") {
       if (request.method() === "PATCH") workspace.profile = request.postDataJSON().profile;
       return route.fulfill({ json: workspace });
@@ -69,7 +83,7 @@ async function fixture(page: Page, initial?: ContentReply) {
       conversation.messages.push({ id: `fixture-user-${++nextId}`, role: "user", text: body.message, createdAt: "2026-09-06T18:01:00Z" });
       appendAssistant({ answer: "I found the public project. You can open its page or review a local inspection task. Nothing has been launched.", suggestions: [], evidence: [], allowedUrls: [knownUrl], actions: [
         { id: "fixture-open", kind: "open_url", label: "Open verified project", detail: "Public identity checked in this test fixture.", url: knownUrl, goal: null, mode: "research" },
-        { id: "fixture-task", kind: "prepare_task", label: "Prepare my local inspection", detail: "Review the proposed task before opening a coding app.", url: knownUrl, goal: taskGoal, mode: "build" },
+        { id: "fixture-task", kind: "prepare_task", label: "Prepare my local inspection", detail: "Review the proposed task before opening a coding app.", url: knownUrl, goal: taskGoal, mode: "build", harness: "claude", executor: "terminal" },
       ] });
       return route.fulfill({ json: conversation });
     }
@@ -112,11 +126,15 @@ test("content starts with three suggestions, keeps chat after reload, and prepar
   await page.reload();
   await expect(chat.getByText(question, { exact: true })).toBeVisible();
   expect(state.briefs).toBe(1); expect(state.messages).toEqual([question]);
+  expect(state.plans).toBe(0);
   await chat.getByRole("button", { name: /Prepare my local inspection/ }).click();
-  await expect(page.getByLabel("Your outcome, in your words")).toHaveValue(taskGoal);
-  await expect(page.getByLabel("Coding app")).toHaveValue("claude");
-  await expect(page.getByRole("button", { name: "Open in Terminal", exact: true })).toBeDisabled();
-  await expect(page.getByText(/Opens Claude Code in plan mode/)).toBeVisible();
+  const review = page.getByRole("region", { name: "Review your task" });
+  await expect(review).toBeVisible();
+  await expect(page.getByLabel("Your task outcome")).toHaveValue(taskGoal);
+  await expect(review.getByLabel("Run with")).toHaveValue("claude");
+  await expect(review.getByRole("button", { name: "Approve & run on my Mac", exact: true })).toBeEnabled();
+  await expect(review.getByText(/Claude Code opens in plan mode/)).toBeVisible();
+  expect(state.plans).toBe(1);
   await page.screenshot({ path: `${screenshots}/content-chosen-task.png`, fullPage: true });
   await browserEvidence(state, testInfo);
 });

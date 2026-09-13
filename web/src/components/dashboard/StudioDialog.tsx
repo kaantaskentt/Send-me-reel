@@ -6,7 +6,7 @@ import styles from "./studio.module.css";
 
 /** Native modality makes the background inert; explicit Tab wrapping also keeps
  * focus inside the task when a browser would otherwise focus its own chrome. */
-export default function StudioDialog({ title, children, onClose, wide = false }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
+export default function StudioDialog({ title, children, onClose, wide = false, tone = "light" }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean; tone?: "light" | "dark" }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   useEffect(() => {
@@ -15,7 +15,7 @@ export default function StudioDialog({ title, children, onClose, wide = false }:
     element?.showModal();
     return () => { element?.close(); previous?.focus(); };
   }, []);
-  return <dialog ref={dialog} aria-labelledby={headingId} className={`${styles.dialog} ${wide ? styles.dialogWide : ""}`} onKeyDown={event => {
+  return <dialog ref={dialog} aria-labelledby={headingId} className={`${styles.dialog} ${wide ? styles.dialogWide : ""} ${tone === "dark" ? styles.dialogDark : ""}`} onKeyDown={event => {
     if (event.key !== "Tab") return;
     const elements = [...event.currentTarget.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, [tabindex="0"]')].filter(element => element.getClientRects().length > 0 && !element.hidden);
     const first = elements[0]; const last = elements.at(-1);

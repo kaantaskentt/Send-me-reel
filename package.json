@@ -4,7 +4,7 @@
   "description": "AI-powered content analysis bot",
   "main": "index.js",
   "scripts": {
-    "test": "tsx --test tests/*.test.ts web/tests/*.test.ts",
+    "test": "tsx --test --test-concurrency=1 tests/*.test.ts web/tests/*.test.ts",
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -13,6 +13,7 @@
     "check:hosted": "node scripts/check-hosted-build.mjs",
     "test:ui": "npm --prefix web run test:replication",
     "local:companion": "tsx scripts/start-local-companion.ts",
+    "personal": "node scripts/start-personal.mjs",
     "local:result": "node scripts/serve-demo-result.mjs",
     "local:studio": "npm --prefix web run dev -- --hostname 127.0.0.1 --port 3127"
   },

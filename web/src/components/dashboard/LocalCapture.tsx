@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, FileUp, Link2, Loader2, Plus, Upload, X } from "lucide-react";
 import { captureStageLabel } from "@/lib/capture-feedback";
+import { publicLink } from "@/lib/content-conversation";
 import styles from "./studio.module.css";
 
 type Progress = { completedSegments: number; totalSegments: number; startSec?: number; endSec?: number };
@@ -28,7 +29,21 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
   const [file, setFile] = useState<File | null>(null);
   const [question, setQuestion] = useState("");
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [inboxId, setInboxId] = useState<string | null>(null);
+  const linkInput = useRef<HTMLInputElement>(null);
   const active = !["empty", "done", "failed"].includes(status);
+  useEffect(() => {
+    function receive(event: Event) {
+      const value = (event as CustomEvent<{ id?: string; url?: string }>).detail;
+      if (active || submitting || !value || typeof value.id !== "string" || !publicLink(value.url)) return;
+      event.preventDefault();
+      setUrl(value.url!); setInboxId(value.id); setMode("link"); setExpanded(true); setError("");
+      setProvider("auto"); setQuestion(""); setFile(null);
+      requestAnimationFrame(() => linkInput.current?.focus());
+    }
+    window.addEventListener("contextdrop:inbox-link", receive);
+    return () => window.removeEventListener("contextdrop:inbox-link", receive);
+  }, [active, submitting]);
   useEffect(() => {
     if (!active || submitting) return;
     const controller = new AbortController();
@@ -59,6 +74,11 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
         router.refresh(); return;
       }
       if (!response.ok) throw new Error(data.error ?? "Reading could not start.");
+      if (inboxId && mode === "link") {
+        // A received link stays in the inbox until capture was actually accepted.
+        // A failed dismissal is harmless: preserve it for an explicit later retry.
+        await fetch("/api/local/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dismiss", id: inboxId }), signal: AbortSignal.timeout(3000) }).catch(() => {});
+      }
       router.refresh();
     } catch (e) { setStatus("failed"); setError(e instanceof Error ? e.message : "Reading could not start. Your previous conversations are still saved."); }
     finally { setSubmitting(false); }
@@ -69,8 +89,8 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
     {compact && !expanded && !active ? <button type="button" onClick={() => setExpanded(true)} className={styles.captureCompact}><Plus size={18} /><span>Add a link or upload a file</span><ArrowRight size={16} /></button> : <>
       <div className={styles.captureTabs}><button type="button" className={styles.tab} disabled={active} aria-pressed={mode === "link"} onClick={() => { setMode("link"); setError(""); }}><Link2 size={15} /> Paste a link</button><button type="button" className={styles.tab} disabled={active} aria-pressed={mode === "file"} onClick={() => { setMode("file"); setError(""); }}><Upload size={15} /> Upload a file</button>{compact && !active && <button type="button" aria-label="Close add content" className={`${styles.iconButton} ${styles.closeCapture}`} onClick={() => setExpanded(false)}><X size={17} /></button>}</div>
       <form onSubmit={capture}>
-        {mode === "link" ? <div className={styles.captureRow}><label htmlFor="local-source-url" className={styles.visuallyHidden}>Content link</label><input id="local-source-url" type="url" required disabled={active} value={url} onChange={event => setUrl(event.target.value)} placeholder="YouTube, Instagram, a GitHub repo, a website…" className={styles.input} /><button disabled={active} className={styles.primaryButton}>{active ? <Loader2 size={16} className={styles.spinner} /> : <ArrowRight size={16} />}{active ? "Reading content…" : "Analyze this link"}</button></div> : <div className={styles.uploadZone}><FileUp size={25} /><strong>{file ? file.name : "Bring the content you want to understand"}</strong><p>Video, audio, image, PDF, or text</p><label className={styles.secondaryButton}>{file ? "Choose a different file" : "Choose file"}<input className={styles.fileInput} aria-label="Choose content file" type="file" accept={uploadTypes} disabled={active} onChange={event => { const selected = event.target.files?.[0] ?? null; setFile(selected); setError(selected ? fileLimit(selected) ?? "" : ""); }} /></label>{file && <button disabled={active || !!fileLimit(file)} className={styles.primaryButton}>{active ? <Loader2 size={16} className={styles.spinner} /> : <ArrowRight size={16} />}{active ? "Reading content…" : "Analyze this file"}</button>}</div>}
-        <p className={styles.captureHint}>{mode === "file" ? "Media up to 200 MB / 60 minutes · Images and PDFs up to 20 MB · Text up to 1 MB. Files are sent to your configured AI provider for analysis." : geminiAvailable ? "Public links, videos up to 60 minutes, and readable web pages. If a platform blocks a link, upload your own copy." : "Public social videos up to 10 minutes, web pages, and repos. Connect Gemini for longer videos and visual file analysis."}</p>
+        {mode === "link" ? <div className={styles.captureRow}><label htmlFor="local-source-url" className={styles.visuallyHidden}>Content link</label><input ref={linkInput} id="local-source-url" type="url" required disabled={active} value={url} onChange={event => { setUrl(event.target.value); setInboxId(null); }} placeholder="YouTube, Instagram, a GitHub repo, a website…" className={styles.input} /><button disabled={active} className={styles.primaryButton}>{active ? <Loader2 size={16} className={styles.spinner} /> : <ArrowRight size={16} />}{active ? "Reading content…" : "Analyze this link"}</button></div> : <div className={styles.uploadZone}><FileUp size={25} /><strong>{file ? file.name : "Bring the content you want to understand"}</strong><p>Video, audio, image, PDF, or text</p><label className={styles.secondaryButton}>{file ? "Choose a different file" : "Choose file"}<input className={styles.fileInput} aria-label="Choose content file" type="file" accept={uploadTypes} disabled={active} onChange={event => { const selected = event.target.files?.[0] ?? null; setFile(selected); setError(selected ? fileLimit(selected) ?? "" : ""); }} /></label>{file && <button disabled={active || !!fileLimit(file)} className={styles.primaryButton}>{active ? <Loader2 size={16} className={styles.spinner} /> : <ArrowRight size={16} />}{active ? "Reading content…" : "Analyze this file"}</button>}</div>}
+        <p className={styles.captureHint}>{mode === "file" ? "Media up to 200 MB / 60 minutes · Images and PDFs up to 20 MB · Text up to 1 MB. Files are sent to your configured AI provider for analysis." : geminiAvailable ? "YouTube up to 60 minutes · Other social videos up to 10 minutes · Public web pages. Blocked link? Upload a file." : "Public social videos up to 10 minutes, web pages, and repos. Connect Gemini for longer videos and visual file analysis."}</p>
         <details className={styles.captureOptions}><summary>Give it a focus or change the reader</summary><div className={styles.captureOptionsContent}><label className={styles.field}>What caught your attention? <span className={styles.visuallyHidden}>(optional)</span><input className={styles.input} value={question} maxLength={2000} disabled={active} onChange={event => setQuestion(event.target.value)} placeholder="Find the repo briefly shown on screen…" /></label>{mode === "link" && <label className={styles.field}>Reader<select aria-label="Content reader" disabled={active} value={provider} onChange={event => setProvider(event.target.value)} className={styles.select}><option value="auto">Automatic</option><option value="detailed">Saved video frames</option><option value="gemini" disabled={!geminiAvailable}>Gemini video{geminiAvailable ? "" : " · key needed"}</option></select></label>}</div></details>
       </form>
     </>}

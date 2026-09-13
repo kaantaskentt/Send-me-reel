@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import type OpenAI from "openai";
 import { answerContent } from "../src/lib/local-conversation";
+import { parseContentInspection } from "../src/lib/content-conversation";
 import type { Analysis } from "../src/lib/types";
 
 const source = (id: string, overrides = {}) => ({ id, status: "done", source_url: `https://example.com/${id}`, platform: "web", metadata: { title: `Source ${id}` }, transcript: null, caption: null, visual_summary: null, frame_descriptions: [], ...overrides }) as unknown as Analysis;
@@ -77,4 +78,59 @@ test("a corrupt optional workspace does not break source Q&A or overwrite the sa
     assert.ok(result.activity.some(item=>item.includes("project notes could not be read")));
     assert.equal(await fs.readFile(path.join(root,"workspace.json"),"utf8"),"damaged data to preserve");
   } finally {await fs.rm(root,{recursive:true,force:true});}
+});
+
+test("a real inspection result is attached to the answer and survives into follow-up evidence", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-inspection-"));
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = "fixture-not-a-live-key";
+  try {
+    const current = source("video", { source_url: "https://www.youtube.com/watch?v=QhmhUgccaS0", metadata: { duration: 120 }, frame_descriptions: [{ timestampSec: 0, description: "Overview" }] });
+    let round = 0;
+    let inspections = 0;
+    const client = { responses: { create: async () => round++ === 0 ? response([call("moment", "inspect_moment", { startSec: 40, endSec: 45, question: "Read the repo name" })]) : final({ evidence: [99] }) } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "What repo is shown?", {
+      client, studioRoot: root, workspace: {}, inspectMoment: async options => {
+        inspections++;
+        assert.equal(options.sourceUrl, current.source_url);
+        return { status: "complete", sourceUrl: current.source_url, provider: "gemini", model: "gemini-test", range: { startSec: 40, endSec: 45 }, mode: "static", fps: 2, resolution: "high",
+          evidence: { summary: "The repo name is visible.", observations: [{ timestampSec: 42, description: "A repository header", onScreenText: ["example/visible-repo"], urls: [], tools: ["GitHub"], speech: "The presenter describes the repository.", uncertain: false }], limitations: [] },
+          usage: { promptTokenCount: 10, candidatesTokenCount: 10, thoughtsTokenCount: 0, cachedContentTokenCount: 0, totalTokenCount: 20 }, coverage: "Only this clip was sampled at 2 FPS." };
+      },
+    });
+    assert.equal(inspections, 1);
+    assert.deepEqual(result.reply.evidence, []);
+    assert.equal(result.reply.inspections?.[0].startSec, 40);
+    assert.equal(result.reply.inspections?.[0].observations[0].onScreenText[0], "example/visible-repo");
+    const conversation = JSON.parse(JSON.stringify({ version: 1, analysisId: current.id, messages: [{ id: "reply", role: "assistant", text: result.reply.answer, reply: result.reply, createdAt: new Date().toISOString() }] }));
+    const followup = { responses: { create: async (request: { input: unknown }) => {
+      assert.match(JSON.stringify(request.input), /SAVED CLIP INSPECTIONS/);
+      assert.match(JSON.stringify(request.input), /example\/visible-repo/);
+      return final();
+    } } } as unknown as Pick<OpenAI, "responses">;
+    await answerContent(current, conversation, "What did the header say?", { client: followup, studioRoot: root, workspace: {}, inspectMoment: async () => { assert.fail("The existing inspection is already available"); } });
+    assert.equal(inspections, 1);
+  } finally {
+    if (previousKey === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = previousKey;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("saved inspection evidence rejects foreign sources, invalid ranges and invented timestamps", () => {
+  const valid = { id: "a".repeat(64), sourceUrl: "https://example.com/video", question: "Read this", startSec: 10, endSec: 20, summary: "A reference", coverage: "Sampled", observations: [{ timestampSec: 12, description: "A header", onScreenText: [], speech: "", uncertain: true }] };
+  assert.ok(parseContentInspection(valid, valid.sourceUrl));
+  assert.equal(parseContentInspection(valid, "https://example.com/other"), null);
+  assert.equal(parseContentInspection({ ...valid, endSec: 60 }, valid.sourceUrl), null);
+  assert.equal(parseContentInspection({ ...valid, observations: [{ ...valid.observations[0], timestampSec: 80 }] }, valid.sourceUrl), null);
+  assert.equal(parseContentInspection({ ...valid, observations: [] }, valid.sourceUrl), null);
+});
+
+test("the reply model cannot fabricate an inspection that no tool performed", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-fake-inspection-"));
+  try {
+    const current = source("current");
+    const client = { responses: { create: async () => final({ inspections: [{ sourceUrl: current.source_url, summary: "Pretend inspection" }] }) } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "What does it show?", { client, studioRoot: root, workspace: {} });
+    assert.equal(result.reply.inspections, undefined);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
 });

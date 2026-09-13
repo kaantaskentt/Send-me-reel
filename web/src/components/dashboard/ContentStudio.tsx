@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ArrowUp, ArrowUpRight, Bookmark, Check, ChevronDown, Clock3, FileText, Film, Loader2, MessageCircle, Search, X } from "lucide-react";
-import Markdown from "@/components/chat/Markdown";
+import ContentAnswer from "./ContentAnswer";
 import type { Analysis } from "@/lib/types";
 import { publicLink, type ContentAction, type ContentConversation } from "@/lib/content-conversation";
 import type { ReplicationPlan } from "@/lib/execution-plan";
@@ -30,7 +30,7 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [workflowNotice, setWorkflowNotice] = useState("");
-  const end = useRef<HTMLDivElement>(null);
+  const messages = useRef<HTMLDivElement>(null);
   const task = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const scrollForReply = useRef(false);
@@ -92,6 +92,7 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
         if (!response.ok) throw new Error("Could not load this conversation.");
         const data = await response.json();
         if (data.analysisId !== analysis.id) throw new Error("The source changed. Refresh the page.");
+        scrollForReply.current = data.messages.length > 0;
         setConversation(data);
         if (!data.messages.length) { await send("", true); return; }
       } catch (e) { setError(e instanceof Error ? e.message : "Could not load this conversation."); }
@@ -100,7 +101,7 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   // The component is keyed by capture identity. A source gets one initial take.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { if (scrollForReply.current) end.current?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() }); }, [conversation.messages.length, pending]);
+  useEffect(() => { if (scrollForReply.current && messages.current) messages.current.scrollTo({ top: messages.current.scrollHeight, behavior: scrollBehavior() }); }, [conversation.messages.length, pending]);
   useEffect(() => { if (action) task.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }); }, [action]);
   useEffect(() => {
     const apply = (event: Event) => {
@@ -116,18 +117,18 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
     <div className={styles.workspace}>
       <section aria-label="Chat with your content" className={styles.chat}>
         <header className={styles.chatHeader}><h2 className={styles.chatTitle}><MessageCircle size={17} /> Make something of it</h2><span className={styles.chatSaved}><Check size={12} /> Saved on this Mac</span></header>
-        <div className={styles.messages} aria-live="polite" aria-busy={busy}>
+        <div ref={messages} className={styles.messages} aria-live="polite" aria-busy={busy}>
           {conversation.messages.map(message => <article key={message.id} className={`${styles.message} ${message.role === "user" ? styles.messageUser : ""}`}>
             <p className={styles.speaker}>{message.role === "user" ? "You" : "ContextDrop"}</p>
-            <Markdown allowedUrls={message.reply?.allowedUrls ?? []}>{message.text}</Markdown>
+            <ContentAnswer allowedUrls={message.reply?.allowedUrls ?? []} text={message.text} />
             {!!message.activity?.length && <p className={styles.messageActivity}><Search size={12} /> {message.activity.join(" · ")}</p>}
             {!!message.reply?.actions.length && <div className={styles.actions}>{message.reply.actions.map(item => item.kind === "open_url" ? <a key={item.id} href={item.url!} target="_blank" rel="noreferrer" className={styles.action}><span>{item.label}<ArrowUpRight size={14} /></span><span>{item.detail}</span></a> : <button type="button" key={item.id} onClick={() => setAction({ ...item, contextSourceIds: message.reply?.sourceReferences?.map(reference => reference.analysisId).slice(0, 3) })} className={styles.action}><span>{item.label}<ArrowUpRight size={14} /></span><span>{item.detail}</span><small>Review a plan first</small></button>)}</div>}
             {!!message.reply?.sourceReferences?.length && <div className={styles.sourceReferences}>{message.reply.sourceReferences.map(reference => <span key={reference.analysisId} className={styles.evidenceNote}>{publicLink(reference.sourceUrl) && message.reply?.allowedUrls?.includes(reference.sourceUrl) ? <a href={reference.sourceUrl} target="_blank" rel="noreferrer" className={styles.sourceLink}><FileText size={12} />{reference.title}<ArrowUpRight size={12} /></a> : <>Also used: {reference.title}</>}</span>)}</div>}
+            {message.reply?.inspections?.map(inspection => <details key={inspection.id} className={styles.inspection}><summary>Closer look · {time(inspection.startSec)}–{time(inspection.endSec)}</summary><p>{inspection.summary}</p>{inspection.observations.map((observation, index) => <div key={`${observation.timestampSec}-${index}`}><p><strong>{time(observation.timestampSec)}</strong> · {observation.description}{observation.uncertain ? " (uncertain)" : ""}</p>{observation.onScreenText.length > 0 && <p>Read on screen: {observation.onScreenText.join(" · ")}</p>}{observation.speech && <p>Speech summary: {observation.speech}</p>}</div>)}<p className={styles.evidenceNote}>{inspection.coverage}</p>{sourceMoment(inspection.sourceUrl, inspection.startSec) && <a className={styles.sourceLink} href={sourceMoment(inspection.sourceUrl, inspection.startSec)!} target="_blank" rel="noreferrer">Check this moment in the original <ArrowUpRight size={13} /></a>}</details>)}
             {message.role === "assistant" && <div className={styles.messageFooter}>{!!message.reply?.evidence.length && <><span className={styles.evidenceNote} style={{ margin: 0 }}>Source moments</span>{message.reply.evidence.map(index => <button type="button" key={index} onClick={() => setFrame(index)} className={styles.evidenceButton}>{time(observations[index]?.timestampSec ?? 0)}</button>)}</>}<button type="button" className={styles.textButton} disabled={saving !== null || saved.has(message.id)} onClick={() => void saveWorkflow(message.id)}>{saving === message.id ? <Loader2 size={13} className={styles.spinner} /> : saved.has(message.id) ? <Check size={13} /> : <Bookmark size={13} />}{saved.has(message.id) ? "Workflow saved" : "Save workflow"}</button></div>}
           </article>)}
           {pending && <article className={`${styles.message} ${styles.messageUser}`}><p className={styles.speaker}>You</p>{pending}</article>}
           {busy && <p role="status" className={styles.thinking}><Loader2 size={16} className={styles.spinner} />{conversation.messages.length ? "Checking the evidence and useful next steps…" : "Finding what’s useful in your content…"}</p>}
-          <div ref={end} />
         </div>
         <div className={styles.composerArea}>
           {error && <div role="alert" className={styles.error} style={{ marginBottom: "1rem" }}>{error}{!conversation.messages.length && !busy && <button type="button" onClick={() => send("", true)} className={styles.textButton}>Try the quick take again</button>}</div>}
@@ -154,7 +155,7 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
         </details>
       </aside>
     </div>
-    {action && <div ref={task} className={styles.task}><div className={styles.taskHeader}><div><p className={styles.eyebrow}>Your chosen action</p><h2>{action.label}</h2></div><button type="button" aria-label="Close task preparation" onClick={() => { setAction(null); composer.current?.focus(); }} className={styles.iconButton}><X size={18} /></button></div><ReplicationPanel key={action.id} analysis={analysis} contextSourceIds={action.contextSourceIds} initialPlan={!action.contextSourceIds?.length && !savedPlan?.evidence.some(item => item.id.startsWith("source2-")) && savedPlan?.goal === action.goal && savedPlan?.mode === action.mode ? savedPlan : undefined} initialGoal={action.goal ?? ""} initialMode={action.mode} initialHarness={action.harness ?? "claude"} planningEndpoint="/api/local/replicate" initialExecutor={action.executor ?? (/\b(claude code|codex)\b/i.test(action.goal ?? "") ? "terminal" : action.mode === "research" ? "browser" : "terminal")} initialPairingToken={pairingToken} planningNotice="A reviewed task can open your Mac browser or coding agent. This is local execution, not a cloud sandbox." /></div>}
+    {action && <div ref={task} className={styles.task}><div className={styles.taskHeader}><div><p className={styles.eyebrow}>Your chosen action</p><h2>{action.label}</h2></div><button type="button" aria-label="Close task preparation" onClick={() => { setAction(null); composer.current?.focus(); }} className={styles.iconButton}><X size={18} /></button></div><ReplicationPanel compact key={action.id} analysis={analysis} contextSourceIds={action.contextSourceIds} initialPlan={!action.contextSourceIds?.length && !savedPlan?.evidence.some(item => item.id.startsWith("source2-")) && savedPlan?.goal === action.goal && savedPlan?.mode === action.mode ? savedPlan : undefined} initialGoal={action.goal ?? ""} initialMode={action.mode} initialHarness={action.harness ?? "codex"} planningEndpoint="/api/local/replicate" initialExecutor={action.executor ?? (/\b(claude code|codex)\b/i.test(action.goal ?? "") ? "terminal" : action.mode === "research" ? "browser" : "terminal")} initialPairingToken={pairingToken} planningNotice="A reviewed task can open your Mac browser or coding agent. This is local execution, not a cloud sandbox." /></div>}
     {selectedObservation && frame !== null && <StudioDialog title={`Source evidence · ${time(selectedObservation.timestampSec ?? 0)}`} wide onClose={() => setFrame(null)}>{local?.framePaths?.[frame] && <Image unoptimized src={imageUrl(frame)} width={1280} height={720} style={{ height: "auto" }} alt={`Captured source at ${time(selectedObservation.timestampSec ?? 0)}`} className={styles.evidenceImage} />}<p className={styles.evidenceText}>{selectedObservation.description}</p>{!!selectedObservation.onScreenText?.length && <p className={styles.evidenceNote}>Visible text: {selectedObservation.onScreenText.join(" · ")}</p>}<p className={styles.evidenceNote}>AI-extracted observation{selectedObservation.uncertain ? " · marked uncertain" : " · check the original for exact details"}.</p>{originalMoment && <a href={originalMoment} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open this moment in the source <ArrowUpRight size={14} /></a>}</StudioDialog>}
   </>;
 }

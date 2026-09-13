@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { publicLink, evidenceContext, parseContentReply } from '../src/lib/content-conversation';
+import { publicLink, evidenceContext, parseContentReply, applyRequestedHarness } from '../src/lib/content-conversation';
 import { captureIsActive, selectCaptureReader } from '../src/lib/capture-routing';
 import type { Analysis } from '../src/lib/types';
 
 const reply = (overrides = {}) => JSON.stringify({ answer: 'Useful content.', actions: [], suggestions: ['Find the tools'], evidence: [], ...overrides });
+test('explicit current-user coding app wins over a contradictory model action', () => {
+  const original = parseContentReply(reply({ actions: [{ kind: 'prepare_task', label: 'Build', detail: 'Local build', goal: 'Build a local checklist', mode: 'build', executor: 'browser', harness: 'claude' }] }), 0, new Set());
+  const fixed = applyRequestedHarness(original, 'Build a local checklist. Use Codex. Check its controls.');
+  assert.equal(fixed.actions[0].harness, 'codex');
+  assert.equal(fixed.actions[0].executor, 'terminal');
+  assert.equal(original.actions[0].harness, 'claude');
+  for (const text of ['Do not use Codex.', 'Should I use Codex or Claude?', 'The creator says "Use Codex".', '```\nUse Codex.\n```']) assert.equal(applyRequestedHarness(original, text), original);
+});
 test('content links and reader selection reject local origins, credential URLs and unsupported explicit readers', () => {
   for (const url of ['http://github.com/a/b', 'https://localhost/a', 'https://127.0.0.1/a', 'https://[::1]/a', 'https://user:pass@github.com/a/b', 'https://github.com:888/a/b', 'javascript:alert(1)']) assert.equal(publicLink(url), null);
   assert.equal(selectCaptureReader('https://21st.dev').provider, 'page');

@@ -5,7 +5,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { ServiceError } from "../pipeline/types.js";
 import ffmpegPath from "ffmpeg-static";
-import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT } from "./mediaRuntime.js";
+import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT, ANALYSIS_VIDEO_SORT, validateAnalysisVideoSize } from "./mediaRuntime.js";
 
 const execFileAsync = promisify(execFile);
 const TMP_BASE = "/tmp/contextdrop";
@@ -40,7 +40,7 @@ export async function downloadVideo(
       console.log(`[download] yt-dlp attempt ${attempt}: ${url}`);
       const { stdout, stderr } = await execFileAsync(
         resolveYtDlpExecutable(),
-        ["--js-runtimes", "node", "-f", ANALYSIS_VIDEO_FORMAT, "--merge-output-format", "mp4", "-o", filePath,
+        ["--js-runtimes", "node", "-f", ANALYSIS_VIDEO_FORMAT, "-S", ANALYSIS_VIDEO_SORT, "--merge-output-format", "mp4", "-o", filePath,
           ...(ffmpegPath ? ["--ffmpeg-location", ffmpegPath] : []),
           "--no-warnings", "--no-playlist", "--max-filesize", "100M",
           "--extractor-args", "instagram:compatible_formats", "--", url],
@@ -48,12 +48,15 @@ export async function downloadVideo(
       );
 
       if (existsSync(filePath) && statSync(filePath).size > 1000) {
-        console.log(`[download] OK: ${statSync(filePath).size} bytes`);
+        const bytes = statSync(filePath).size;
+        validateAnalysisVideoSize(bytes);
+        console.log(`[download] OK: ${bytes} bytes`);
         return filePath;
       }
 
       lastError = stdout || stderr || "No file produced";
     } catch (err) {
+      if (err instanceof ServiceError && err.code === "VIDEO_TOO_LARGE") throw err;
       lastError = err instanceof Error ? err.message : String(err);
       console.error(`[download] Attempt ${attempt} failed:`, lastError.slice(0, 200));
     }
@@ -77,6 +80,7 @@ export async function downloadWithFallback(
   try {
     return await downloadVideo(url, analysisId);
   } catch (ytdlpErr) {
+    if (ytdlpErr instanceof ServiceError && ytdlpErr.code === "VIDEO_TOO_LARGE") throw ytdlpErr;
     if (!apifyVideoUrl) {
       throw ytdlpErr;
     }

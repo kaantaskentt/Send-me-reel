@@ -8,7 +8,7 @@ import { createBrowserEgress, type ResolveDestination } from './egress.js';
 import type { ReplicationPlan } from '../shared/execution-plan.js';
 
 export interface BrowserAction { type: 'navigate' | 'click' | 'fill' | 'scroll' | 'back' | 'wait' | 'ask_user' | 'finish'; description: string; targetId: string | null; url: string | null; text: string | null; }
-export interface BrowserState { status: string; message?: string; currentUrl?: string; screenshot?: string; pendingAction?: BrowserAction & { id: string }; history: { action: string; status: string }[]; }
+export interface BrowserState { status: string; updatedAt?: string; message?: string; currentUrl?: string; screenshot?: string; pendingAction?: BrowserAction & { id: string }; history: { action: string; status: string }[]; }
 export interface BrowserObservation { url: string; title: string; text: string; controls: { id: string; tag: string; text: string; type: string; href: string | null }[]; screenshot: string; }
 export type BrowserPlanner = (observation: BrowserObservation, history: BrowserState['history']) => Promise<BrowserAction>;
 const actionTypes = ['navigate', 'click', 'fill', 'scroll', 'back', 'wait', 'ask_user', 'finish'];
@@ -83,7 +83,8 @@ export class GuidedBrowserRun {
   private steps = 0;
   private closed = false;
   constructor(private options: { workspace: string; planner: BrowserPlanner; onState: (state: BrowserState) => void; headless?: boolean; validateUrl?: (url: string) => Promise<void>; resolveDestination?: ResolveDestination }) {}
-  private update(patch: Partial<BrowserState>) { this.state = { ...this.state, ...patch }; this.options.onState(this.state); }
+  get canResume() { return !this.closed && !this.busy && Boolean(this.page && !this.page.isClosed()) && this.steps < 30 && ['needs_input', 'failed'].includes(this.state.status); }
+  private update(patch: Partial<BrowserState>) { this.state = { ...this.state, ...patch, updatedAt: new Date().toISOString() }; this.options.onState(this.state); }
   async start() {
     try {
       this.egress = await createBrowserEgress(this.options.resolveDestination);
@@ -98,14 +99,21 @@ export class GuidedBrowserRun {
       });
       // WebSocket endpoints cannot bypass public-page checks.
       await context.routeWebSocket('**/*', socket => socket.close());
-      this.page = await context.newPage();
-      this.page.setDefaultTimeout(10_000);
-      context.on('page', page => {
+      const watchPage = (page: Page) => {
         this.page = page;
         page.setDefaultTimeout(10_000);
         this.observeDownloads(page);
-      });
-      this.observeDownloads(this.page);
+        page.on('close', () => {
+          if (this.closed || this.page !== page) return;
+          // A popup closing must not strand the run on a dead Page. A pending
+          // approval belonged to the closed tab and must never transfer to another.
+          this.page = context.pages().filter(candidate => !candidate.isClosed()).at(-1);
+          if (this.page) this.update({ status: 'needs_input', pendingAction: undefined, currentUrl: this.page.url(), screenshot: undefined, message: 'The active tab closed. Continue to inspect the remaining tab before taking another action.' });
+          else this.update({ status: 'failed', pendingAction: undefined, screenshot: undefined, message: 'All task tabs are closed. Stop this attempt and start a new task.' });
+        });
+      };
+      context.on('page', watchPage);
+      this.page = await context.newPage();
       this.browser.on('disconnected', () => { this.egress?.close(); if (!this.closed) { this.closed = true; this.update({ status: 'stopped', pendingAction: undefined, message: 'Browser closed. Review the actions already taken before restarting.' }); } });
       await this.advance();
     } catch (error) { this.fail(error); }
@@ -151,14 +159,18 @@ export class GuidedBrowserRun {
     this.busy = true;
     try {
       while (!this.closed) {
-        if (++this.steps > 30) { this.update({ status: 'needs_input', message: 'Reached the 30-step limit. Review this attempt; start a fresh plan for remaining work.' }); return; }
+        if (this.steps >= 30) { this.update({ status: 'needs_input', message: 'Reached the 30-step limit. Review this attempt; start a fresh plan for remaining work.' }); return; }
+        this.steps++;
         this.update({ status: 'running', pendingAction: undefined, message: 'Reading the current page and deciding the next step.' });
         const observedPage = this.page!;
         const observation = await this.observe();
         this.update({ currentUrl: observation.url, screenshot: observation.screenshot });
         const action = parseBrowserAction(await this.options.planner(observation, this.state.history));
         if (this.closed) return;
-        if (this.page !== observedPage || observedPage.url() !== observation.url) continue;
+        if (this.page !== observedPage || observedPage.isClosed() || observedPage.url() !== observation.url) {
+          this.update({ status: 'needs_input', pendingAction: undefined, message: 'The active page changed while it was being inspected. Continue to inspect the current page.' });
+          return;
+        }
         if (action.type === 'finish') {
           this.update({ status: 'finished_unverified', message: action.description, history: [...this.state.history, { action: action.description, status: 'reported_by_agent' }] });
           await fs.writeFile(path.join(this.options.workspace, 'BROWSER-RESULT.json'), JSON.stringify({ ...this.state, screenshot: undefined }, null, 2));
@@ -229,8 +241,8 @@ export class GuidedBrowserRun {
     await this.advance();
   }
   async resume() {
-    if (!['needs_input','failed'].includes(this.state.status) || this.busy) throw new Error('This run is not waiting for input');
     if (this.steps >= 30) throw new Error('This attempt reached its step limit');
+    if (!this.canResume) throw new Error('This run cannot continue. Check that a task tab is still open.');
     await this.advance();
   }
   async stop() { this.closed = true; this.egress?.close(); await this.pendingTarget?.dispose().catch(() => {}); this.pendingTarget = undefined; await this.browser?.close(); this.update({ status: 'stopped', pendingAction: undefined, message: 'Browser run stopped. Previous actions have not been undone.' }); }

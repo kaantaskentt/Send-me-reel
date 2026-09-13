@@ -89,3 +89,66 @@ test('navigation waits for the destination document body before observing the ne
     await fs.rm(workspace, { recursive: true, force: true });
   }
 });
+
+test('closing a task popup returns to the remaining tab without reusing its pending target', async () => {
+  const fixture = http.createServer((request, response) => {
+    response.setHeader('Content-Type', 'text/html');
+    response.end(request.url === '/popup'
+      ? '<!doctype html><title>Task popup</title><button onclick="window.close()">Close task popup</button>'
+      : '<!doctype html><title>Main task</title><button onclick="window.open(\'/popup\')">Open task popup</button>');
+  });
+  await new Promise<void>(resolve => fixture.listen(0, '127.0.0.1', resolve));
+  const origin = `http://127.0.0.1:${(fixture.address() as AddressInfo).port}`;
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-popup-recovery-'));
+  let popupObserved = false;
+  const run = new GuidedBrowserRun({ workspace, headless: true, onState: () => {},
+    validateUrl: async value => { assert.equal(new URL(value).origin, origin); },
+    resolveDestination: async value => ({ url: new URL(value), addresses: [{ address: '127.0.0.1', family: 4 }] }),
+    planner: async observation => {
+      if (observation.url === 'about:blank') return action('navigate', 'Open the local popup fixture', { url: `${origin}/` });
+      if (observation.url === `${origin}/popup`) {
+        popupObserved = true;
+        return action('click', 'Close the controlled task popup', { targetId: observation.controls[0]!.id });
+      }
+      if (popupObserved) return action('finish', 'The remaining main tab was observed after the popup closed.');
+      return action('click', 'Open the controlled task popup', { targetId: observation.controls[0]!.id });
+    },
+  });
+  try {
+    await run.start();
+    await run.approve(run.state.pendingAction!.id, true);
+    await run.approve(run.state.pendingAction!.id, true);
+    if (run.state.status === 'needs_input') await run.resume();
+    assert.equal(run.state.currentUrl, `${origin}/popup`, run.state.message);
+    assert.equal(run.state.pendingAction?.description, 'Close the controlled task popup');
+    await run.approve(run.state.pendingAction!.id, true);
+    if (run.state.status === 'needs_input') {
+      assert.equal(run.canResume, true);
+      await run.resume();
+    }
+    assert.equal(run.state.status, 'finished_unverified', run.state.message);
+    assert.equal(run.state.currentUrl, `${origin}/`);
+    assert.equal(run.state.pendingAction, undefined);
+  } finally {
+    await run.stop(); fixture.closeAllConnections();
+    await new Promise<void>(resolve => fixture.close(() => resolve()));
+    await fs.rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('an exhausted browser budget disables Continue and never sends an extra planner request', async () => {
+  const workspace = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-browser-budget-'));
+  let calls = 0;
+  const run = new GuidedBrowserRun({ workspace, headless: true, onState: () => {}, planner: async () => {
+    calls++;
+    return action('ask_user', 'Controlled fixture checkpoint; continue to the next observation.');
+  } });
+  try {
+    await run.start();
+    while (calls < 30) { assert.equal(run.canResume, true); await run.resume(); }
+    assert.equal(run.state.status, 'needs_input');
+    assert.equal(run.canResume, false);
+    await assert.rejects(run.resume(), /step limit/);
+    assert.equal(calls, 30);
+  } finally { await run.stop(); await fs.rm(workspace, { recursive: true, force: true }); }
+});
