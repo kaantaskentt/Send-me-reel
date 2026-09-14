@@ -1,0 +1,461 @@
+{
+  "date": "2026-09-15",
+  "status": "research_experiment_only_not_app_integration",
+  "upstream_commit": "83da59fa78c3eee9e20f515fe75c438bb5166efd",
+  "upstream_tests": {
+    "passed": 32,
+    "failed": 0,
+    "seconds": 5.4,
+    "scope": [
+      "test_frames",
+      "test_dedup",
+      "test_timestamps"
+    ]
+  },
+  "synthetic_fixture": {
+    "resolution": "960x540",
+    "duration_seconds": 2,
+    "fps": 30,
+    "target_frame_index": 17,
+    "target_duration_ms": 33.333333333333336,
+    "expected_visible_url": "github.com/example/rapid-q7x",
+    "url_deliberately_absent_from_prompt": true,
+    "source_sha256": "529dbc49ae83d72ca5bd77f4a985e02b3c6dac6cb6433255f560bbe3268b8dd9"
+  },
+  "offline": {
+    "upstream_commit": "83da59fa78c3eee9e20f515fe75c438bb5166efd",
+    "scope": "synthetic offline frame-retention experiment, no AI recognition measured",
+    "results": [
+      {
+        "case": "brief-repo",
+        "duration_seconds": 2.0,
+        "target_frame": 17,
+        "target_duration_ms": 33.333333333333336,
+        "baseline": {
+          "selected": 2,
+          "target_preserved": false,
+          "timestamps": [
+            0.0,
+            1.0
+          ],
+          "metadata": null
+        },
+        "claude_video_balanced": {
+          "selected": 1,
+          "target_preserved": false,
+          "timestamps": [
+            0.0
+          ],
+          "metadata": {
+            "engine": "uniform",
+            "candidate_count": 1,
+            "deduped_count": 3,
+            "selected_count": 1,
+            "fallback": true
+          }
+        },
+        "local_changes_with_upstream_rounded_seek": {
+          "selected": 3,
+          "target_preserved": false,
+          "timestamps": [
+            0.0,
+            0.57,
+            0.6
+          ],
+          "metadata": null
+        },
+        "local_changes_preserving_decoded_frames": {
+          "selected": 3,
+          "target_preserved": true,
+          "timestamps": [
+            0.0,
+            0.5666666666666667,
+            0.6
+          ],
+          "metadata": null
+        },
+        "processing_elapsed_seconds": 0.379,
+        "fixture_plus_test_seconds": 2.293
+      },
+      {
+        "case": "brief-card",
+        "duration_seconds": 2.0,
+        "target_frame": 17,
+        "target_duration_ms": 33.333333333333336,
+        "baseline": {
+          "selected": 2,
+          "target_preserved": false,
+          "timestamps": [
+            0.0,
+            1.0
+          ],
+          "metadata": null
+        },
+        "claude_video_balanced": {
+          "selected": 1,
+          "target_preserved": false,
+          "timestamps": [
+            0.0
+          ],
+          "metadata": {
+            "engine": "uniform",
+            "candidate_count": 2,
+            "deduped_count": 3,
+            "selected_count": 1,
+            "fallback": true
+          }
+        },
+        "local_changes_with_upstream_rounded_seek": {
+          "selected": 3,
+          "target_preserved": false,
+          "timestamps": [
+            0.0,
+            0.57,
+            0.6
+          ],
+          "metadata": null
+        },
+        "local_changes_preserving_decoded_frames": {
+          "selected": 3,
+          "target_preserved": true,
+          "timestamps": [
+            0.0,
+            0.5666666666666667,
+            0.6
+          ],
+          "metadata": null
+        },
+        "processing_elapsed_seconds": 0.295,
+        "fixture_plus_test_seconds": 1.12
+      },
+      {
+        "case": "absent",
+        "duration_seconds": 2.0,
+        "target_frame": null,
+        "target_duration_ms": 0,
+        "baseline": {
+          "selected": 2,
+          "target_preserved": false,
+          "timestamps": [
+            0.0,
+            1.0
+          ],
+          "metadata": null
+        },
+        "claude_video_balanced": {
+          "selected": 1,
+          "target_preserved": false,
+          "timestamps": [
+            0.0
+          ],
+          "metadata": {
+            "engine": "uniform",
+            "candidate_count": 1,
+            "deduped_count": 3,
+            "selected_count": 1,
+            "fallback": true
+          }
+        },
+        "local_changes_with_upstream_rounded_seek": {
+          "selected": 1,
+          "target_preserved": false,
+          "timestamps": [
+            0.0
+          ],
+          "metadata": null
+        },
+        "local_changes_preserving_decoded_frames": {
+          "selected": 1,
+          "target_preserved": false,
+          "timestamps": [
+            0.0
+          ],
+          "metadata": null
+        },
+        "processing_elapsed_seconds": 0.258,
+        "fixture_plus_test_seconds": 1.144
+      }
+    ],
+    "dedup_probe": {
+      "difference": 0.8984375,
+      "threshold": 2.0,
+      "dropped": 1,
+      "repo_text_frame_preserved": false
+    }
+  },
+  "gemini": [
+    {
+      "name": "gemini-static",
+      "model": "gemini-3.5-flash-lite",
+      "kind": "static",
+      "case": "brief-repo",
+      "usage": {
+        "promptTokenCount": 202,
+        "candidatesTokenCount": 31,
+        "totalTokenCount": 233,
+        "promptTokensDetails": [
+          {
+            "modality": "VIDEO",
+            "tokenCount": 132
+          },
+          {
+            "modality": "TEXT",
+            "tokenCount": 70
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reasons": [
+        "STOP"
+      ],
+      "status": "completed",
+      "answer": "{\n  \"urls\": [],\n  \"explanation\": \"No repository URL is shown in the video frames.\",\n  \"uncertain\": false\n}",
+      "exact_target_present": false,
+      "elapsed_seconds": 1.737,
+      "estimated_usd_standard_list_price": 0.0001381
+    },
+    {
+      "name": "gemini-agentic",
+      "model": "gemini-3.5-flash-lite",
+      "kind": "agentic",
+      "case": "brief-repo",
+      "usage": {
+        "total_tokens": 542,
+        "total_input_tokens": 70,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 70
+          }
+        ],
+        "total_cached_tokens": 0,
+        "total_output_tokens": 90,
+        "total_tool_use_tokens": 382,
+        "tool_use_tokens_by_modality": [
+          {
+            "modality": "image",
+            "tokens": 132
+          },
+          {
+            "modality": "text",
+            "tokens": 250
+          }
+        ],
+        "total_thought_tokens": 0,
+        "raw_prompt_token": 727,
+        "model_invocation_token_counts": [
+          {
+            "prompt_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": 467
+              }
+            ],
+            "candidates_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": 31
+              }
+            ]
+          },
+          {
+            "prompt_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": 521
+              }
+            ],
+            "candidates_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": 35
+              }
+            ]
+          },
+          {
+            "prompt_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": 585
+              },
+              {
+                "modality": "image",
+                "tokens": 132
+              }
+            ],
+            "candidates_tokens_details": [
+              {
+                "modality": "text",
+                "tokens": 40
+              }
+            ]
+          }
+        ]
+      },
+      "step_types": [
+        "processing_call",
+        "processing_result",
+        "processing_call",
+        "processing_result",
+        "thought",
+        "model_output"
+      ],
+      "provider_status": "completed",
+      "status": "completed",
+      "answer": "```json\n{\n  \"urls\": [],\n  \"explanation\": \"No repository URL is shown in the video frames.\",\n  \"uncertain\": false\n}\n```",
+      "exact_target_present": false,
+      "elapsed_seconds": 2.253
+    },
+    {
+      "name": "gemini-preserved-frames",
+      "model": "gemini-3.5-flash-lite",
+      "kind": "frames",
+      "case": "brief-repo",
+      "usage": {
+        "promptTokenCount": 3388,
+        "candidatesTokenCount": 63,
+        "totalTokenCount": 3451,
+        "promptTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 3300
+          },
+          {
+            "modality": "TEXT",
+            "tokenCount": 88
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reasons": [
+        "STOP"
+      ],
+      "status": "completed",
+      "answer": "{\n  \"urls\": [\n    \"github.com/example/rapid-q7x\"\n  ],\n  \"explanation\": \"The repository URL 'github.com/example/rapid-q7x' is briefly shown in frame 1.\",\n  \"uncertain\": false\n}",
+      "exact_target_present": true,
+      "elapsed_seconds": 1.466,
+      "estimated_usd_standard_list_price": 0.0011739
+    },
+    {
+      "name": "gemini-absent-control",
+      "model": "gemini-3.5-flash-lite",
+      "kind": "frames",
+      "case": "absent",
+      "usage": {
+        "promptTokenCount": 1176,
+        "candidatesTokenCount": 30,
+        "totalTokenCount": 1206,
+        "promptTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 1100
+          },
+          {
+            "modality": "TEXT",
+            "tokenCount": 76
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reasons": [
+        "STOP"
+      ],
+      "status": "completed",
+      "answer": "{\n  \"urls\": [],\n  \"explanation\": \"No repository URL is shown in the frame.\",\n  \"uncertain\": false\n}",
+      "exact_target_present": false,
+      "elapsed_seconds": 1.031,
+      "estimated_usd_standard_list_price": 0.0004278
+    },
+    {
+      "name": "gemini-hybrid-crop",
+      "model": "gemini-3.5-flash-lite",
+      "kind": "hybrid-crop",
+      "case": "brief-repo",
+      "supplied_media_types": [
+        "video/mp4",
+        "image/png"
+      ],
+      "usage": {
+        "promptTokenCount": 462,
+        "candidatesTokenCount": 54,
+        "totalTokenCount": 516,
+        "promptTokensDetails": [
+          {
+            "modality": "IMAGE",
+            "tokenCount": 240
+          },
+          {
+            "modality": "TEXT",
+            "tokenCount": 90
+          },
+          {
+            "modality": "VIDEO",
+            "tokenCount": 132
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reasons": [
+        "STOP"
+      ],
+      "status": "completed",
+      "answer": "{\n  \"urls\": [\n    \"github.com/example/rapid-q7x\"\n  ],\n  \"explanation\": \"The repository URL is briefly shown in the grey box during the screen change.\",\n  \"uncertain\": false\n}",
+      "exact_target_present": true,
+      "elapsed_seconds": 1.233,
+      "estimated_usd_standard_list_price": 0.0002736
+    }
+  ],
+  "excluded_calls": [
+    {
+      "name": "gemini-hybrid-crop",
+      "model": "gemini-3.5-flash-lite",
+      "kind": "hybrid-crop",
+      "case": "brief-repo",
+      "usage": {
+        "promptTokenCount": 202,
+        "candidatesTokenCount": 31,
+        "totalTokenCount": 233,
+        "promptTokensDetails": [
+          {
+            "modality": "TEXT",
+            "tokenCount": 70
+          },
+          {
+            "modality": "VIDEO",
+            "tokenCount": 132
+          }
+        ],
+        "serviceTier": "standard"
+      },
+      "finish_reasons": [
+        "STOP"
+      ],
+      "status": "completed",
+      "answer": "{\n  \"urls\": [],\n  \"explanation\": \"No repository URL is shown in the video frames.\",\n  \"uncertain\": false\n}",
+      "exact_target_present": false,
+      "elapsed_seconds": 1.189,
+      "exclusion_reason": "Probe construction error omitted the crop. Request was effectively another static baseline; fixed with an assertion and rerun. Excluded from accuracy and speed comparison, retained for accounting."
+    }
+  ],
+  "crop": {
+    "method": "bounding box of grayscale pixels changing by more than 20; 24-pixel padding",
+    "box": [
+      55,
+      232,
+      466,
+      302
+    ],
+    "source_frame": 17,
+    "source_timestamp": 0.5666666666666667,
+    "not_ground_truth_guided": true
+  },
+  "limitations": [
+    "Purposefully adversarial frame timing. Not an estimate of general accuracy.",
+    "One valid request per strategy, at most two concurrent requests. Not a latency benchmark.",
+    "No live Instagram download, long-video test, speech test or action execution.",
+    "Measured request latency excludes source download, local decoding and crop generation.",
+    "Source fixtures are static, readable and lossless; moving background and low-contrast failures remain open.",
+    "Change detector scans all decoded frames, but its threshold can still discard low-contrast changes.",
+    "Agentic usage includes tool-use tokens; no definitive agentic billing estimate inferred from this response."
+  ]
+}
