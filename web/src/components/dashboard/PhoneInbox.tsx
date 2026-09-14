@@ -83,7 +83,7 @@ export default function PhoneInbox() {
   }
 
   return <>
-    <button type="button" className={styles.toolbarButton} onClick={() => setOpen(true)}><Smartphone size={15} />Phone inbox{!!share?.items.length && <span className={styles.inboxBadge}>{share.items.length}</span>}{status?.paired && <Check size={12} />}</button>
+    <button type="button" className={styles.toolbarButton} aria-label="Phone inbox" onClick={() => setOpen(true)}><Smartphone size={15} />iPhone{!!share?.items.length && <span className={styles.inboxBadge}>{share.items.length}</span>}{status?.paired && <Check size={12} />}</button>
     {open && <StudioDialog title="Send from your iPhone" onClose={() => { setOpen(false); setLink(""); }}>
       <p className={styles.dialogDescription}>Instagram → Share → Send to ContextDrop.</p>
       {!!share?.items.length && <div className={styles.shareItems} aria-label="Links from your iPhone">{share.items.map(item => <div key={item.id} className={styles.shareItem}><button type="button" className={styles.shareLink} onClick={() => chooseLink(item)}><span><strong>{new URL(item.url).hostname.replace(/^www\./, "")}</strong><small>{item.url}</small></span><ArrowRight size={16} /></button><button type="button" className={styles.iconButton} disabled={busy} aria-label={`Dismiss ${item.url}`} onClick={() => void updateShare({ action: "dismiss", id: item.id })}><X size={14} /></button></div>)}</div>}

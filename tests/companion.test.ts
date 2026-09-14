@@ -17,7 +17,7 @@ export const fixturePlan: ReplicationPlan = {
 const token = 'test-token-that-is-long-enough-for-local-pairing';
 async function setup(launch: (file:string)=>Promise<void> = async()=>{}, withoutCodex = false, terminalMode?: 'interactive' | 'exec', claudeBinary?: string) {
   const rootDir = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-companion-test-'));
-  const server = createCompanionServer({ token, allowedOrigins:['http://localhost:3000'], rootDir, codexBinary:withoutCodex ? undefined : '/usr/bin/true', claudeBinary, terminalMode, platform:'darwin', launchTerminal:launch });
+  const server = createCompanionServer({ token, allowedOrigins:['http://localhost:3000'], rootDir, codexBinary:withoutCodex ? undefined : '/usr/bin/true', claudeBinary, terminalMode, platform:'darwin', launchTerminal:launch, launchRunner:launch });
   await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return {rootDir,base, cleanup:async()=>{server.closeAllConnections(); await new Promise<void>(r=>server.close(()=>r())); await fs.rm(rootDir,{recursive:true,force:true});}};

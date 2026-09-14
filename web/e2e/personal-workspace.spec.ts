@@ -63,7 +63,7 @@ async function fixtures(page: Page, initialStatus = "running") {
     }
     if (url.pathname === "/api/local/chat") {
       if (request.method() !== "GET") { state.forbidden.push("unexpected chat generation"); return route.fulfill({ status: 409, json: { error: "No live analysis in this fixture" } }); }
-      return route.fulfill({ json: { version: 1, analysisId, messages: [{ id: "fixture-answer", role: "assistant", text: "Fixture conversation for the current source.", createdAt: "2026-09-13T10:01:00Z", reply: { answer: "Fixture conversation for the current source.", suggestions: [], actions: [], evidence: [], allowedUrls: [] } }] } });
+      return route.fulfill({ json: { version: 1, analysisId, guide: {version:3,analysisId,title:"Saved source actions",summary:"A useful tool is shown in this source.",evidence:[],choices:["Find the tool","Explain the idea","Make a demo"].map((label,index)=>({id:`choice-${index+1}`,label,detail:"A useful next step.",kind:"ask",request:"Explain this idea in simple words.",mode:"research",executor:"browser"}))}, messages: [{ id: "fixture-answer", role: "assistant", text: "Fixture conversation for the current source.", createdAt: "2026-09-13T10:01:00Z", reply: { answer: "Fixture conversation for the current source.", suggestions: [], actions: [], evidence: [], allowedUrls: [] } }] } });
     }
     if (url.pathname === "/api/local/inbox") {
       if (request.method() === "GET") return route.fulfill({ json: state.share });
@@ -105,7 +105,7 @@ async function fixtures(page: Page, initialStatus = "running") {
 test("Tasks recovers previous work after reload and keeps original source, actual output and unverified report together", async ({ page }) => {
   const state = await fixtures(page, "finished_unverified");
   await page.goto("/replicate/local");
-  await expect(page.getByText("Fixture conversation for the current source.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", {name:"Saved source actions",exact:true})).toBeVisible();
   await page.getByRole("button", { name: "Tasks", exact: true }).click();
   const tasks = page.getByRole("dialog", { name: "Your tasks", exact: true });
   await expect(tasks.getByRole("button", { name: new RegExp(title) })).toBeVisible();
@@ -113,11 +113,15 @@ test("Tasks recovers previous work after reload and keeps original source, actua
   const workroom = page.getByRole("dialog", { name: title, exact: true });
   await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
   await expect(workroom.getByText(/This task keeps its original source/)).toBeVisible();
+  await expect(workroom.getByRole("region", { name: "Task result" })).toContainText("Created example.html");
+  await expect(workroom.locator("details")).not.toHaveAttribute("open", "");
+  await workroom.getByRole("button", { name: "Activity", exact: true }).click();
   await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("$ node check-example.mjs");
   await expect(workroom.getByRole("status")).toHaveText("Finished · review the result");
   await workroom.getByRole("button", { name: "Result", exact: true }).click();
   await expect(workroom.getByText(/Agent report · review required/)).toBeVisible();
-  await expect(workroom.getByText(/Created example.html/)).toBeVisible();
+  await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("Created example.html");
+  await workroom.getByText("Full report & checks", { exact: true }).click();
   expect(await page.evaluate(() => "shouldNeverExecute" in window)).toBe(false);
   await workroom.getByRole("button", { name: "Open workspace", exact: true }).click();
   expect(state.reveals).toBe(1);
@@ -125,6 +129,7 @@ test("Tasks recovers previous work after reload and keeps original source, actua
   await page.getByRole("button", { name: "Tasks", exact: true }).click();
   await tasks.getByRole("button", { name: new RegExp(title) }).click();
   await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
+  await workroom.getByRole("button", { name: "Activity", exact: true }).click();
   await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("Fixture check: rendered heading found.");
   expect(state.listReads).toBeGreaterThanOrEqual(2);
   expect(state.outputReads).toBeGreaterThanOrEqual(2);
@@ -137,7 +142,7 @@ test("Tasks stops only the selected run, acknowledges stopping, and keeps source
   const state = await fixtures(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/replicate/local");
-  await expect(page.getByText("Fixture conversation for the current source.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", {name:"Saved source actions",exact:true})).toBeVisible();
   await page.getByRole("button", { name: /^Tasks/ }).click();
   await page.getByRole("dialog", { name: "Your tasks", exact: true }).getByRole("button", { name: new RegExp(title) }).click();
   const workroom = page.getByRole("dialog", { name: title, exact: true });
@@ -150,16 +155,16 @@ test("Tasks stops only the selected run, acknowledges stopping, and keeps source
   await expect(workroom.getByRole("status")).toHaveText("Stopped");
   await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
   expect(await workroom.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("body *")].filter(element => {const r=element.getBoundingClientRect();return r.width>0 && r.right>innerWidth+1;}).slice(0,12).map(element=>({tag:element.tagName,class:element.className,width:element.getBoundingClientRect().width,right:element.getBoundingClientRect().right}))))).toBe(true);
   expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
 });
 
 test("Phone inbox pairs explicitly and refreshes the library after import without switching the current conversation", async ({ page }) => {
   const state = await fixtures(page, "finished_unverified");
   await page.goto("/replicate/local");
-  await expect(page.getByText("Fixture conversation for the current source.", { exact: true })).toBeVisible();
-  const currentSource = page.getByRole("complementary", { name: "Current source" });
-  const originalHeading = await currentSource.getByRole("heading").textContent();
+  await expect(page.getByRole("heading", {name:"Saved source actions",exact:true})).toBeVisible();
+  const currentSource = page.getByRole("heading",{name:"Saved source actions",exact:true});
+  const originalHeading = await currentSource.textContent();
   const composer = page.getByLabel("Ask about your content");
   await composer.fill("Keep this unsent question with my current source.");
   await page.getByRole("button", { name: "Phone inbox", exact: true }).click();
@@ -172,15 +177,16 @@ test("Phone inbox pairs explicitly and refreshes the library after import withou
   await expect(inbox.getByText("Paired", { exact: true })).toBeVisible();
   await expect(inbox.getByText("Running", { exact: true })).toBeVisible();
   expect(state.phonePairs).toBe(1); expect(state.phoneSyncs).toBe(0);
-  const readsBefore = state.libraryReads;
   await inbox.getByRole("button", { name: "Sync now", exact: true }).click();
-  await expect.poll(() => state.libraryReads).toBeGreaterThan(readsBefore);
+  await expect.poll(() => state.phoneSyncs).toBe(1);
   await page.keyboard.press("Escape");
   await expect(inbox).toHaveCount(0);
-  const recent = page.getByRole("navigation", { name: "Recent sources", exact: true });
+  await page.getByRole("button", {name:"Saved content",exact:true}).click();
+  const recent = page.getByRole("dialog", {name:"Saved content",exact:true});
   await expect(recent.getByRole("button", { name: /New phone save fixture/ })).toBeVisible();
-  await expect(recent.getByRole("button", { name: /Current source fixture/ })).toHaveAttribute("aria-current", "page");
-  await expect(currentSource.getByRole("heading")).toHaveText(originalHeading!);
+  await expect(recent.getByRole("button", { name: /Current source fixture/ })).toHaveAttribute("aria-current", "true");
+  await page.keyboard.press("Escape");
+  await expect(currentSource).toHaveText(originalHeading!);
   await expect(composer).toHaveValue("Keep this unsent question with my current source.");
   expect(state.phoneSyncs).toBe(1);
   expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
@@ -193,15 +199,15 @@ test("An iPhone share prefills the exact link, keeps the current chat and pendin
   state.share.items = [{ id: "iphone-fixture-1", url, receivedAt: "2026-09-13T10:02:00Z", source: "iphone" }];
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/replicate/local");
-  await expect(page.getByText("Fixture conversation for the current source.", { exact: true })).toBeVisible();
-  const source = page.getByRole("complementary", { name: "Current source" });
-  const sourceHeading = await source.getByRole("heading").textContent();
+  await expect(page.getByRole("heading", {name:"Saved source actions",exact:true})).toBeVisible();
+  const source = page.getByRole("heading", {name:"Saved source actions",exact:true});
+  const sourceHeading = await source.textContent();
   const composer = page.getByLabel("Ask about your content");
   await composer.fill("Keep this draft with my original source.");
-  await page.getByRole("button", { name: "Add a link or upload a file", exact: true }).click();
-  await page.getByText("Give it a focus or change the reader", { exact: true }).click();
+  await page.getByLabel("Content link",{exact:true}).fill("https://www.youtube.com/watch?v=fixture");
+  await page.getByText("Reading options", { exact: true }).click();
   await page.getByLabel("Content reader", { exact: true }).selectOption("gemini");
-  await page.getByLabel("What caught your attention?").fill("An earlier YouTube-only question.");
+  await page.getByLabel("Look for something specific").fill("An earlier YouTube-only question.");
   const phoneButton = page.getByRole("button", { name: /^Phone inbox/ });
   await expect(phoneButton).toContainText("1");
   await phoneButton.click();
@@ -214,13 +220,13 @@ test("An iPhone share prefills the exact link, keeps the current chat and pendin
   await expect(page.getByLabel("Content link", { exact: true })).toHaveValue(url);
   await expect(page.getByLabel("Content link", { exact: true })).toBeFocused();
   await expect(page.getByLabel("Content reader", { exact: true })).toHaveValue("auto");
-  await expect(page.getByLabel("What caught your attention?")).toHaveValue("");
+  await expect(page.getByLabel("Look for something specific")).toHaveValue("");
   await expect(composer).toHaveValue("Keep this draft with my original source.");
-  await expect(source.getByRole("heading")).toHaveText(sourceHeading!);
+  await expect(source).toHaveText(sourceHeading!);
   expect(state.captureAttempts).toBe(0); expect(state.inboxDismisses).toBe(0);
   expect(state.share.items).toHaveLength(1); expect(state.forbidden).toEqual([]);
   state.allowRejectedCapture = true;
-  await page.getByRole("button", { name: "Analyze this link", exact: true }).click();
+  await page.getByRole("button", { name: "Read this link", exact: true }).click();
   await expect(page.getByRole("region", { name: "Add content", exact: true }).getByRole("alert")).toContainText("Fixture reader unavailable");
   expect(state.captureAttempts).toBe(1); expect(state.inboxDismisses).toBe(0);
   expect(state.share.items).toHaveLength(1);
@@ -229,6 +235,6 @@ test("An iPhone share prefills the exact link, keeps the current chat and pendin
   await inbox.getByRole("button", { name: `Dismiss ${url}`, exact: true }).click();
   await expect(inbox.getByText("Links from your phone will appear here.", { exact: true })).toBeVisible();
   expect(state.inboxDismisses).toBe(1);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("body *")].filter(element => {const r=element.getBoundingClientRect();return r.width>0 && r.right>innerWidth+1;}).slice(0,12).map(element=>({tag:element.tagName,class:element.className,width:element.getBoundingClientRect().width,right:element.getBoundingClientRect().right}))))).toBe(true);
   expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
 });

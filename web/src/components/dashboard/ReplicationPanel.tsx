@@ -19,7 +19,7 @@ const MODES = [
 ] as const;
 
 type Harness = "codex" | "claude";
-interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; compact?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[] }
+interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; compact?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[]; onRunStarted?: () => void }
 
 function timestamp(seconds: number | null) {
   if (seconds === null) return "No timestamp";
@@ -40,13 +40,14 @@ function download(content: string, name: string, mime: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }
 
-export default function ReplicationPanel({ analysis, initialPlan, demo = false, compact = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex", contextSourceIds = [] }: Props) {
+export default function ReplicationPanel({ analysis, initialPlan, demo = false, compact = false, planningEndpoint, initialExecutor = "terminal", planningNotice, initialPairingToken = "", initialGoal = "", initialMode = "build", initialHarness = "codex", contextSourceIds = [], onRunStarted }: Props) {
   const captured = buildSourceEvidence(analysis);
   const [mode, setMode] = useState<ReplicationPlan["mode"]>(initialPlan?.mode ?? initialMode);
   const [goal, setGoal] = useState(initialPlan?.goal ?? initialGoal);
   const [plan, setPlan] = useState<ReplicationPlan | null>(initialPlan ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sourceChanged, setSourceChanged] = useState(false);
   const [tab, setTab] = useState<"plan" | "evidence">("plan");
   const [selectedEvidence, setSelectedEvidence] = useState<string | null>(null);
   const [token, setToken] = useState(initialPairingToken);
@@ -125,11 +126,12 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
 
   async function prepare() {
     if (demo || busy) return;
-    setBusy(true); setError(""); setReviewed(false);
+    setBusy(true); setError(""); setSourceChanged(false); setReviewed(false);
     const controller = new AbortController(); generationController.current = controller;
     try {
       const response = await fetch(planningEndpoint ?? `/api/analyses/${analysis.id}/replicate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ goal: goal.trim(), mode, ...(planningEndpoint === "/api/local/replicate" ? { analysisId: analysis.id, contextSourceIds } : {}) }), signal: controller.signal });
       const data = await response.json();
+      if (data.code === "SOURCE_CHANGED") { setSourceChanged(true); setPlan(null); }
       if (!response.ok) throw new Error(data.error || "Could not prepare this plan.");
       setPlan(parseReplicationPlan(data.plan)); setTab("plan"); setRun(null);
       launchAttempt.current = null;
@@ -184,7 +186,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
       if (!response.ok) throw new Error(result.error || "The companion could not open a session.");
       attempt.runId = result.id;
       setRun(result); setShowSetup(false);
-      if (compact) window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: result }));
+      if (compact) { window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: result })); onRunStarted?.(); }
     } catch (e) { setLocalError(e instanceof Error ? `${e.message} If the request timed out, inspect Terminal before retrying.` : "Launch failed. Check Terminal before retrying."); }
     finally { launchInFlight.current = false; setLaunchBusy(false); }
   }
@@ -202,20 +204,30 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   }
 
   if (compact) return <section className={styles.compactTask} aria-label="Review your task">
-    {busy ? <p className={styles.thinking} role="status"><Loader2 size={17} className={styles.spinner} />Preparing a task from your source and request…</p> : <>
-      <p className={styles.taskGoal}>{goal || "Tell me the result you want from this source."}</p>
-      <details className={styles.taskChecks}><summary>Adjust the request</summary><label className={styles.field}>Your outcome<textarea aria-label="Your task outcome" className={styles.textarea} value={goal} maxLength={1200} rows={3} onChange={event => { setGoal(event.target.value); setReviewed(false); }} /></label><button type="button" className={styles.secondaryButton} disabled={goal.trim().length < 8 || sessionOpen} onClick={() => void prepare()}>{plan ? "Update task" : "Prepare task"}</button></details>
-      {plan && <><details className={styles.taskChecks}><summary>Review the plan · {plan.steps.length} steps</summary><p>{plan.summary}</p><ol className={styles.taskSteps}>{plan.steps.map(step => <li key={step.id}>{step.instruction}<small>{step.kind === "inferred" ? "Proposed addition · " : "Source-backed · "}{step.verification}</small></li>)}</ol></details><details className={styles.taskChecks}><summary>Checks and missing details</summary><ul>{plan.successCriteria.map((item, index) => <li key={`check-${index}`}>Check: {item}</li>)}{plan.prerequisites.map((item, index) => <li key={`pre-${index}`}>{item}</li>)}{plan.warnings.map((item, index) => <li key={`gap-${index}`}>{item}</li>)}</ul></details></>}
-      {stale && <p role="status" className={styles.evidenceNote}>Update the task after changing your request.</p>}
+    {busy ? <p className={styles.thinking} role="status"><Loader2 size={20} className={styles.spinner} />Working out the steps…</p> : <>
+      {plan && <p className={styles.taskGoal}>{plan.summary}</p>}
+      <p className={styles.taskLocation}><Monitor size={18} />{executor === "browser" ? "In a separate browser on your Mac" : harness === "claude" ? "In Claude Code on your Mac" : "In a new project folder on your Mac"}</p>
+      <details className={styles.taskChecks}><summary>See the steps{plan ? ` · ${plan.steps.length}` : ""}</summary>
+        <p className={styles.taskGoal}>{goal}</p>
+        {plan && <><ol className={styles.taskSteps}>{plan.steps.map(step => <li key={step.id}>{step.instruction}<small>{step.kind === "inferred" ? "Added suggestion · " : "From your content · "}{step.verification}</small></li>)}</ol>
+        {!!(plan.prerequisites.length + plan.warnings.length) && <><h3>Before starting</h3><ul>{[...plan.prerequisites, ...plan.warnings].map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+        <h3>What success looks like</h3><ul>{plan.successCriteria.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+      </details>
+      <details className={styles.taskChecks}><summary>Change the task or app</summary>
+        <label className={styles.field}>What you want<textarea aria-label="Your task outcome" className={styles.textarea} value={goal} maxLength={1200} rows={3} onChange={event => { setGoal(event.target.value); setReviewed(false); }} /></label>
+        <label className={styles.field}>Use<select aria-label="Task app" className={styles.select} disabled={sessionOpen || launchBusy} value={executor === "browser" ? "browser" : harness} onChange={event => { const value = event.target.value; setExecutor(value === "browser" ? "browser" : "terminal"); if (value !== "browser") setHarness(value as Harness); setReviewed(false); }}><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="browser">Browser</option></select></label>
+        <button type="button" className={styles.secondaryButton} disabled={goal.trim().length < 8 || sessionOpen} onClick={() => void prepare()}>Update task</button>
+      </details>
+      {stale && <p role="status" className={styles.evidenceNote}>Click Update task to use your changes.</p>}
     </>}
-    {error && <p role="alert" className={styles.error}>{error}<button type="button" className={styles.textButton} onClick={() => void prepare()}>Try again</button></p>}
-    <div className={styles.taskLaunch}><div className={styles.inline}><label className={styles.field}>Run with<select className={styles.select} disabled={sessionOpen || launchBusy} value={executor === "browser" ? "browser" : harness} onChange={event => { const value = event.target.value; setExecutor(value === "browser" ? "browser" : "terminal"); if (value !== "browser") setHarness(value as Harness); setReviewed(false); }}><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="browser">Browser</option></select></label><p className={styles.taskConnection}>{pairBusy ? "Connecting to your Mac…" : paired ? "Mac connected" : "Mac not connected"}{!paired && <button type="button" className={styles.textButton} disabled={pairBusy || !token} onClick={() => void pair()}>Reconnect</button>}</p></div><button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={15} className={styles.spinner} /> : <Monitor size={15} />}{launchBusy ? "Starting task…" : sessionOpen ? "Task is running" : "Approve & run on my Mac"}</button></div>
-    {!initialPairingToken && <p className={styles.evidenceNote}>Open ContextDrop with the personal launcher to connect the local worker.</p>}
-    {paired && executor === "terminal" && !terminalAvailable && <p className={styles.evidenceNote}>{harnessName} is not available. Choose another runner or sign in to the coding app and restart ContextDrop.</p>}
-    {paired && executor === "browser" && !browserConfigured && <p className={styles.evidenceNote}>Browser guidance needs your configured OpenAI key.</p>}
-    <p className={styles.evidenceNote}>{executor === "browser" ? "The browser shows proposed actions for your review. Log in or enter private details directly in its window." : harness === "claude" ? "Claude Code opens in plan mode in Terminal. Review its proposal there before allowing changes." : "Codex works in a fresh local folder. Watch its actual output in Tasks; stop the run at any time."}</p>
+    {error && <p role="alert" className={styles.error}>{error}<button type="button" className={styles.textButton} onClick={() => sourceChanged ? window.location.reload() : void prepare()}>{sourceChanged ? "Open latest link" : "Try again"}</button></p>}
+    {!paired && <p className={styles.taskConnection}>{pairBusy ? "Connecting to your Mac…" : "Your Mac worker is not connected."}<button type="button" className={styles.textButton} disabled={pairBusy || !token} onClick={() => void pair()}>Reconnect</button></p>}
+    {paired && executor === "terminal" && !terminalAvailable && <p role="status" className={styles.evidenceNote}>{harnessName} isn’t available. Choose another app above, or sign in and restart ContextDrop.</p>}
+    {paired && executor === "browser" && !browserConfigured && <p role="status" className={styles.evidenceNote}>Add your OpenAI key to use the browser.</p>}
+    <p className={styles.taskPermission}>{executor === "browser" ? "You’ll see the browser here. It asks before clicks and typing. You handle logins and payments." : harness === "claude" ? "Claude Code opens in Terminal. Approve its plan there before it changes files." : "Codex can create files and run commands in this folder. You can watch and stop it here."}</p>
+    <button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={18} className={styles.spinner} /> : <ArrowRight size={18} />}{launchBusy ? "Starting…" : sessionOpen ? "Task is running" : "Yes, start"}</button>
     {localError && <p role="alert" className={styles.error}>{localError}</p>}
-    {run && <button type="button" className={styles.secondaryButton} onClick={() => window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: run }))}><Monitor size={15} />Watch task</button>}
+    {run && <button type="button" className={styles.secondaryButton} onClick={() => window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: run }))}><Monitor size={18} />Watch task</button>}
   </section>;
 
   return (

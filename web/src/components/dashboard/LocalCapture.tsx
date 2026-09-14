@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, FileUp, Link2, Loader2, Plus, Upload, X } from "lucide-react";
+import { ArrowRight, FileUp, Link2, Loader2, Upload, X } from "lucide-react";
 import { captureStageLabel } from "@/lib/capture-feedback";
 import { publicLink } from "@/lib/content-conversation";
 import styles from "./studio.module.css";
+import guided from "./guided.module.css";
 
 type Progress = { completedSegments: number; totalSegments: number; startSec?: number; endSec?: number };
 const uploadTypes = ".mp4,.mov,.webm,.mp3,.m4a,.wav,.ogg,.png,.jpg,.jpeg,.webp,.pdf,.txt,.md,.csv,.json";
@@ -17,14 +18,13 @@ function fileLimit(file: File): string | null {
 
 export default function LocalCapture({ initialUrl = "", initialStatus = "empty", initialError = "", compact = false, geminiAvailable = false }: { initialUrl?: string; initialStatus?: string; initialError?: string; compact?: boolean; geminiAvailable?: boolean }) {
   const router = useRouter();
-  const [url, setUrl] = useState(initialUrl.startsWith("https:") ? initialUrl : "");
+  const [url, setUrl] = useState(initialStatus === "done" ? "" : initialUrl.startsWith("https:") ? initialUrl : "");
   const [status, setStatus] = useState(initialStatus);
   const [stage, setStage] = useState("");
   const [error, setError] = useState(initialError);
   const [connectionIssue, setConnectionIssue] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [provider, setProvider] = useState("auto");
-  const [expanded, setExpanded] = useState(!compact);
   const [mode, setMode] = useState<"link" | "file">("link");
   const [file, setFile] = useState<File | null>(null);
   const [question, setQuestion] = useState("");
@@ -37,7 +37,7 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
       const value = (event as CustomEvent<{ id?: string; url?: string }>).detail;
       if (active || submitting || !value || typeof value.id !== "string" || !publicLink(value.url)) return;
       event.preventDefault();
-      setUrl(value.url!); setInboxId(value.id); setMode("link"); setExpanded(true); setError("");
+      setUrl(value.url!); setInboxId(value.id); setMode("link"); setError("");
       setProvider("auto"); setQuestion(""); setFile(null);
       requestAnimationFrame(() => linkInput.current?.focus());
     }
@@ -85,16 +85,27 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
   }
   const completed = Math.max(0, Number(progress?.completedSegments) || 0);
   const total = Math.max(0, Number(progress?.totalSegments) || 0);
-  return <section aria-label="Add content" className={`${styles.capture} ${expanded || active ? styles.captureExpanded : ""}`}>
-    {compact && !expanded && !active ? <button type="button" onClick={() => setExpanded(true)} className={styles.captureCompact}><Plus size={18} /><span>Add a link or upload a file</span><ArrowRight size={16} /></button> : <>
-      <div className={styles.captureTabs}><button type="button" className={styles.tab} disabled={active} aria-pressed={mode === "link"} onClick={() => { setMode("link"); setError(""); }}><Link2 size={15} /> Paste a link</button><button type="button" className={styles.tab} disabled={active} aria-pressed={mode === "file"} onClick={() => { setMode("file"); setError(""); }}><Upload size={15} /> Upload a file</button>{compact && !active && <button type="button" aria-label="Close add content" className={`${styles.iconButton} ${styles.closeCapture}`} onClick={() => setExpanded(false)}><X size={17} /></button>}</div>
-      <form onSubmit={capture}>
-        {mode === "link" ? <div className={styles.captureRow}><label htmlFor="local-source-url" className={styles.visuallyHidden}>Content link</label><input ref={linkInput} id="local-source-url" type="url" required disabled={active} value={url} onChange={event => { setUrl(event.target.value); setInboxId(null); }} placeholder="YouTube, Instagram, a GitHub repo, a website…" className={styles.input} /><button disabled={active} className={styles.primaryButton}>{active ? <Loader2 size={16} className={styles.spinner} /> : <ArrowRight size={16} />}{active ? "Reading content…" : "Analyze this link"}</button></div> : <div className={styles.uploadZone}><FileUp size={25} /><strong>{file ? file.name : "Bring the content you want to understand"}</strong><p>Video, audio, image, PDF, or text</p><label className={styles.secondaryButton}>{file ? "Choose a different file" : "Choose file"}<input className={styles.fileInput} aria-label="Choose content file" type="file" accept={uploadTypes} disabled={active} onChange={event => { const selected = event.target.files?.[0] ?? null; setFile(selected); setError(selected ? fileLimit(selected) ?? "" : ""); }} /></label>{file && <button disabled={active || !!fileLimit(file)} className={styles.primaryButton}>{active ? <Loader2 size={16} className={styles.spinner} /> : <ArrowRight size={16} />}{active ? "Reading content…" : "Analyze this file"}</button>}</div>}
-        <p className={styles.captureHint}>{mode === "file" ? "Media up to 200 MB / 60 minutes · Images and PDFs up to 20 MB · Text up to 1 MB. Files are sent to your configured AI provider for analysis." : geminiAvailable ? "YouTube up to 60 minutes · Other social videos up to 10 minutes · Public web pages. Blocked link? Upload a file." : "Public social videos up to 10 minutes, web pages, and repos. Connect Gemini for longer videos and visual file analysis."}</p>
-        <details className={styles.captureOptions}><summary>Give it a focus or change the reader</summary><div className={styles.captureOptionsContent}><label className={styles.field}>What caught your attention? <span className={styles.visuallyHidden}>(optional)</span><input className={styles.input} value={question} maxLength={2000} disabled={active} onChange={event => setQuestion(event.target.value)} placeholder="Find the repo briefly shown on screen…" /></label>{mode === "link" && <label className={styles.field}>Reader<select aria-label="Content reader" disabled={active} value={provider} onChange={event => setProvider(event.target.value)} className={styles.select}><option value="auto">Automatic</option><option value="detailed">Saved video frames</option><option value="gemini" disabled={!geminiAvailable}>Gemini video{geminiAvailable ? "" : " · key needed"}</option></select></label>}</div></details>
-      </form>
-    </>}
-    {active && <div role="status" className={styles.captureStatus}><Loader2 size={17} className={styles.spinner} /><div style={{ flex: 1 }}><strong>{submitting && mode === "file" ? "Uploading your file…" : captureStageLabel(stage || status)}</strong><p>{connectionIssue ? "Reconnecting to the reader. Your work may still be running." : total > 0 ? `${completed} of ${total} sections read. This page updates as each section finishes.` : "You can leave this open. Your conversation will appear when reading finishes."}</p>{total > 0 && <div className={styles.progress} aria-hidden="true">{Array.from({ length: Math.min(total, 24) }, (_, index) => <span key={index} data-complete={index < completed / total * Math.min(total, 24)} />)}</div>}</div></div>}
-    {error && <div role="alert" className={styles.error}><strong>{status === "failed" ? "We couldn’t finish reading this source" : "Check your content"}</strong><p>{error}</p>{status === "failed" && <p>Your saved conversations are still in the Library. You can retry this source or upload a file.</p>}</div>}
+  return <section aria-label="Add content" className={guided.ingest} data-compact={compact}>
+    <form onSubmit={capture}>
+      {mode === "link" ? <div className={guided.linkBar}>
+        <Link2 size={22} aria-hidden="true" />
+        <label htmlFor="local-source-url" className={styles.visuallyHidden}>Content link</label>
+        <input ref={linkInput} id="local-source-url" type="url" required disabled={active} value={url} onChange={event => { setUrl(event.target.value); setInboxId(null); }} placeholder="Paste a link…" autoComplete="off" />
+        <button type="button" className={guided.uploadButton} aria-label="Upload a file" title="Upload a file" disabled={active} onClick={() => { setMode("file"); setError(""); }}><Upload size={19} /></button>
+        <button aria-label="Read this link" disabled={active || !url.trim()} className={guided.readButton}>{active ? <Loader2 size={20} className={styles.spinner} /> : <><span>Read</span><ArrowRight size={20} /></>}</button>
+      </div> : <div className={guided.fileBox}>
+        <button type="button" aria-label="Back to paste a link" disabled={active} className={styles.iconButton} onClick={() => setMode("link")}><X size={18} /></button>
+        <FileUp size={28} /><strong>{file ? file.name : "Choose something to read"}</strong><p>Video, audio, image, PDF or text.</p>
+        <label className={styles.secondaryButton}>{file ? "Change file" : "Choose file"}<input className={styles.fileInput} aria-label="Choose content file" type="file" accept={uploadTypes} disabled={active} onChange={event => { const selected = event.target.files?.[0] ?? null; setFile(selected); setError(selected ? fileLimit(selected) ?? "" : ""); }} /></label>
+        {file && <button disabled={active || !!fileLimit(file)} className={styles.primaryButton}>{active ? <Loader2 size={18} className={styles.spinner} /> : <ArrowRight size={18} />}{active ? "Reading…" : "Read this file"}</button>}
+        <small>Sent to your AI provider. Media: 200 MB / 60 min. Images & PDFs: 20 MB. Text: 1 MB.</small>
+      </div>}
+      {url.trim() && !active && <details className={guided.readOptions}><summary>Reading options</summary><div className={styles.captureOptionsContent}>
+        <label className={styles.field}>Look for something specific<input className={styles.input} value={question} maxLength={2000} onChange={event => setQuestion(event.target.value)} placeholder="Optional — like the repo on screen" /></label>
+        {mode === "link" && <label className={styles.field}>Video reader<select aria-label="Content reader" value={provider} onChange={event => setProvider(event.target.value)} className={styles.select}><option value="auto">Choose for me</option><option value="detailed">Download and read</option><option value="gemini" disabled={!geminiAvailable}>Gemini video{geminiAvailable ? "" : " · needs a key"}</option></select></label>}
+      </div><p>{geminiAvailable ? "YouTube: up to 60 minutes. Other social videos: up to 10 minutes." : "Social videos: up to 10 minutes. Add Gemini for longer YouTube videos."} If a link is blocked, upload the file.</p></details>}
+    </form>
+    {active && <div role="status" className={guided.reading}><Loader2 size={20} className={styles.spinner} /><div><strong>{submitting && mode === "file" ? "Uploading your file…" : captureStageLabel(stage || status)}</strong><p>{connectionIssue ? "Reconnecting. Your reading may still be running." : total > 0 ? `${completed} of ${total} parts read.` : "Your choices will appear here when it’s ready."}</p>{total > 0 && <progress max={total} value={completed} aria-label="Reading progress" />}</div></div>}
+    {error && <div role="alert" className={styles.error}><strong>Couldn’t read this yet.</strong><p>{error}</p>{status === "failed" && <button type="button" className={styles.textButton} onClick={() => setMode("file")}>Upload the file instead</button>}</div>}
   </section>;
 }

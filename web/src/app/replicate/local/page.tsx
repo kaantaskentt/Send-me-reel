@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Check, ScanSearch, Lightbulb, WandSparkles } from "lucide-react";
+import { Check, ScanSearch, Lightbulb, WandSparkles, MoreHorizontal } from "lucide-react";
 import LocalCapture from "@/components/dashboard/LocalCapture";
 import ContentStudio from "@/components/dashboard/ContentStudio";
-import PersonalSources from "@/components/dashboard/PersonalSources";
+import LocalLibrary from "@/components/dashboard/LocalLibrary";
+import guided from "@/components/dashboard/guided.module.css";
 import WorkspaceTools from "@/components/dashboard/WorkspaceTools";
 import LocalTasks from "@/components/dashboard/LocalTasks";
 import LocalRuntimeStatus from "@/components/dashboard/LocalRuntimeStatus";
@@ -22,15 +23,19 @@ export default async function LocalStudioPage() {
   const [pairingToken, capture] = await Promise.all([readLocalCompanionToken(requestHeaders.get("host") ?? ""), readLocalAnalysis(true)]);
   const analysis = capture?.status === "done" ? capture : null;
   const savedPlan = analysis ? await readLocalPlan(analysis) : undefined;
-  return <main className={styles.studio}>
-    <div className={styles.personalShell}>
-      <aside className={styles.personalRail} aria-label="Your content library"><Link href="/replicate/local" className={styles.brand}><span className={styles.brandMark}><Check size={19} strokeWidth={2.75} /></span>ContextDrop</Link><PersonalSources currentId={capture?.id} /><div className={styles.railTools}><PhoneInbox /><WorkspaceTools canUseWorkflow={!!analysis} /></div></aside>
-      <div className={styles.personalMain}>
-      <header className={styles.personalNav}><h1>{analysis ? "Your workspace" : "Make something of it"}</h1><nav aria-label="Workspace" className={styles.navActions}><LocalTasks token={pairingToken} /><LocalRuntimeStatus /></nav></header>
-      {!analysis && <div className={styles.hero}><h1>What caught your eye?</h1><p>Paste a link or upload the content. Ask about it, then choose what you want to do.</p></div>}
+  return <main className={`${styles.studio} ${guided.app}`}>
+    <header className={guided.nav}>
+      <Link href="/replicate/local" className={styles.brand}><span className={styles.brandMark}><Check size={21} strokeWidth={2.5} /></span>ContextDrop</Link>
+      <nav aria-label="Workspace" className={guided.navActions}>
+        <LocalLibrary currentId={capture?.id} /><PhoneInbox /><LocalTasks token={pairingToken} />
+        <span className={guided.connection}><LocalRuntimeStatus /></span>
+        <details className={guided.more}><summary aria-label="More options"><MoreHorizontal size={20} /></summary><div><WorkspaceTools canUseWorkflow={!!analysis} /></div></details>
+      </nav>
+    </header>
+    <div className={guided.main}>
+      {!analysis && <div className={guided.emptyHero}><h1>Saved it? Try it.</h1><p>Drop a link. Find out what you can do with it.</p></div>}
       <LocalCapture key={`capture-${capture?.id ?? "empty"}`} initialUrl={capture?.source_url} initialStatus={capture?.status} initialError={getCaptureFailure(capture)?.message} compact={!!analysis} geminiAvailable={!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)} />
-      {analysis ? <ContentStudio key={`content-${analysis.id}`} analysis={analysis} pairingToken={pairingToken} savedPlan={savedPlan} /> : <div className={styles.examples}>{[{ title: "Find what’s on screen", example: "“Find the GitHub repo he briefly showed.”", icon: ScanSearch }, { title: "Understand the idea", example: "“Explain this and tell me where it could help.”", icon: Lightbulb }, { title: "Make your version", example: "“Help me try this with my own project.”", icon: WandSparkles }].map(({ title, example, icon: Icon }) => <div key={title} className={styles.example}><Icon size={21} strokeWidth={1.6} /><h2>{title}</h2><p>{example}</p></div>)}</div>}
-      </div>
+      {analysis ? <ContentStudio key={`content-${analysis.id}`} analysis={analysis} pairingToken={pairingToken} savedPlan={savedPlan} /> : <div className={guided.emptyExamples}>{[{ title: "Find the tool", detail: "Even when it only appears on screen.", icon: ScanSearch }, { title: "Get the idea", detail: "Ask anything about what you saved.", icon: Lightbulb }, { title: "Try it yourself", detail: "Choose a task. Watch it happen.", icon: WandSparkles }].map(({ title, detail, icon: Icon }) => <div key={title}><Icon size={23} strokeWidth={1.6} /><h2>{title}</h2><p>{detail}</p></div>)}</div>}
     </div>
   </main>;
 }

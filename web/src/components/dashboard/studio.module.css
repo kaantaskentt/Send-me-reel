@@ -7,6 +7,7 @@
   font-optical-sizing: auto; line-height: 1.5; color-scheme: light;
 }
 .studio *, .dialog * { box-sizing: border-box; }
+.studio :is(h1,h2,h3,h4), .dialog :is(h1,h2,h3,h4) { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 .studio button, .dialog button { cursor: pointer; touch-action: manipulation; }
 .studio button:disabled, .dialog button:disabled { cursor: default; opacity: .48; }
 .studio button:active:not(:disabled), .dialog button:active:not(:disabled) { transform: scale(.98); }
@@ -192,9 +193,13 @@
 .runMain { min-width:0; }
 .runTabs { display:flex;gap:1.2rem;border-bottom:1px solid #303943;margin-bottom:1rem; }
 .runTabs button { display:inline-flex;align-items:center;gap:.45rem;padding:.4rem 0 .8rem;font-size:.8rem;border-bottom:2px solid transparent;color:#a7b1bf; }
-.runTabs button[aria-pressed="true"] { border-color:#efaa70;color:#efaa70; }
+.runTabs button[aria-pressed="true"] { border-color:#91b3ff;color:#91b3ff; }
 .runLog,.runReport { background:#0e1216;border:1px solid #2c3540;border-radius:.65rem;padding:1rem;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.75 ui-monospace,SFMono-Regular,monospace;color:#d7e1ed;min-height:19rem;max-height:52dvh;overflow:auto; }
 .runReport { margin-top:1rem; }
+.runSummary { margin-top:20px; font-size:16px; line-height:1.7; color:#edf2f8; }
+.runSummary button { color:#b9cdf8; }
+.fullRunReport { margin-top:20px; }
+.fullRunReport>summary { cursor:pointer; padding:12px 0; color:#b9cdf8; font-size:14px; }
 .runError { color:#ffb0a7;background:#3b2325;border:1px solid #704048;padding:.9rem;border-radius:.6rem;font-size:.8rem;margin-top:1rem; }
 .compactTask { display:grid;gap:1.1rem; }
 .compactTask h3 { font-size:1.15rem;font-weight:600;letter-spacing:-.02em; }
@@ -213,6 +218,8 @@
 .inspection p { font-size:.78rem;line-height:1.7;margin-top:.55rem; }
 @media(max-width:760px){.workroom{grid-template-columns:minmax(0,1fr)}.runContext{border-right:0;border-bottom:1px solid #303943;padding:0 0 1rem}.runContext .runNote{display:none}.runLog,.runReport{min-height:14rem;max-height:45dvh}.runTop{gap:.7rem}.taskLaunch{align-items:stretch}.taskLaunch .primaryButton{width:100%}}
 .readinessList{list-style:none;margin:0 0 1.2rem;padding:0;display:grid;gap:.8rem}.readinessList li{display:flex;align-items:center;justify-content:space-between;gap:.8rem;font-size:.8rem;padding-bottom:.8rem;border-bottom:1px solid var(--line)}.readinessList li span:last-child{display:flex;align-items:center;gap:.4rem;color:var(--muted);font-size:.72rem}
+.runtimeLabel { display:inline; }
+@media(max-width:700px) { .runtimeLabel { display:none; } }
 .personalShell{display:grid;grid-template-columns:13.5rem minmax(0,1fr);max-width:100rem;margin:0 auto;min-height:100dvh;background:#fff}.personalRail{padding:1.5rem 1rem;background:#f7f8fc;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2rem;min-width:0}.personalRail .brand{font-size:1.08rem;gap:.5rem}.personalRail .brandMark{width:1.7rem;height:1.7rem}.personalMain{min-width:0;padding:0 1.8rem 2rem}.personalNav{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:5.3rem;border-bottom:1px solid var(--line);margin-bottom:1.25rem}.personalNav h1{font-size:1rem;font-weight:600;letter-spacing:-.02em}.personalSources{min-width:0}.personalSources>.toolbarButton{padding-left:.6rem;margin-bottom:.7rem}.recentSources{display:grid;gap:.35rem}.recentSources button{display:flex;align-items:flex-start;gap:.65rem;text-align:left;padding:.8rem .6rem;border-radius:.6rem;color:var(--muted);width:100%;min-width:0}.recentSources button>svg{flex-shrink:0;margin-top:.2rem}.recentSources button[aria-current="page"]{background:#eaf0fd;color:#25488a}.recentSources button:hover{background:#edf0f7}.recentSources strong{font-size:.76rem;font-weight:500;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.recentSources small{display:block;margin-top:.35rem;font-size:.67rem;color:var(--muted)}.railTools{margin-top:auto;display:grid;gap:.4rem}.railTools>.toolbarButton{justify-content:flex-start}.railNote{font-size:.7rem;color:var(--muted);line-height:1.6;padding:.6rem}.personalMain .workspace{grid-template-columns:minmax(0,1fr) 15.5rem;gap:1rem}.personalMain .chat{box-shadow:none;border-radius:.9rem}.personalMain .source{background:#f8f9fc;border-color:#eceef3;border-radius:.8rem}.personalMain .capture{border-radius:.8rem}.personalMain .messages{min-height:20rem}.personalMain .messageUser{background:#f0f4fc;border-color:#edf1fa}.personalMain .captureCompact{min-height:3.1rem}.personalMain .composerArea{background:#fff}
 @media(max-width:1120px){.personalShell{grid-template-columns:11.5rem minmax(0,1fr)}.personalRail{padding:1.25rem .75rem}.personalMain{padding-inline:1.2rem}.personalMain .workspace{grid-template-columns:minmax(0,1fr) 13rem}.personalMain .messages{padding:1.3rem}.personalMain .composerArea{padding-inline:1rem}}
 @media(max-width:900px){.personalShell{display:block}.personalRail{flex-direction:row;align-items:center;gap:.5rem;padding:.6rem 1rem;border-right:0;border-bottom:1px solid var(--line)}.recentSources,.railNote{display:none}.personalSources{margin-left:auto}.personalSources>.toolbarButton{margin-bottom:0}.railTools{display:flex;margin:0}.personalNav{min-height:3.5rem;margin-bottom:.8rem}.personalMain .messages{min-height:8rem}.personalRail .brand{font-size:1rem}.personalRail .brandMark{width:1.5rem;height:1.5rem}}
@@ -225,3 +232,16 @@
 .personalMain .action:first-child{background:var(--accent);border-color:var(--accent);color:#fff}.personalMain .action:first-child:hover{background:#245bd5;border-color:#245bd5}
 .personalMain .action:first-child > span:first-child{color:#fff}
 @media(min-width:901px){.personalMain .chat{display:flex;flex-direction:column;height:calc(100dvh - 14rem);min-height:32rem}.personalMain .messages{flex:1;min-height:0;max-height:none}.personalMain .chatHeader,.personalMain .composerArea{flex-shrink:0}}
+
+/* Shared controls: readable type, consistent blue focus, comfortable targets. */
+.studio :is(button,a,input,textarea,select,summary):focus-visible,.dialog :is(button,a,input,textarea,select,summary):focus-visible { outline-color:#668ef5; }
+.brand { font-size:21px;gap:10px; }.brandMark { width:34px;height:34px;border-radius:11px; }
+.toolbarButton { font-size:14px;min-height:44px;padding:10px 12px;font-weight:500; }
+.primaryButton,.secondaryButton { font-size:15px;min-height:46px;border-radius:12px;padding:12px 18px; }
+.textButton { font-size:13px;min-height:40px; }
+.dialog { border-radius:22px; }.dialogHeader { padding:18px 22px; }.dialogHeader h2 { font-size:20px;line-height:1.25; }.dialogBody { padding:24px; }
+.dialogDescription,.evidenceText { font-size:15px;line-height:1.6; }.evidenceNote,.sourceLink { font-size:13px;line-height:1.6; }.evidenceButton { min-height:40px;display:inline-flex;gap:5px;align-items:center;justify-content:center;font-size:13px;padding:7px 10px; }
+.field { font-size:14px; }.input,.textarea,.select { font-size:16px;min-height:44px; }.listItem strong { font-size:15px; }.listItem small { font-size:13px; }
+.readinessList li { font-size:15px; }.readinessList li span:last-child { font-size:13px; }
+.compactTask { gap:20px; }.taskGoal { font-size:16px;line-height:1.65;color:var(--ink); }.taskLocation { display:flex;align-items:center;gap:10px;background:#f3f6fd;border-radius:12px;padding:14px;font-size:14px;color:#526482; }.taskPermission { font-size:14px;line-height:1.6;color:var(--muted); }.taskChecks { padding-top:14px; }.taskChecks summary { font-size:14px;min-height:32px; }.taskChecks>.field { margin-top:14px; }.taskChecks>.secondaryButton { margin-top:12px; }.taskChecks h3 { font-size:15px;margin-top:16px; }.taskSteps,.taskChecks ul { font-size:14px;margin-top:16px; }.taskSteps small { font-size:12px; }.taskSteps { gap:12px; }.taskConnection { font-size:14px; }
+@media(max-width:700px) { .toolbarButton { font-size:12px;padding:8px;gap:5px; }.brand {font-size:20px}.dialogHeader{padding:16px 18px}.dialogBody{padding:20px}.primaryButton,.secondaryButton { white-space:normal; } }

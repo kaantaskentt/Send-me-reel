@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import type { ContentConversation, ContentReply } from "../src/lib/content-conversation";
 
 const screenshots = "/private/tmp/contextdrop-content-qa";
-const suggestions = ["Find the tools mentioned.", "Explain the useful skill.", "Help me adapt this idea."];
+const suggestions = ["Find the tools", "Explain the idea", "Make a test project"];
 const knownUrl = "https://github.com/openai/codex";
 const taskGoal = "Inspect the referenced project and propose a small version for my Mac. Review setup before making changes.";
 let analysisId: string;
@@ -31,7 +31,7 @@ async function fixture(page: Page, initial?: ContentReply) {
   let nextId = 0;
   const appendAssistant = (reply: ContentReply) => conversation.messages.push({ id: `fixture-assistant-${++nextId}`, role: "assistant", text: reply.answer, reply, createdAt: "2026-09-06T18:00:00Z" });
   if (initial) appendAssistant(initial);
-  const state = { briefs: 0, plans: 0, failNext: false, holdReply: null as Promise<void> | null, messages: [] as string[], mutations: [] as string[], unsafeRequests: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], imageRequests: [] as string[] };
+  const state = { guides: 0, plans: 0, failNext: false, staleSource: false, holdReply: null as Promise<void> | null, messages: [] as string[], mutations: [] as string[], unsafeRequests: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], imageRequests: [] as string[] };
   const workspace = { profile: { name: "", goal: "", preferences: "", harness: "claude" }, workflows: [] as Array<{ id: string; title: string; instructions: string; sourceTitles: string[]; status: "draft"; createdAt: string }> };
   page.on("pageerror", error => state.pageErrors.push(error.message));
   page.on("console", message => { if (message.type() === "error") state.consoleErrors.push(message.text()); });
@@ -57,6 +57,7 @@ async function fixture(page: Page, initial?: ContentReply) {
     if (url.pathname === "/api/local/phone" && request.method() === "GET") return route.fulfill({ json: { paired: false, configured: true, workerOnline: true, importedTotal: 0, newCount: 0, pendingCount: 0, failedCount: 0, hasMore: false, lastSyncedAt: null, lastError: null } });
     if (url.pathname === "/api/local/replicate" && request.method() === "POST") {
       state.plans++;
+      if (state.staleSource) return route.fulfill({status:409,json:{code:"SOURCE_CHANGED",error:"Another link is open now. Open it before choosing a task."}});
       const body = request.postDataJSON();
       expect(body.analysisId).toBe(analysisId); expect(body.goal).toBe(taskGoal);
       return route.fulfill({ json: { plan: { version: 1, analysisId, sourceUrl, title: "Inspect the source project", goal: taskGoal, mode: "build", summary: "Inspect the referenced project before changing anything.", prerequisites: ["Claude Code"], steps: [{ id: "step-1", instruction: "Inspect the public repository setup instructions.", evidenceIds: [], kind: "inferred", verification: "Report prerequisites and missing information." }], evidence: [{ id: "frame-1", kind: "frame", text: "Fixture source shows a GitHub project page.", timestampSec: 12 }], warnings: ["UI fixture; nothing is executed."], successCriteria: ["Return an inspection report."] } } });
@@ -76,7 +77,11 @@ async function fixture(page: Page, initial?: ContentReply) {
       if (request.method() === "GET") return route.fulfill({ json: conversation });
       expect(request.method()).toBe("POST");
       const body = request.postDataJSON(); expect(body.analysisId).toBe(analysisId);
-      if (body.brief) { state.briefs++; if (!conversation.messages.length) appendAssistant(quickReply()); return route.fulfill({ json: conversation }); }
+      if (body.guide) {
+        state.guides++;
+        conversation.guide = {version:3,analysisId,title:"A useful idea from your content",summary:"The creator shows a useful tool.",evidence:[0],choices:suggestions.map((label,index)=>({id:`choice-${index+1}`,label,detail:["Find its real page.","Understand how it helps.","Try it in a small project."][index],kind:index===2?"prepare_task":"ask",request:index===2?taskGoal:"Explain the useful idea in this content.",mode:index===2?"build":"research",executor:index===2?"terminal":"browser"}))};
+        return route.fulfill({json:conversation});
+      }
       state.messages.push(body.message);
       if (state.failNext) { state.failNext = false; return route.fulfill({ status: 502, json: { error: "Fixture server could not finish. Your saved conversation is intact; no computer action was started." } }); }
       if (state.holdReply) await state.holdReply;
@@ -103,37 +108,40 @@ async function browserEvidence(state: Awaited<ReturnType<typeof fixture>>, testI
   await testInfo.attach("browser-errors.json", { contentType: "application/json", body });
   await writeFile(`${screenshots}/browser-errors-${testInfo.title.split(" ")[0]}.json`, body);
   expect(state.pageErrors).toEqual([]);
-  expect(state.consoleErrors.filter(message => !message.includes("502 (Bad Gateway)"))).toEqual([]);
+  expect(state.consoleErrors.filter(message => !message.includes("502 (Bad Gateway)") && !(state.staleSource && message.includes("409 (Conflict)")))).toEqual([]);
   expect(state.unsafeRequests).toEqual([]);
   expect(state.mutations).toEqual([]);
 }
 
-test("content starts with three suggestions, keeps chat after reload, and prepares the chosen Claude task only on request", async ({ page }, testInfo) => {
+test("three choices preserve chat and require a confirmation before opening or running anything", async ({ page }, testInfo) => {
   const state = await fixture(page);
   await page.goto("/replicate/local");
   const chat = page.getByRole("region", { name: "Chat with your content" });
-  await expect(chat.getByText(quickReply().answer)).toBeVisible();
-  for (const suggestion of suggestions) await expect(chat.getByRole("button", { name: suggestion, exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "From plan to your computer" })).toHaveCount(0);
-  expect(state.briefs).toBe(1);
-  await page.screenshot({ path: `${screenshots}/content-quick-take-desktop.png`, fullPage: true });
+  await expect(page.getByRole("heading", {name:"A useful idea from your content"})).toBeVisible();
+  for (const suggestion of suggestions) await expect(page.getByRole("button", { name: new RegExp(`^${suggestion}`) })).toBeVisible();
+  expect(state.guides).toBe(1); expect(state.plans).toBe(0); expect(state.messages).toEqual([]);
+  await page.screenshot({ path: `${screenshots}/content-three-choices-desktop.png`, fullPage: true });
   const question = "Find the referenced project and help me inspect it.";
   await page.getByLabel("Ask about your content").fill(question);
   await page.getByRole("button", { name: "Send message" }).click();
   await expect(chat.getByText(question, { exact: true })).toBeVisible();
-  await expect(chat.getByRole("link", { name: /Open verified project/ })).toHaveAttribute("href", knownUrl);
-  await expect(page.getByRole("heading", { name: "From plan to your computer" })).toHaveCount(0);
+  await chat.getByRole("button", {name:"Open verified project"}).click();
+  const confirmation=page.getByRole("dialog",{name:"Open this page?"});
+  await expect(confirmation.getByRole("link",{name:"Yes, open it"})).toHaveAttribute("href",knownUrl);
+  await confirmation.getByRole("button",{name:"Go back"}).click();
+  await expect(confirmation).toHaveCount(0);
   await page.reload();
+  await page.getByRole("button", {name:"Previous chat"}).click();
   await expect(chat.getByText(question, { exact: true })).toBeVisible();
-  expect(state.briefs).toBe(1); expect(state.messages).toEqual([question]);
-  expect(state.plans).toBe(0);
+  expect(state.guides).toBe(1); expect(state.messages).toEqual([question]); expect(state.plans).toBe(0);
   await chat.getByRole("button", { name: /Prepare my local inspection/ }).click();
   const review = page.getByRole("region", { name: "Review your task" });
   await expect(review).toBeVisible();
+  await expect(review.getByRole("button", { name: "Yes, start", exact: true })).toBeEnabled();
+  await expect(review.getByText(/Claude Code opens in Terminal/)).toBeVisible();
+  await review.getByText("Change the task or app",{exact:true}).click();
   await expect(page.getByLabel("Your task outcome")).toHaveValue(taskGoal);
-  await expect(review.getByLabel("Run with")).toHaveValue("claude");
-  await expect(review.getByRole("button", { name: "Approve & run on my Mac", exact: true })).toBeEnabled();
-  await expect(review.getByText(/Claude Code opens in plan mode/)).toBeVisible();
+  await expect(review.getByLabel("Task app",{exact:true})).toHaveValue("claude");
   expect(state.plans).toBe(1);
   await page.screenshot({ path: `${screenshots}/content-chosen-task.png`, fullPage: true });
   await browserEvidence(state, testInfo);
@@ -142,6 +150,8 @@ test("content starts with three suggestions, keeps chat after reload, and prepar
 test("library search and source evidence dialogs keep keyboard focus and restore it on Escape", async ({ page }, testInfo) => {
   const state = await fixture(page, quickReply());
   await page.goto("/replicate/local");
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await page.getByRole("button",{name:"Previous chat"}).click();
   await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
   const libraryButton = page.getByRole("button", { name: "Saved content", exact: true });
   await libraryButton.click();
@@ -157,21 +167,26 @@ test("library search and source evidence dialogs keep keyboard focus and restore
   await page.keyboard.press("Escape");
   await expect(library).toHaveCount(0);
   await expect(libraryButton).toBeFocused();
-  const source = page.getByRole("complementary", { name: "Current source" });
-  await source.getByText("What ContextDrop read", { exact: true }).click();
-  const moment = source.getByRole("button", { name: /^\d+:\d\d$/ }).first();
+  await page.getByRole("button",{name:"What I read"}).click();
+  const source = page.getByRole("dialog",{name:"What I read"});
+  const moment = source.getByRole("button",{name:/^\d+:\d\d$/}).first();
   await moment.click();
-  await expect(page.getByRole("dialog", { name: /^Source evidence/ })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: /^In your content/ })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("dialog", { name: /^Source evidence/ })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: /^In your content/ })).toHaveCount(0);
   await expect(moment).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button",{name:"What I read"})).toBeFocused();
   await browserEvidence(state, testInfo);
 });
 
 test("project preferences persist and saved workflow is only a draft until the user sends it", async ({ page }, testInfo) => {
   const state = await fixture(page, quickReply());
   await page.goto("/replicate/local");
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await page.getByRole("button",{name:"Previous chat"}).click();
   await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
+  await page.locator('summary[aria-label="More options"]').click();
   await page.getByRole("button", { name: "My project", exact: true }).click();
   const project = page.getByRole("dialog", { name: "My project", exact: true });
   await project.getByLabel("Project name", { exact: true }).fill("Useful editor");
@@ -184,8 +199,9 @@ test("project preferences persist and saved workflow is only a draft until the u
   await expect(project.getByLabel("Project name", { exact: true })).toHaveValue("Useful editor");
   await expect(project.getByLabel("Preferred coding app")).toHaveValue("codex");
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Save workflow", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Workflow saved", exact: true })).toBeDisabled();
+  await page.getByText("Sources & saved steps",{exact:true}).click();
+  await page.getByRole("button", { name: "Save these steps", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Workflows", exact: true }).click();
   const workflows = page.getByRole("dialog", { name: "Saved workflows", exact: true });
   await expect(workflows.getByText(/Saved workflows are drafts/)).toBeVisible();
@@ -202,22 +218,25 @@ test("project preferences persist and saved workflow is only a draft until the u
 test("file picker explains limits and rejects unsupported files before contacting the reader", async ({ page }, testInfo) => {
   const state = await fixture(page, quickReply());
   await page.goto("/replicate/local");
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await page.getByRole("button",{name:"Previous chat"}).click();
   await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Add a link or upload a file" }).click();
   await page.getByRole("button", { name: "Upload a file", exact: true }).click();
   await page.getByLabel("Choose content file").setInputFiles({ name: "unsupported.exe", mimeType: "application/octet-stream", buffer: Buffer.from("unsupported fixture") });
   await expect(page.getByRole("region", { name: "Add content" }).getByRole("alert")).toContainText("supported video, audio, image, PDF, or text");
-  await expect(page.getByRole("button", { name: "Analyze this file", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Read this file", exact: true })).toBeDisabled();
   await page.getByLabel("Choose content file").setInputFiles({ name: "notes.md", mimeType: "text/markdown", buffer: Buffer.from("# A useful workflow\nExplain this source.") });
   await expect(page.getByRole("region", { name: "Add content" }).getByRole("alert")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Analyze this file", exact: true })).toBeEnabled();
-  await expect(page.getByText(/Files are sent to your configured AI provider/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Read this file", exact: true })).toBeEnabled();
+  await expect(page.getByText(/Sent to your AI provider/)).toBeVisible();
   await browserEvidence(state, testInfo);
 });
 
 test("server failure retains the user's draft and never mounts execution", async ({ page }, testInfo) => {
   const state = await fixture(page, quickReply());
   await page.goto("/replicate/local");
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await page.getByRole("button",{name:"Previous chat"}).click();
   await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
   const draft = "Please find the GitHub name briefly visible near the end.";
   state.failNext = true;
@@ -235,6 +254,8 @@ test("server failure retains the user's draft and never mounts execution", async
 test("unsent source drafts survive reload and arriving replies preserve newly typed questions", async ({ page }, testInfo) => {
   const state = await fixture(page, quickReply());
   await page.goto("/replicate/local");
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await page.getByRole("button",{name:"Previous chat"}).click();
   await expect(page.getByText(quickReply().answer, { exact: true })).toBeVisible();
   const composer = page.getByLabel("Ask about your content");
   const draft = "Find the GitHub repo shown near the end, then explain why I would use it.";
@@ -245,12 +266,12 @@ test("unsent source drafts survive reload and arriving replies preserve newly ty
   let releaseReply!: () => void;
   state.holdReply = new Promise<void>(resolve => { releaseReply = resolve; });
   await page.getByRole("button", { name: "Send message" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Checking the evidence" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Looking into it" })).toBeVisible();
   const nextDraft = "And can you compare that with the tool I already use?";
   await composer.fill(nextDraft);
   releaseReply();
   state.holdReply = null;
-  await expect(page.getByRole("link", { name: /Open verified project/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Open verified project/ })).toBeVisible();
   await expect(composer).toHaveValue(nextDraft);
   await page.reload();
   await expect(composer).toHaveValue(nextDraft);
@@ -267,6 +288,7 @@ test("unverified Markdown links and images stay inert and content fits desktop, 
   const answer = `A legitimate [project link](${knownUrl}) can be opened. These are unverified: <https://unverified.example/auto>, https://unverified.example/bare, [reference][ref], and [inline](https://unverified.example/inline).\n\n![tracking pixel][image]\n\n[ref]: https://unverified.example/reference\n[image]: https://tracker.example/pixel?content=source-clue`;
   const state = await fixture(page, { answer, suggestions, actions: [], evidence: [], allowedUrls: [knownUrl] });
   await page.goto("/replicate/local");
+  await page.getByRole("button",{name:"Previous chat"}).click();
   const chat = page.getByRole("region", { name: "Chat with your content" });
   await expect(chat.getByRole("link", { name: "project link", exact: true })).toHaveAttribute("href", knownUrl);
   await expect(chat.locator('a[href*="unverified.example"]')).toHaveCount(0);
@@ -277,14 +299,32 @@ test("unverified Markdown links and images stay inert and content fits desktop, 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `Horizontal overflow at ${width}px`).toBe(true);
     expect(await chat.evaluate(element => element.scrollWidth <= element.clientWidth), `Chat overflow at ${width}px`).toBe(true);
     if (width <= 760) {
-      const sourceBounds = await page.getByRole("complementary", { name: "Current source" }).boundingBox();
+      const sourceBounds = await page.getByRole("button", { name: "What I read" }).boundingBox();
       const chatBounds = await chat.boundingBox();
       expect(sourceBounds!.y, "Keep the active source above the mobile conversation").toBeLessThan(chatBounds!.y);
-      const composerBounds = await page.getByLabel("Ask about your content").boundingBox();
-      expect(composerBounds!.y + composerBounds!.height, `Composer stays within one screen at ${width}px`).toBeLessThanOrEqual(height);
+      await page.getByLabel("Ask about your content").scrollIntoViewIfNeeded();
+      await expect(page.getByLabel("Ask about your content")).toBeInViewport();
     }
     await page.screenshot({ path: `${screenshots}/content-width-${width}.png`, fullPage: true });
   }
   for (const url of state.imageRequests) expect(new URL(url).searchParams.get("analysisId")).toBe(analysisId);
   await browserEvidence(state, testInfo);
+});
+
+
+test("a changed source blocks execution and offers a working way back to the current link", async ({page}, testInfo) => {
+  const state=await fixture(page);
+  state.staleSource=true;
+  await page.goto("/replicate/local");
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await page.getByLabel("Ask about your content").fill("Keep this draft while I open the right link.");
+  await page.getByRole("button",{name:/^Make a test project/}).click();
+  const review=page.getByRole("region",{name:"Review your task"});
+  await expect(review.getByRole("alert")).toContainText("Another link is open now");
+  await expect(review.getByRole("button",{name:"Yes, start"})).toBeDisabled();
+  await review.getByRole("button",{name:"Open latest link"}).click();
+  await expect(page.getByRole("heading",{name:"A useful idea from your content"})).toBeVisible();
+  await expect(page.getByLabel("Ask about your content")).toHaveValue("Keep this draft while I open the right link.");
+  expect(state.plans).toBe(1); expect(state.messages).toEqual([]);
+  await browserEvidence(state,testInfo);
 });

@@ -1,4 +1,5 @@
 import type { Analysis } from "./types";
+import type { ContentGuide } from "./content-guide";
 
 export interface ContentAction { id: string; kind: "open_url" | "prepare_task"; label: string; detail: string; url: string | null; goal: string | null; mode: "research" | "build" | "automate" | "create"; executor?: "browser" | "terminal"; harness?: "claude" | "codex" }
 export interface ContentSourceReference { analysisId: string; title: string; sourceUrl: string; evidence: number[] }
@@ -8,7 +9,7 @@ export interface ContentInspection {
 }
 export interface ContentReply { answer: string; suggestions: string[]; actions: ContentAction[]; evidence: number[]; allowedUrls?: string[]; sourceReferences?: ContentSourceReference[]; inspections?: ContentInspection[] }
 export interface ContentMessage { id: string; role: "user" | "assistant"; text: string; createdAt: string; reply?: ContentReply; activity?: string[] }
-export interface ContentConversation { version: 1; analysisId: string; messages: ContentMessage[] }
+export interface ContentConversation { version: 1; analysisId: string; messages: ContentMessage[]; guide?: ContentGuide }
 
 /** A clear user instruction wins over model output and saved preferences.
  * Only parse affirmative command sentences, never the source or quoted code.

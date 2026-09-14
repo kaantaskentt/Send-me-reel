@@ -6,7 +6,8 @@ export default defineConfig({
   outputDir: "/private/tmp/contextdrop-content-qa/test-output",
   use: {
     baseURL: process.env.CONTENT_STUDIO_TEST_URL || "http://127.0.0.1:3127",
-    headless: true, viewport: { width: 1440, height: 1000 }, screenshot: "only-on-failure", trace: "retain-on-failure",
+    // The rendered local page includes an ephemeral companion credential.
+    headless: true, viewport: { width: 1440, height: 1000 }, screenshot: "only-on-failure", trace: "off",
     launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {},
   },
 });

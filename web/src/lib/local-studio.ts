@@ -64,7 +64,7 @@ export async function readLocalResult(analysisId: string): Promise<{ title: stri
   } catch { return null; }
 }
 
-export async function writeLocalJson(name: "local-plan.json" | "local-plan-usage.json", value: unknown) {
+export async function writeLocalJson(name: "local-plan.json" | "local-plan-usage.json" | "local-plan-failure.json", value: unknown) {
   await fs.mkdir(localStudioRoot, { recursive: true, mode: 0o700 });
   const temporary = path.join(localStudioRoot, `${name}.${crypto.randomUUID()}.tmp`);
   await fs.writeFile(temporary, JSON.stringify(value, null, 2), { mode: 0o600 });

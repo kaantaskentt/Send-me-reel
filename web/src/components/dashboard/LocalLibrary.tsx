@@ -39,7 +39,7 @@ export default function LocalLibrary({ currentId }: { currentId?: string }) {
   }
   const matching = items.filter(item => `${item.title} ${item.platform}`.toLowerCase().includes(query.toLowerCase()));
   return <>
-    <button type="button" className={styles.toolbarButton} onClick={() => setOpen(true)} aria-label="Saved content"><Library size={16} /> Library</button>
+    <button type="button" className={styles.toolbarButton} onClick={() => setOpen(true)} aria-label="Saved content"><Library size={16} /> Saved</button>
     {open && <StudioDialog title="Saved content" onClose={() => setOpen(false)}>
       <p className={styles.dialogDescription}>Pick up a conversation where you left off. Your sources and chats are saved on this Mac.</p>
       <label className={styles.field}><span className={styles.inline}><Search size={14} /> Find a source</span><input type="search" aria-label="Search saved content" className={styles.input} value={query} onChange={event => setQuery(event.target.value)} placeholder="Search titles or platforms…" /></label>

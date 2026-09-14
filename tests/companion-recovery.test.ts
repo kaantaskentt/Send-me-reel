@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { spawn, type ChildProcess } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
 import { createCompanionServer, type CompanionOptions } from '../companion/server.js';
 import type { ReplicationPlan } from '../shared/execution-plan.js';
@@ -14,7 +13,7 @@ const headers = { Authorization: `Bearer ${token}`, Origin: 'http://localhost:30
 const plan: ReplicationPlan = { version: 1, analysisId: 'recovery-source', sourceUrl: 'https://example.com/source', title: 'A recoverable local task', goal: 'Build a fixture result', mode: 'build', summary: 'Controlled fixture, no provider calls.', prerequisites: [], steps: [{ id: 'step1', instruction: 'Create a fixture file', evidenceIds: ['frame1'], kind: 'observed', verification: 'Read the fixture file' }], evidence: [{ id: 'frame1', kind: 'frame', text: 'A visible fixture file', timestampSec: 2 }], warnings: [], successCriteria: ['Fixture file exists'] };
 
 async function start(rootDir: string, extra: Partial<CompanionOptions> = {}) {
-  const server = createCompanionServer({ token, allowedOrigins: ['http://localhost:3000'], rootDir, platform: 'darwin', codexBinary: '/usr/bin/true', terminalMode: 'exec', launchTerminal: async () => {}, ...extra });
+  const server = createCompanionServer({ token, allowedOrigins: ['http://localhost:3000'], rootDir, platform: 'darwin', codexBinary: '/usr/bin/true', terminalMode: 'exec', launchTerminal: async () => {}, launchRunner: async () => {}, ...extra });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return { base, close: async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); } };
@@ -35,7 +34,7 @@ async function eventually(check: () => Promise<boolean>) {
 test('saved task discovery retains source identity, output and idempotency across companion restart', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-recovery-'));
   let launches = 0;
-  let service = await start(root, { launchTerminal: async () => { launches++; } });
+  let service = await start(root, { launchRunner: async () => { launches++; } });
   try {
     const run = await launch(service.base);
     assert.equal((await fetch(`${service.base}/runs`)).status, 401);
@@ -44,7 +43,7 @@ test('saved task discovery retains source identity, output and idempotency acros
     await fs.writeFile(path.join(control, 'last-message.md'), 'Agent message fallback');
     await fs.writeFile(path.join(run.workspace, 'CONTEXTDROP-RESULT.md'), '# Result\nFixture file created. Review the actual output.');
     await service.close();
-    service = await start(root, { launchTerminal: async () => { launches++; } });
+    service = await start(root, { launchRunner: async () => { launches++; } });
     const history = await (await fetch(`${service.base}/runs`, { headers })).json();
     assert.equal(history.runs.length, 1);
     assert.equal(history.runs[0].id, run.id);
@@ -67,18 +66,19 @@ test('saved task discovery retains source identity, output and idempotency acros
   } finally { await service.close(); await fs.rm(root, { recursive: true, force: true }); }
 });
 
-test('a real runner process survives service restart, streams fixture output, and acknowledges cooperative stop', async () => {
+test('background Codex starts without Terminal, survives service restart, streams output, and acknowledges stop', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-runner-recovery-'));
   const binary = path.join(root, 'fixture-codex.mjs');
   await fs.writeFile(binary, `#!${process.execPath}\nconsole.log(JSON.stringify({type:'item.started',item:{type:'command_execution',command:'fixture-only command'}}));\nconsole.log(JSON.stringify({type:'item.completed',item:{type:'command_execution',aggregated_output:'Fixture runner is alive',exit_code:0}}));\nprocess.on('SIGTERM',()=>process.exit(0));setInterval(()=>{},1000);\n`, { mode: 0o700 });
-  let runner: ChildProcess | undefined;
-  let finished: Promise<void> | undefined;
-  let service = await start(root, { codexBinary: binary, launchTerminal: async command => {
-    runner = spawn(process.execPath, ['companion/runner.mjs', path.join(path.dirname(command), 'runner.json')], { cwd: process.cwd(), stdio: 'ignore' });
-    finished = new Promise(resolve => runner!.once('close', () => resolve()));
-  } });
+  let runId: string | undefined;
+  let terminalLaunches = 0;
+  let service = await start(root, { codexBinary: binary, launchRunner: undefined, launchTerminal: async () => { terminalLaunches++; throw new Error('Terminal cannot open'); } });
   try {
     const run = await launch(service.base);
+    runId = run.id;
+    assert.equal(run.status, 'running', 'Starting is acknowledged only after a runner status handshake');
+    assert.equal(terminalLaunches, 0);
+    await assert.rejects(fs.access(path.join(root, run.id, 'control', 'Build with ContextDrop.command')));
     const state = async () => (await fetch(`${service.base}/runs/${run.id}`, { headers })).json();
     await eventually(async () => (await state()).status === 'running');
     await eventually(async () => (await (await fetch(`${service.base}/runs/${run.id}/output`, { headers })).json()).log.text.includes('Fixture runner is alive'));
@@ -91,15 +91,35 @@ test('a real runner process survives service restart, streams fixture output, an
     assert.equal((await stop.json()).status, 'stopping');
     await eventually(async () => (await state()).status === 'stopped');
     assert.equal((await state()).canStop, false);
-    await finished;
     const next = await launch(service.base, 'recover-request-002');
     assert.notEqual(next.id, run.id, 'A stopped task must not block the next reviewed task');
   } finally {
-    runner?.kill('SIGTERM');
-    await finished;
+    if (runId) {
+      await fs.writeFile(path.join(root, runId, 'control', 'stop-request.json'), JSON.stringify({ id: runId }));
+      await eventually(async () => JSON.parse(await fs.readFile(path.join(root, runId!, 'control', 'status.json'), 'utf8')).status === 'stopped');
+    }
     await service.close();
     await fs.rm(root, { recursive: true, force: true });
   }
+});
+
+test('a Terminal launch that never starts expires and a late window is cancelled', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-expired-launch-'));
+  let service = await start(root, { terminalMode: 'interactive' });
+  try {
+    const run = await launch(service.base);
+    await service.close();
+    const manifestPath = path.join(root, run.id, 'control', 'run.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.state.createdAt = new Date(Date.now() - 61_000).toISOString();
+    await fs.writeFile(manifestPath, JSON.stringify(manifest));
+    service = await start(root);
+    const state = await (await fetch(`${service.base}/runs/${run.id}`, { headers })).json();
+    assert.equal(state.status, 'failed');
+    assert.match(state.error, /did not start/);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, run.id, 'control', 'stop-request.json'), 'utf8')).id, run.id);
+    assert.notEqual((await launch(service.base, 'after-expired-001')).id, run.id);
+  } finally { await service.close(); await fs.rm(root, { recursive: true, force: true }); }
 });
 
 test('output and local reveal never follow generated symlinks or accept arbitrary paths', async () => {
