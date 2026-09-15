@@ -184,7 +184,7 @@ export async function answerContent(analysis: Analysis, conversation: ContentCon
         continue;
       }
       const unresolved = repos.filter(url => repositoryChecks.get(url)?.sourceMatch !== "confirmed");
-      if (unresolved.length && !/candidate|(?:possible|likely|strong)(?: (?:the|a|best))? (?:match|repo)|not confirm|could(?:n't| not) confirm|unverified|not proven|does(?:n't| not) (?:show|prove|confirm).{0,30}(?:owner|identity|original)/i.test(reply.answer)) reply.answer += "\n\nThese repo links are possible matches; their exact owners are not confirmed by the source.";
+      if (unresolved.length && !/candidate|(?:possible|likely|strong(?:est)?)(?: (?:the|a|best))? (?:match|repo)|not confirm|could(?:n't| not) confirm|unverified|not proven|does(?:n't| not) (?:show|prove|confirm).{0,80}(?:owner|identity|original)/i.test(reply.answer)) reply.answer += "\n\nThese repo links are possible matches; their exact owners are not confirmed by the source.";
       return { reply: { ...reply, ...(inspections.size ? { inspections: [...inspections.values()] } : {}) }, activity: [...new Set(activity)], usage };
     }
     input.push(...response.output as ResponseInput);

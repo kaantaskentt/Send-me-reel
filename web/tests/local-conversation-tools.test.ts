@@ -22,7 +22,7 @@ test("public link requests use a direct lookup; explanations and source-only que
   assert.equal(publicLookupKind("Find the link in my saved library", "GitHub"), null);
 });
 
-test("a missing video URL is found in chat with README evidence in two model calls", async () => {
+for (const qualification of ["likely the match", "strongest match"]) test(`a missing video URL is found in two calls without repeating '${qualification}'`, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-direct-search-"));
   try {
     const current = source("skill", { caption: "Comment SPLIT for Falcon Loop. One model writes a plan, the other reviews it. Then they swap roles.", frame_descriptions: [{ onScreenText: ["Falcon"], description: "Free GitHub skill; no owner visible." }] });
@@ -37,7 +37,7 @@ test("a missing video URL is found in chat with README evidence in two model cal
       const result = JSON.parse(request.input.find(item => item.type === "function_call_output")!.output!);
       assert.equal(result.candidates[0].verification.sourceMatch, "candidate");
       assert.match(result.candidates[0].readme.text, /independent reviewer/);
-      return final({ answer: `[Falcon Loop](${repository.url}) is likely the match: its writer and independent reviewer match the video, but the video doesn't prove the owner.`, actions: [{ id: "open", kind: "open_url", label: "Open Falcon Loop", detail: "Read the matching public project", url: repository.url, goal: null, mode: "research", executor: "browser", harness: "codex" }] });
+      return final({ answer: `[Falcon Loop](${repository.url}) is the ${qualification}: its writer and independent reviewer match the video, but the video doesn't prove it's the exact original repo.`, actions: [{ id: "open", kind: "open_url", label: "Open Falcon Loop", detail: "Read the matching public project", url: repository.url, goal: null, mode: "research", executor: "browser", harness: "codex" }] });
     } } } as unknown as Pick<OpenAI, "responses">;
     const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "give me the repo link", {
       client, studioRoot: root, workspace: {},
@@ -48,7 +48,7 @@ test("a missing video URL is found in chat with README evidence in two model cal
     assert.equal(turns, 2); assert.equal(reads, 1);
     assert.equal(result.reply.actions[0].kind, "open_url");
     assert.equal(result.reply.actions[0].url, repository.url);
-    assert.match(result.reply.answer, /likely the match/);
+    assert.ok(result.reply.answer.includes(qualification));
     assert.ok(!result.reply.answer.includes("These repo links"), "Do not repeat an already clear qualification");
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
