@@ -13,6 +13,30 @@ export const PERSONAL_ORIGIN = "http://127.0.0.1:3127";
 export const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const report = message => console.log("[ContextDrop] " + message);
 
+/** Reuse only this checkout's live launcher and its local companion handshake. */
+export async function runningPersonalSession(root, fetcher = fetch) {
+  try {
+    const directory = path.join(root, ".contextdrop");
+    const [session, lock] = await Promise.all(["personal-session.json", "personal-launch.lock"].map(async name => JSON.parse(await fs.readFile(path.join(directory, name), "utf8"))));
+    if (session.origin !== PERSONAL_ORIGIN || session.pid !== lock.pid || !Number.isSafeInteger(session.pid) || session.pid <= 0) return null;
+    for (const pid of [session.pid, session.webPid, session.companionPid]) {
+      if (!Number.isSafeInteger(pid) || pid <= 0) return null;
+      process.kill(pid, 0);
+    }
+    const response = await fetcher(PERSONAL_ORIGIN + "/api/local/health", { redirect: "error", signal: AbortSignal.timeout(5_000) });
+    if (!response.ok) { await response.body?.cancel(); return null; }
+    const text = await response.text();
+    if (text.length > 16_384) return null;
+    const health = JSON.parse(text);
+    return health.version === 1 && health.companion?.connected === true ? session : null;
+  } catch { return null; }
+}
+
+function openPersonalApp() {
+  const child = spawn("/usr/bin/open", [PERSONAL_ORIGIN + "/replicate/local"], { stdio: "ignore", shell: false });
+  child.once("error", () => report("Open the local address above in your browser."));
+}
+
 export function personalEnvironment(root, inherited = process.env) {
   const env = { ...inherited };
   const files = ["web/.env.development.local", "web/.env.local", "web/.env.development", "web/.env", ".env"];
@@ -75,6 +99,11 @@ export async function startPersonal(options = {}) {
   if (process.platform !== "darwin") throw new Error("The personal ContextDrop launcher currently requires a Mac.");
   if (Number(process.versions.node.split(".")[0]) < 22) throw new Error("Use Node.js 22 or newer to start ContextDrop.");
   const root = options.root ?? repository;
+  if (await runningPersonalSession(root)) {
+    report("Already running: " + PERSONAL_ORIGIN + "/replicate/local");
+    if (!options.noOpen) openPersonalApp();
+    return;
+  }
   const privateRoot = path.join(root, ".contextdrop");
   await fs.mkdir(privateRoot, { recursive: true, mode: 0o700 });
   await fs.chmod(privateRoot, 0o700);
@@ -153,10 +182,7 @@ export async function startPersonal(options = {}) {
     report("Ready: " + PERSONAL_ORIGIN + "/replicate/local");
     report(health.status === "ready" ? "Content chat and Mac companion are connected. Keep this window open; Ctrl+C stops the app." : "The app is open, but its setup panel shows missing configuration. Keep this window open.");
     report("Your Mac stays awake while this launcher runs. Closing the lid or shutting down still interrupts work.");
-    if (!options.noOpen) {
-      const open = spawn("/usr/bin/open", [PERSONAL_ORIGIN + "/replicate/local"], { stdio: "ignore", shell: false });
-      open.once("error", () => report("Open the local address above in your browser."));
-    }
+    if (!options.noOpen) openPersonalApp();
     if (!abort.signal.aborted) await new Promise(resolve => abort.signal.addEventListener("abort", resolve, { once: true }));
     if (failed) throw new Error("A local service stopped. Inspect .contextdrop/personal-logs, then restart ContextDrop.");
   } finally {

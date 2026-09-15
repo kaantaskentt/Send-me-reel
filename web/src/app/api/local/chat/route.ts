@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { isLocalStudioRequest, localStudioRoot, readLocalAnalysis } from "@/lib/local-studio";
 import { readBoundedJson } from "@/lib/bounded-json";
-import { answerContent, contentMessage, readConversation, writeConversation } from "@/lib/local-conversation";
+import { answerContent, contentFailureCode, contentMessage, readConversation, writeConversation } from "@/lib/local-conversation";
 import { quickTakePrompt } from "@/lib/content-conversation";
 import { createContentGuide } from "@/lib/local-content-guide";
 import { parseContentGuide } from "@/lib/content-guide";
@@ -58,7 +58,9 @@ export async function POST(request: NextRequest) {
     await writeConversation(conversation);
     await fs.appendFile(path.join(localStudioRoot, "chat-usage.jsonl"), JSON.stringify({ at: new Date().toISOString(), analysisId: analysis.id, ...result.usage }) + "\n", { mode: 0o600 });
     return NextResponse.json(conversation, { headers: { "Cache-Control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "The assistant could not finish this reply. Your saved conversation is intact. Try a smaller question; no computer action was started." }, { status: 502 });
+  } catch (error) {
+    const code = contentFailureCode(error);
+    console.warn(`[local-chat] ${code}`);
+    return NextResponse.json({ code, error: "The reply was interrupted. Your content is saved. Try again." }, { status: 502 });
   } finally { active = false; }
 }

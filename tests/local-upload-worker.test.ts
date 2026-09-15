@@ -118,7 +118,7 @@ test("the actual local upload worker reinspects an image and returns evidence an
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
 
-test("inspection cancellation lets a slow provider deletion finish before settling", { timeout: 15_000 }, async () => {
+test("inspection cancellation lets a slow provider deletion finish before settling", { timeout: 30_000 }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-inspection-cleanup-"));
   const controller = new AbortController();
   const fixtureEnvironment = {
@@ -141,7 +141,9 @@ test("inspection cancellation lets a slow provider deletion finish before settli
       uploadRoot: root, uploadId: manifest.id, question: "Inspect this image",
       apiKey: "fixture-only-not-a-real-key", signal: controller.signal,
     }).then(() => ({}), error => ({ error }));
-    const deadline = Date.now() + 5_000;
+    // Wait for the subprocess to reach inference before testing cancellation.
+    // Cold startup under memory pressure is not the cleanup behavior being asserted.
+    const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
       try { await fs.access(path.join(root, "generation-started")); break; }
       catch { await new Promise(resolve => setTimeout(resolve, 20)); }

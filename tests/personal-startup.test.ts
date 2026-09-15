@@ -6,12 +6,37 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
-import { personalEnvironment, assertPortAvailable, acquireLauncherLock, stopOwnedChild } from "../scripts/start-personal.mjs";
+import { personalEnvironment, runningPersonalSession, assertPortAvailable, acquireLauncherLock, stopOwnedChild } from "../scripts/start-personal.mjs";
 import { readLocalHealth } from "../web/src/lib/local-health";
 
 const env = { NODE_ENV: "development", CONTEXTDROP_LOCAL_STUDIO: "1", OPENAI_API_KEY: "private-openai", GEMINI_API_KEY: "private-gemini" } as NodeJS.ProcessEnv;
 const headers = new Headers({ host: "127.0.0.1:3127" });
 const ready = { status: "ready", platform: "darwin", version: 1, execution: "streaming-terminal", capabilities: { terminal: true, browser: { configured: true }, harnesses: { codex: true, claude: false } } };
+
+test("reopening the personal app reuses its live checkout and refuses stale or unrelated sessions", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-personal-reopen-"));
+  const directory = path.join(root, ".contextdrop");
+  try {
+    await fs.mkdir(directory);
+    const session = { pid: process.pid, webPid: process.pid, companionPid: process.pid, origin: "http://127.0.0.1:3127" };
+    await fs.writeFile(path.join(directory, "personal-session.json"), JSON.stringify(session));
+    await fs.writeFile(path.join(directory, "personal-launch.lock"), JSON.stringify({ pid: process.pid }));
+    let calls = 0;
+    const fetcher = async (url: string, options: RequestInit) => {
+      calls++; assert.equal(url, session.origin + "/api/local/health"); assert.equal(options.redirect, "error");
+      return Response.json({ version: 1, companion: { connected: true } });
+    };
+    assert.deepEqual(await runningPersonalSession(root, fetcher), session);
+    assert.equal(calls, 1);
+    assert.equal(await runningPersonalSession(root, async () => Response.json({ version: 1, companion: { connected: false } })), null);
+    await fs.writeFile(path.join(directory, "personal-launch.lock"), JSON.stringify({ pid: process.pid + 1 }));
+    assert.equal(await runningPersonalSession(root, fetcher), null);
+    assert.equal(calls, 1);
+    await fs.writeFile(path.join(directory, "personal-session.json"), JSON.stringify({ ...session, origin: "https://remote.example" }));
+    assert.equal(await runningPersonalSession(root, fetcher), null);
+    assert.equal(calls, 1);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
 
 test("personal configuration follows explicit environment precedence and forces only local launch settings", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-personal-env-"));

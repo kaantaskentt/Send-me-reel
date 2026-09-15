@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     selection = selectCaptureReader(body.url, body.provider ?? "auto", !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY));
   } catch (error) { return NextResponse.json({ error: error instanceof Error && error.message.length < 200 ? error.message : "Paste a public HTTPS link." }, { status: 400 }); }
   const sourceUrl = selection.url;
-  if (selection.provider === "detailed" && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "The local server needs OPENAI_API_KEY for detailed video capture." }, { status: 503 });
+  if (selection.downloadReader === "openai" && !process.env.OPENAI_API_KEY) return NextResponse.json({ error: "Connect Gemini or OpenAI to read videos on this Mac." }, { status: 503 });
   let existing = await readLocalAnalysis(true);
   if (existing && captureIsActive(existing)) return NextResponse.json({ error: "Content is already being captured. Wait for it to finish.", status: existing.status, id: existing.id, sourceUrl: existing.source_url, stage: (existing.metadata?.local_capture as { stage?: string })?.stage }, { status: 409 });
   await fs.mkdir(localStudioRoot, { recursive: true, mode: 0o700 });
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Fixed executable and literal argv; the URL is never shell text. The CLI owns
     // durable stage checkpoints, timeouts, and cleanup independently of Next dev.
     descriptor = openSync(path.join(localStudioRoot, "local-capture.log"), "a", 0o600);
-    const child = spawn(process.execPath, ["--import", "tsx", selection.script, sourceUrl, "--output", ".contextdrop/local-analysis.json", "--timeout-seconds", String(selection.timeoutSeconds), ...(question ? ["--note", question] : []), ...(resume ? ["--resume"] : [])], { cwd: localProjectRoot, env: process.env, detached: true, stdio: ["ignore", descriptor, descriptor] });
+    const child = spawn(process.execPath, ["--import", "tsx", selection.script, sourceUrl, "--output", ".contextdrop/local-analysis.json", "--timeout-seconds", String(selection.timeoutSeconds), ...(selection.downloadReader ? ["--reader", selection.downloadReader] : []), ...(question ? ["--note", question] : []), ...(resume ? ["--resume"] : [])], { cwd: localProjectRoot, env: process.env, detached: true, stdio: ["ignore", descriptor, descriptor] });
     await new Promise<void>((resolve, reject) => { child.once("spawn", resolve); child.once("error", reject); });
     child.unref();
     // Prevent duplicate starts while the CLI initializes its first checkpoint.

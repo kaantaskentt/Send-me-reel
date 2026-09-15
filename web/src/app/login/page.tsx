@@ -3,15 +3,19 @@ import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { BOT_LINK } from "@/lib/constants";
 import LoginContent from "@/components/login/LoginContent";
+import { headers } from "next/headers";
+import { isLocalStudioRequest } from "@/lib/local-studio";
 
 export const metadata = {
   title: "Sign in — ContextDrop",
   description: "Sign in to your ContextDrop dashboard",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  if (process.env.NODE_ENV === "development" && isLocalStudioRequest(await headers())) redirect("/replicate/local");
+  const { error } = await searchParams;
   const session = await getSession();
-  if (session) {
+  if (session && !error) {
     redirect("/dashboard");
   }
 

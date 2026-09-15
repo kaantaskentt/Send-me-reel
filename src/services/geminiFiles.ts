@@ -26,11 +26,15 @@ async function pause(milliseconds: number, signal?: AbortSignal) {
 /** A provider file is used only inside this scope; deletion gets its own deadline even after capture cancellation. */
 export async function withGeminiFile<T>(filename: string, mimeType: string, options: GeminiFileOptions, use: (file: { fileUri: string; mimeType: string }) => Promise<T>, onCleanup?: (deleted: boolean) => Promise<void>): Promise<T> {
   if (!options.apiKey?.trim()) throw new GeminiVideoError("GEMINI_NOT_CONFIGURED", "Gemini is not configured in this project");
+  options.signal?.throwIfAborted();
   const fetcher = options.fetchImpl || fetch;
   const signal = options.signal ? AbortSignal.any([options.signal, AbortSignal.timeout(180_000)]) : AbortSignal.timeout(180_000);
   const size = (await fs.stat(filename)).size;
   let file: GeminiFile | undefined;
+  let uploadedName: string | undefined;
+  let finalizeAttempted = false;
   try {
+    signal.throwIfAborted();
     const start = await fetcher(`${ORIGIN}/upload/v1beta/files`, {
       method: "POST", redirect: "error", signal,
       headers: { "x-goog-api-key": options.apiKey, "Content-Type": "application/json", "X-Goog-Upload-Protocol": "resumable", "X-Goog-Upload-Command": "start", "X-Goog-Upload-Header-Content-Length": String(size), "X-Goog-Upload-Header-Content-Type": mimeType },
@@ -44,22 +48,28 @@ export async function withGeminiFile<T>(filename: string, mimeType: string, opti
     const stream = createReadStream(filename);
     let response;
     try {
+      finalizeAttempted = true;
       response = await fetcher(url.href, { method: "POST", redirect: "error", signal, headers: { "Content-Type": mimeType, "Content-Length": String(size), "X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize" }, body: Readable.toWeb(stream) as ReadableStream, duplex: "half" } as RequestInit);
     } finally { stream.destroy(); }
     const uploaded = await checked(response) as { file?: unknown };
+    // Keep a valid cleanup identity even if another field in the upload response is invalid.
+    const name = (uploaded.file as { name?: unknown } | undefined)?.name;
+    if (typeof name === "string" && /^files\/[a-zA-Z0-9_-]+$/.test(name)) uploadedName = name;
     file = fileInfo(uploaded.file);
     while (file.state === "PROCESSING") {
       await pause(2_000, signal);
       file = fileInfo(await checked(await fetcher(`${ORIGIN}/v1beta/${file.name}`, { redirect: "error", signal, headers: { "x-goog-api-key": options.apiKey } })));
+      if (file.name !== uploadedName) throw new GeminiVideoError("PROVIDER_FILE_MISMATCH", "Gemini returned a different file identity while processing");
     }
     if (file.state !== "ACTIVE") throw new GeminiVideoError("PROVIDER_FILE_FAILED", "Gemini could not process this file");
     if (file.mimeType !== mimeType) throw new GeminiVideoError("PROVIDER_FILE_MISMATCH", "Gemini read a different file format than expected");
+    signal.throwIfAborted();
     return await use({ fileUri: file.uri, mimeType });
   } finally {
-    if (file) {
+    if (uploadedName) {
       let deleted = false;
-      try { const response = await fetcher(`${ORIGIN}/v1beta/${file.name}`, { method: "DELETE", redirect: "error", signal: AbortSignal.timeout(15_000), headers: { "x-goog-api-key": options.apiKey } }); deleted = response.ok || response.status === 404; await response.body?.cancel(); } catch { /* The Files API expires unfinished cleanup after 48 hours. */ }
+      try { const response = await fetcher(`${ORIGIN}/v1beta/${uploadedName}`, { method: "DELETE", redirect: "error", signal: AbortSignal.timeout(15_000), headers: { "x-goog-api-key": options.apiKey } }); deleted = response.ok || response.status === 404; await response.body?.cancel(); } catch { /* Caller records cleanup pending; never claim deletion without a response. */ }
       await onCleanup?.(deleted);
-    }
+    } else if (finalizeAttempted) await onCleanup?.(false); // No safe file identity was returned; do not claim cleanup.
   }
 }

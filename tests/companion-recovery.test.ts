@@ -13,13 +13,13 @@ const headers = { Authorization: `Bearer ${token}`, Origin: 'http://localhost:30
 const plan: ReplicationPlan = { version: 1, analysisId: 'recovery-source', sourceUrl: 'https://example.com/source', title: 'A recoverable local task', goal: 'Build a fixture result', mode: 'build', summary: 'Controlled fixture, no provider calls.', prerequisites: [], steps: [{ id: 'step1', instruction: 'Create a fixture file', evidenceIds: ['frame1'], kind: 'observed', verification: 'Read the fixture file' }], evidence: [{ id: 'frame1', kind: 'frame', text: 'A visible fixture file', timestampSec: 2 }], warnings: [], successCriteria: ['Fixture file exists'] };
 
 async function start(rootDir: string, extra: Partial<CompanionOptions> = {}) {
-  const server = createCompanionServer({ token, allowedOrigins: ['http://localhost:3000'], rootDir, platform: 'darwin', codexBinary: '/usr/bin/true', terminalMode: 'exec', launchTerminal: async () => {}, launchRunner: async () => {}, ...extra });
+  const server = createCompanionServer({ token, allowedOrigins: ['http://localhost:3000'], rootDir, platform: 'darwin', codexBinary: '/usr/bin/true', terminalMode: 'exec', launchTerminal: async () => {}, launchRunner: async () => {}, inspectSetup: async () => ({ version: 1, checkedAt: new Date().toISOString(), connections: [], harnesses: Object.fromEntries(['codex', 'claude'].map(id => [id, { installed: true, supported: true, version: 'fixture', auth: 'authenticated', authEvidence: 'native_cli_status', reason: null, mode: id === 'codex' ? 'exec' : 'interactive', available: true, unavailableReason: null }])) } as import('../companion/connections.js').SetupStatus), ...extra });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return { base, close: async () => { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); } };
 }
-async function launch(base: string, key = 'recover-request-001') {
-  const response = await fetch(`${base}/runs`, { method: 'POST', headers: { ...headers, 'Idempotency-Key': key }, body: JSON.stringify({ plan, executor: 'terminal' }) });
+async function launch(base: string, key = 'recover-request-001', harness: 'codex' | 'claude' = 'codex') {
+  const response = await fetch(`${base}/runs`, { method: 'POST', headers: { ...headers, 'Idempotency-Key': key }, body: JSON.stringify({ plan, executor: 'terminal', harness }) });
   assert.ok(response.ok, await response.clone().text());
   return response.json();
 }
@@ -105,9 +105,9 @@ test('background Codex starts without Terminal, survives service restart, stream
 
 test('a Terminal launch that never starts expires and a late window is cancelled', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'contextdrop-expired-launch-'));
-  let service = await start(root, { terminalMode: 'interactive' });
+  let service = await start(root, { claudeBinary: '/usr/bin/true' });
   try {
-    const run = await launch(service.base);
+    const run = await launch(service.base, 'recover-request-001', 'claude');
     await service.close();
     const manifestPath = path.join(root, run.id, 'control', 'run.json');
     const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));

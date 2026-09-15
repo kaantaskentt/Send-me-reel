@@ -6,7 +6,7 @@ export interface CaptureFailure { code: string; message: string; retryable: bool
 // messages reach the browser; errors may contain URLs, paths or credentials.
 export function getCaptureFailure(analysis: Pick<Analysis, "status" | "error_message" | "metadata"> | null): CaptureFailure | undefined {
   if (analysis?.status !== "failed") return undefined;
-  const capture = analysis.metadata?.local_capture as { errorCode?: string } | undefined;
+  const capture = analysis.metadata?.local_capture as { errorCode?: string; reader?: string } | undefined;
   const detail = analysis.error_message ?? "";
   const code = capture?.errorCode ?? "";
   if (code === "VIDEO_TOO_LARGE") return { code, message: "This downloaded video exceeds the 100 MiB analysis limit. Choose a smaller video or upload a compressed copy. Retrying the same download will not help. No video analysis was completed.", retryable: false };
@@ -27,8 +27,9 @@ export function getCaptureFailure(analysis: Pick<Analysis, "status" | "error_mes
   if (code === "NOT_A_VIDEO" || /no video could be found in this tweet|(?:there is )?no video in this post|does not contain (?:a )?video|this (?:is an image post|post contains (?:an? )?(?:image|photo))/i.test(detail)) return { code: "SOURCE_HAS_NO_VIDEO", message: "This link did not expose a video. For an image or carousel, upload the images you want to discuss; for a text post, upload its text or a screenshot. The link reader does not yet import these posts automatically.", retryable: false };
   if (code === "METADATA_LOOKUP_FAILED") return { code, message: "The reader could not confirm this video's public identity and length. Try the link again, or upload a saved copy of the video. No video analysis was completed.", retryable: true };
   if (code === "ENOENT" && /yt-dlp/i.test(detail)) return { code: "DOWNLOADER_UNAVAILABLE", message: "The local video downloader is missing. Install yt-dlp on this Mac, or upload a saved video or image instead.", retryable: false };
-  if (code === "GEMINI_NOT_CONFIGURED") return { code, message: "Connect the project's Gemini key to read longer YouTube videos, or choose Saved video frames for a video under 10 minutes.", retryable: false };
+  if (code === "GEMINI_NOT_CONFIGURED") return { code, message: "Connect Gemini, or choose Other reader (OpenAI) in Reading options for a video under 10 minutes.", retryable: false };
   if (code === "VIDEO_DURATION_UNSUPPORTED") return { code, message: "The Gemini reader accepts public YouTube videos up to 60 minutes. Choose a shorter source.", retryable: false };
+  if (capture?.reader === "gemini" && (code.startsWith("GEMINI_") || code === "NATIVE_VIDEO_INCOMPLETE" || code === "HYBRID_CAPTURE_FAILED" || (analysis.metadata?.source_evidence as { native_video?: unknown })?.native_video)) return { code: "NATIVE_VIDEO_INCOMPLETE", message: "Gemini couldn’t finish reading this video. Your saved evidence is kept. Try again, or select Other reader (OpenAI) in Reading options.", retryable: true };
   if ((analysis.metadata?.source_evidence as { native_video?: unknown } | undefined)?.native_video) return { code: "NATIVE_VIDEO_INCOMPLETE", message: "Gemini could not finish a validated video reading. Completed sections are saved. Retry the same link with Gemini to resume; no task was started.", retryable: true };
   if (code === "VIDEO_TOO_LONG" || /over 10 minutes|up to 10 minutes/i.test(detail)) {
     const duration = Number(analysis.metadata?.duration);
@@ -44,6 +45,7 @@ export function getCaptureFailure(analysis: Pick<Analysis, "status" | "error_mes
 }
 
 export function captureStageLabel(stage: string): string {
+  if (stage === "hybrid_video_analysis") return "Listening and checking the screen…";
   const labels: Record<string, string> = { starting: "Starting content capture", upload_validation: "Checking the uploaded file", upload_analysis: "Reading uploaded content", page_capture: "Reading the public page", native_video_analysis: "Reading video sections with Gemini", metadata: "Reading video details", scraping: "Retrieving the source", download: "Downloading the video", duration_check: "Checking video length", frame_extraction: "Extracting screen images", transcribing: "Reading speech and screen images", analyzing: "Analyzing speech and screen images", transcription_and_vision: "Analyzing speech and screen images", complete: "Source capture complete" };
   return labels[stage] ?? "Analyzing the video";
 }

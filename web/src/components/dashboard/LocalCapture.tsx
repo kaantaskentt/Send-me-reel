@@ -47,16 +47,25 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
   useEffect(() => {
     if (!active || submitting) return;
     const controller = new AbortController();
-    const timer = setInterval(async () => {
+    let timer: ReturnType<typeof setTimeout>;
+    async function check() {
+      let finished = false;
       try {
-        const response = await fetch("/api/local/capture", { signal: controller.signal, cache: "no-store" });
+        const response = await fetch("/api/local/capture", { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]), cache: "no-store" });
+        if (controller.signal.aborted) return;
         if (!response.ok) { setConnectionIssue(true); return; }
-        const data = await response.json(); setConnectionIssue(false);
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        setConnectionIssue(false);
         if (data.status !== "empty") { setStatus(data.status); setStage(data.stage ?? data.status); setError(data.error?.message ?? ""); setProgress(data.progress ?? null); }
-        if (data.status === "done" || data.status === "failed") router.refresh();
+        finished = data.status === "done" || data.status === "failed";
+        if (data.status === "done") { setUrl(""); setQuestion(""); setProvider("auto"); setFile(null); setMode("link"); }
+        if (finished) router.refresh();
       } catch { if (!controller.signal.aborted) setConnectionIssue(true); }
-    }, 2_000);
-    return () => { controller.abort(); clearInterval(timer); };
+      finally { if (!controller.signal.aborted && !finished) timer = setTimeout(check, 3_000); }
+    }
+    void check();
+    return () => { controller.abort(); clearTimeout(timer); };
   }, [active, submitting, router]);
   async function capture(event: React.FormEvent) {
     event.preventDefault();
@@ -102,7 +111,7 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
       </div>}
       {url.trim() && !active && <details className={guided.readOptions}><summary>Reading options</summary><div className={styles.captureOptionsContent}>
         <label className={styles.field}>Look for something specific<input className={styles.input} value={question} maxLength={2000} onChange={event => setQuestion(event.target.value)} placeholder="Optional — like the repo on screen" /></label>
-        {mode === "link" && <label className={styles.field}>Video reader<select aria-label="Content reader" value={provider} onChange={event => setProvider(event.target.value)} className={styles.select}><option value="auto">Choose for me</option><option value="detailed">Download and read</option><option value="gemini" disabled={!geminiAvailable}>Gemini video{geminiAvailable ? "" : " · needs a key"}</option></select></label>}
+        {mode === "link" && <label className={styles.field}>Video reader<select aria-label="Content reader" value={provider} onChange={event => setProvider(event.target.value)} className={styles.select}><option value="auto">Choose for me</option><option value="detailed">Closer look · up to 10 min</option><option value="gemini" disabled={!geminiAvailable}>Gemini{geminiAvailable ? "" : " · needs a key"}</option><option value="openai">Other reader (OpenAI)</option></select></label>}
       </div><p>{geminiAvailable ? "YouTube: up to 60 minutes. Other social videos: up to 10 minutes." : "Social videos: up to 10 minutes. Add Gemini for longer YouTube videos."} If a link is blocked, upload the file.</p></details>}
     </form>
     {active && <div role="status" className={guided.reading}><Loader2 size={20} className={styles.spinner} /><div><strong>{submitting && mode === "file" ? "Uploading your file…" : captureStageLabel(stage || status)}</strong><p>{connectionIssue ? "Reconnecting. Your reading may still be running." : total > 0 ? `${completed} of ${total} parts read.` : "Your choices will appear here when it’s ready."}</p>{total > 0 && <progress max={total} value={completed} aria-label="Reading progress" />}</div></div>}

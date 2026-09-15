@@ -8,6 +8,7 @@ import ContentAnswer from "./ContentAnswer";
 import type { Analysis } from "@/lib/types";
 import { publicLink, type ContentAction, type ContentConversation, type ContentMessage } from "@/lib/content-conversation";
 import { parseContentGuide, type ContentChoice } from "@/lib/content-guide";
+import { capturedFrameIndex } from "@/lib/source-frames";
 import type { ReplicationPlan } from "@/lib/execution-plan";
 import StudioDialog from "./StudioDialog";
 import styles from "./studio.module.css";
@@ -39,7 +40,7 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   const composer = useRef<HTMLTextAreaElement>(null);
   const started = useRef(false);
   const observations = (analysis.frame_descriptions ?? []) as Observation[];
-  const local = analysis.metadata?.local_evidence as { framePaths?: string[] } | undefined;
+  const previewIndex = observations.findIndex((_observation, index) => capturedFrameIndex(analysis, index) !== null);
   const sourceEvidence = analysis.metadata?.source_evidence as { native_video?: unknown; warnings?: string[] } | undefined;
   const duration = Number(analysis.metadata?.duration ?? 0);
   const title = String(analysis.metadata?.title || "Your saved content");
@@ -161,12 +162,12 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
     </StudioDialog>}
     {sourceOpen && <StudioDialog title="What I read" onClose={() => setSourceOpen(false)}>
       <h3 className={guided.sourceTitle}>{title}</h3>{guide && <p className={styles.dialogDescription}>{guide.summary}</p>}
-      {local?.framePaths?.length ? <button type="button" className={styles.sourcePreview} onClick={() => setFrame(0)}><Image unoptimized src={imageUrl(0)} width={1280} height={720} alt="Captured image from this source" /></button> : null}
+      {previewIndex >= 0 ? <button type="button" className={styles.sourcePreview} onClick={() => setFrame(previewIndex)}><Image unoptimized src={imageUrl(previewIndex)} width={1280} height={720} alt="Captured image from this source" /></button> : null}
       <p className={styles.evidenceText}>{observations.length ? `${observations.length} visual observations${analysis.transcript ? " and the audio transcript" : ""}. Small or brief details may be missed. Ask me to look closer at a moment.` : "The readable text from this source."}</p>
       <div className={styles.sourceMoments}>{(guide?.evidence ?? []).map(index => <button type="button" key={index} className={styles.evidenceButton} onClick={() => setFrame(index)}><Clock3 size={14} />{time(observations[index]?.timestampSec ?? 0)}</button>)}</div>
       {!!sourceEvidence?.warnings?.length && <p className={styles.evidenceNote}>{sourceEvidence.warnings.join(" ")}</p>}
       {sourceUrl && <a href={sourceUrl} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open original<ArrowUpRight size={15} /></a>}
     </StudioDialog>}
-    {selectedObservation && frame !== null && <StudioDialog title={`In your content · ${time(selectedObservation.timestampSec ?? 0)}`} wide onClose={() => setFrame(null)}>{local?.framePaths?.[frame] && <Image unoptimized src={imageUrl(frame)} width={1280} height={720} style={{ height: "auto" }} alt={`Captured source at ${time(selectedObservation.timestampSec ?? 0)}`} className={styles.evidenceImage} />}<p className={styles.evidenceText}>{selectedObservation.description}</p>{!!selectedObservation.onScreenText?.length && <p className={styles.evidenceNote}>On screen: {selectedObservation.onScreenText.join(" · ")}</p>}<p className={styles.evidenceNote}>{selectedObservation.uncertain ? "This detail was hard to read. Check the original." : "Read by AI. Check the original when exact wording matters."}</p>{originalMoment && <a href={originalMoment} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open the original<ArrowUpRight size={15} /></a>}</StudioDialog>}
+    {selectedObservation && frame !== null && <StudioDialog title={`In your content · ${time(selectedObservation.timestampSec ?? 0)}`} wide onClose={() => setFrame(null)}>{capturedFrameIndex(analysis, frame) !== null && <Image unoptimized src={imageUrl(frame)} width={1280} height={720} style={{ height: "auto" }} alt={`Captured source at ${time(selectedObservation.timestampSec ?? 0)}`} className={styles.evidenceImage} />}<p className={styles.evidenceText}>{selectedObservation.description}</p>{!!selectedObservation.onScreenText?.length && <p className={styles.evidenceNote}>On screen: {selectedObservation.onScreenText.join(" · ")}</p>}<p className={styles.evidenceNote}>{selectedObservation.uncertain ? "This detail was hard to read. Check the original." : "Read by AI. Check the original when exact wording matters."}</p>{originalMoment && <a href={originalMoment} target="_blank" rel="noreferrer" className={styles.sourceLink}>Open the original<ArrowUpRight size={15} /></a>}</StudioDialog>}
   </section>;
 }

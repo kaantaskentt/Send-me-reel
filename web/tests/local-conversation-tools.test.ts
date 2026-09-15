@@ -134,3 +134,69 @@ test("the reply model cannot fabricate an inspection that no tool performed", as
     assert.equal(result.reply.inspections, undefined);
   } finally { await fs.rm(root, { recursive: true, force: true }); }
 });
+
+test("a broad question returns collected evidence when its lookup budget is exhausted", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-budget-"));
+  try {
+    const current = source("many-repos", { caption: "Visible repos include example/one. The full list is not shown." });
+    let turns = 0;
+    const client = { responses: { create: async (request: { tool_choice: string; instructions: string; input: Array<{ type?: string; output?: string }> }) => {
+      if (turns++ === 0) return response(Array.from({ length: 10 }, (_, i) => call(`lookup-${i}`, "search_source", { query: "example/one" })));
+      assert.equal(request.tool_choice, "none");
+      assert.match(request.instructions, /what remains unresolved/);
+      const results = request.input.filter(item => item.type === "function_call_output").map(item => JSON.parse(item.output!));
+      assert.equal(results.length, 10, "Every requested call receives a result, including unperformed lookups");
+      assert.equal(results.filter(item => item.error).length, 2);
+      return final({ answer: "I found example/one in the captured text, but could not verify all 40 repos." });
+    } } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "Find the full list", { client, studioRoot: root, workspace: {} });
+    assert.match(result.reply.answer, /could not verify all 40/);
+    assert.equal(result.usage.calls, 2);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("repeated research reserves a final answer turn instead of discarding useful findings", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-rounds-"));
+  try {
+    const current = source("many-repos", { caption: "One visible repo." });
+    let turns = 0;
+    const client = { responses: { create: async (request: { tool_choice: string }) => {
+      if (turns++ < 5) return response([call(`lookup-${turns}`, "search_source", { query: "repo" })]);
+      assert.equal(request.tool_choice, "none");
+      return final({ answer: "I can read one repo. The remaining names are unverified." });
+    } } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "Find the full list", { client, studioRoot: root, workspace: {} });
+    assert.equal(result.usage.calls, 6);
+    assert.match(result.reply.answer, /unverified/);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+for (const format of ["markdown", "inline code", "plain text", "www host"]) test(`a ${format} repo link receives an identity check and cannot silently become the source's exact owner`, async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-repo-check-"));
+  try {
+    const current = source("repos", { caption: "The video names ui-ux-pro-max but its owner is unreadable." });
+    const url = "https://github.com/example/ui-ux-pro-max";
+    const answer = format === "markdown" ? `The owner is [example](${url}).`
+      : format === "inline code" ? `The owner is \`${url}\`.`
+      : format === "www host" ? `The owner is ${url.replace("github.com", "www.github.com")}.`
+      : `The owner is ${url}.`;
+    let turns = 0, checks = 0;
+    const client = { responses: { create: async (request: { tool_choice: string; input: unknown }) => {
+      if (turns++ === 0) return response([{ type: "web_search_call", action: { type: "search", sources: [{ url }] } }], final({ answer }).output_text);
+      assert.equal(request.tool_choice, "none");
+      assert.match(JSON.stringify(request.input), /candidate/);
+      // Even a stubborn model must not lose the source-match qualification.
+      return final({ answer });
+    } } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "Find the owner", {
+      client, studioRoot: root, workspace: {}, verifyRepository: async (proposed, clues) => {
+        checks++; assert.equal(proposed, url);
+        assert.ok(!JSON.stringify(clues).includes("example/ui-ux-pro-max"), "Search results are never promoted into original source clues");
+        return { existence: "verified", sourceMatch: "candidate", repository: { url, fullName: "example/ui-ux-pro-max", owner: "example", name: "ui-ux-pro-max", description: null, archived: false, defaultBranch: "main", license: null }, matchedClues: [], reason: "The name alone cannot establish its owner.", checkedAt: new Date().toISOString() };
+      },
+    });
+    assert.equal(checks, 1);
+    assert.match(result.reply.answer, /possible matches[\s\S]*not confirmed/);
+    assert.ok(result.activity.includes("Checked suggested repositories against source clues"));
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});

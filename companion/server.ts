@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -12,6 +12,8 @@ import { parseReplicationPlan, type ReplicationPlan } from '../shared/execution-
 import { GuidedBrowserRun, createOpenAIPlanner, type BrowserPlanner } from './browser.js';
 import { resolveInstalledHarnesses, type Harness } from './harnesses.js';
 import { launchBackgroundRunner } from './background-runner.js';
+import { inspectConnections, type ConnectionId, type SetupStatus } from './connections.js';
+import { assertExecutionSelection, modeUnavailableReason, parseConnectionIds } from './execution-policy.mjs';
 import { RUN_ID, RUN_STATUSES, readRunFile, readRunOutput, writeAtomicJson, plainText, resolveRunDirectory } from './run-store.js';
 
 const execFileAsync = promisify(execFile);
@@ -20,7 +22,7 @@ const MAX_RUNS = 100;
 const TERMINAL = '/System/Applications/Utilities/Terminal.app';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const active = new Set(['launching', 'running', 'stopping', 'awaiting_approval', 'needs_input']);
-export interface RunState { id: string; status: string; workspace: string; updatedAt: string; error?: string; pid?: number; harness?: Harness; executor?: 'terminal' | 'browser'; terminalMode?: 'interactive' | 'exec'; analysisId?: string; sourceUrl?: string; title?: string; goal?: string; createdAt?: string; canStop?: boolean; canResume?: boolean; message?: string; currentUrl?: string; history?: { action: string; status: string }[]; }
+export interface RunState { id: string; status: string; workspace: string; updatedAt: string; error?: string; pid?: number; harness?: Harness; executor?: 'terminal' | 'browser'; terminalMode?: 'interactive' | 'exec'; connectionIds?: ConnectionId[]; launchFingerprint?: string; analysisId?: string; sourceUrl?: string; title?: string; goal?: string; createdAt?: string; canStop?: boolean; canResume?: boolean; message?: string; currentUrl?: string; history?: { action: string; status: string }[]; }
 export interface CompanionOptions {
   token: string;
   allowedOrigins: string[];
@@ -35,6 +37,7 @@ export interface CompanionOptions {
   revealLocalPath?: (filename: string, target: 'workspace' | 'report') => Promise<void>;
   browserApiKey?: string;
   browserPlanner?: (plan: ReplicationPlan) => BrowserPlanner;
+  inspectSetup?: () => Promise<SetupStatus>;
 }
 function json(response: ServerResponse, code: number, body: unknown) {
   response.writeHead(code, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -72,6 +75,15 @@ export function createCompanionServer(options: CompanionOptions) {
   const browsers = new Map<string, GuidedBrowserRun>();
   let preparing = false;
   let restored: Promise<void> | undefined;
+  let setupCache: { expires: number; value: Promise<SetupStatus> } | undefined;
+  function readSetup() {
+    if (!setupCache || setupCache.expires < Date.now()) {
+      const entry = { expires: Infinity, value: Promise.resolve().then(options.inspectSetup || (() => inspectConnections(options))) };
+      setupCache = entry;
+      void entry.value.then(() => { entry.expires = Date.now() + 15_000; }, () => { if (setupCache === entry) setupCache = undefined; });
+    }
+    return setupCache.value;
+  }
   async function restoreRuns() {
     const entries = await fs.readdir(options.rootDir, { withFileTypes: true }).catch((error: NodeJS.ErrnoException) => { if (error.code === 'ENOENT') return []; throw error; });
     const found: { state: RunState; controlDir: string; requestKey?: string }[] = [];
@@ -88,7 +100,9 @@ export function createCompanionServer(options: CompanionOptions) {
         if (s.executor === 'terminal') {
           state.harness = s.harness === 'claude' ? 'claude' : 'codex';
           state.terminalMode = s.terminalMode === 'exec' ? 'exec' : 'interactive';
+          state.connectionIds = parseConnectionIds(s.connectionIds);
         }
+        if (typeof s.launchFingerprint === 'string' && /^[a-f0-9]{64}$/.test(s.launchFingerprint)) state.launchFingerprint = s.launchFingerprint;
         if (typeof s.error === 'string') state.error = plainText(s.error).slice(0, 2000);
         found.push({ state, controlDir: path.join(options.rootDir, entry.name, 'control'), ...(typeof manifest.requestKey === 'string' && /^[a-zA-Z0-9_-]{8,100}$/.test(manifest.requestKey) ? { requestKey: manifest.requestKey } : {}) });
       } catch { /* An incomplete or unrelated directory is not an executable run. */ }
@@ -159,8 +173,15 @@ export function createCompanionServer(options: CompanionOptions) {
     const wanted = `Bearer ${options.token}`;
     if (Buffer.byteLength(auth) !== Buffer.byteLength(wanted) || !timingSafeEqual(Buffer.from(auth), Buffer.from(wanted))) return json(response, 401, { error: 'Pair this browser with the token shown by the local companion' });
     const url = new URL(request.url || '/', 'http://127.0.0.1');
-    if (request.method === 'GET' && url.pathname === '/health') {
-      return json(response, 200, { status: 'ready', platform: options.platform || process.platform, runner: options.codexBinary ? 'codex' : options.claudeBinary ? 'claude' : null, execution: options.codexBinary && options.terminalMode === 'exec' ? 'streaming-terminal' : 'interactive-terminal', capabilities: { terminal: Boolean(options.codexBinary || options.claudeBinary), harnesses: { codex: Boolean(options.codexBinary), claude: Boolean(options.claudeBinary) }, browser: { configured: Boolean(options.browserApiKey || options.browserPlanner) } }, version: 1 });
+    if (request.method === 'GET' && ['/health', '/connections'].includes(url.pathname)) {
+      try {
+        const setup = await readSetup();
+        if (url.pathname === '/connections') return json(response, 200, setup);
+        const ready = (harness: Harness) => (options.platform || process.platform) === 'darwin' && !modeUnavailableReason(harness, harness === 'claude' ? 'interactive' : options.terminalMode || 'interactive') && setup.harnesses?.[harness]?.installed === true && setup.harnesses[harness].supported === true && setup.harnesses[harness].auth === 'authenticated' && setup.harnesses[harness].available === true;
+        const codex = Boolean(options.codexBinary) && ready('codex');
+        const claude = Boolean(options.claudeBinary) && ready('claude');
+        return json(response, 200, { status: codex || claude ? 'ready' : 'unavailable', companion: 'reachable', platform: options.platform || process.platform, runner: codex ? 'codex' : claude ? 'claude' : null, execution: codex && options.terminalMode === 'exec' ? 'streaming-terminal' : claude ? 'interactive-terminal' : null, capabilities: { terminal: codex || claude, harnesses: { codex, claude }, browser: { configured: Boolean(options.browserApiKey || options.browserPlanner) } }, setup, version: 1 });
+      } catch { return json(response, 503, { status: 'unavailable', error: 'Local CLI setup could not be inspected. No connection readiness has been established.' }); }
     }
     try { await (restored ??= restoreRuns()); }
     catch { return json(response, 503, { error: 'Saved task history could not be read. Check the local run folder before launching another task.' }); }
@@ -239,7 +260,24 @@ export function createCompanionServer(options: CompanionOptions) {
     try {
       const key = request.headers['idempotency-key'];
       if (Array.isArray(key) || (key && !/^[a-zA-Z0-9_-]{8,100}$/.test(key))) throw new Error('Invalid idempotency key');
-      if (key && requests.has(key)) return json(response, 200, await readState(requests.get(key)!));
+      const body = await readBody(request) as { plan?: unknown; executor?: unknown; harness?: unknown; connectionIds?: unknown };
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Expected a launch request');
+      if (Object.keys(body).some(field => !['plan', 'executor', 'harness', 'connectionIds', 'terminalMode', 'codexModel', 'codexBinary', 'claudeBinary'].includes(field))) throw new Error('Unknown launch field; connection definitions are owned by the local companion');
+      if (body.executor !== undefined && body.executor !== 'browser' && body.executor !== 'terminal') throw new Error('Unknown executor');
+      const browserMode = body.executor === 'browser';
+      if (body.harness !== undefined && body.harness !== 'codex' && body.harness !== 'claude') throw new Error('Unknown coding harness');
+      if (browserMode && body.harness !== undefined) throw new Error('Coding harness selection only applies to Terminal runs');
+      const harness: Harness = body.harness === 'claude' ? 'claude' : 'codex';
+      const connectionIds: ConnectionId[] = parseConnectionIds(body.connectionIds);
+      if (browserMode && connectionIds.length) throw new Error('Connections only apply to coding harnesses');
+      const terminalMode = harness === 'claude' ? 'interactive' : options.terminalMode || 'interactive';
+      const plan = parseReplicationPlan(body.plan);
+      const launchFingerprint = createHash('sha256').update(JSON.stringify({ plan, executor: browserMode ? 'browser' : 'terminal', harness: browserMode ? null : harness, terminalMode: browserMode ? null : terminalMode, codexModel: !browserMode && harness === 'codex' ? options.codexModel || null : null, connectionIds })).digest('hex');
+      if (key && requests.has(key)) {
+        const prior = await readState(requests.get(key)!);
+        if (prior?.launchFingerprint !== launchFingerprint) return json(response, 409, { error: 'This request key belongs to a different or legacy launch. Review the task and use a new key.' });
+        return json(response, 200, prior);
+      }
       for (const id of runs.keys()) {
         const state = await readState(id);
         if (state && (active.has(state.status) || (browsers.has(id) && state.status !== 'stopped'))) return json(response, 409, { error: 'A local task is still open. Return to it and finish or stop it before starting another task.', runId: id });
@@ -251,16 +289,16 @@ export function createCompanionServer(options: CompanionOptions) {
         runs.delete(oldest.state.id); browsers.delete(oldest.state.id);
         if (oldest.requestKey) requests.delete(oldest.requestKey);
       }
-      const body = await readBody(request) as { plan?: unknown; executor?: unknown; harness?: unknown };
-      if (body.executor !== undefined && !['browser', 'terminal'].includes(String(body.executor))) throw new Error('Unknown executor');
-      const browserMode = body.executor === 'browser';
-      if (body.harness !== undefined && body.harness !== 'codex' && body.harness !== 'claude') throw new Error('Unknown coding harness');
-      if (browserMode && body.harness !== undefined) throw new Error('Coding harness selection only applies to Terminal runs');
-      const harness: Harness = body.harness === 'claude' ? 'claude' : 'codex';
       const binary = harness === 'claude' ? options.claudeBinary : options.codexBinary;
       if (!browserMode && !binary) return json(response, 409, { error: `Install and sign in to ${harness === 'claude' ? 'Claude Code with safe-mode support' : 'Codex CLI'} to enable this Terminal handoff. Browser guidance is available independently.` });
+      if (!browserMode) {
+        try { assertExecutionSelection(harness, terminalMode, connectionIds); }
+        catch (error) { return json(response, 409, { error: (error as Error).message }); }
+        const setup = await readSetup();
+        const status = setup.harnesses?.[harness];
+        if (status?.installed !== true || status.supported !== true || status.auth !== 'authenticated' || status.available !== true) return json(response, 409, { error: status?.unavailableReason || 'CLI readiness is unverified. Check local connection setup before launching.' });
+      }
       if (browserMode && !options.browserApiKey && !options.browserPlanner) return json(response, 409, { error: 'Set OPENAI_API_KEY in the local companion environment to enable browser guidance' });
-      const plan = parseReplicationPlan(body?.plan);
       const id = randomUUID();
       const runDir = path.join(options.rootDir, id);
       const workspace = path.join(runDir, 'project');
@@ -272,9 +310,11 @@ export function createCompanionServer(options: CompanionOptions) {
       await fs.mkdir(path.join(workspace, '.contextdrop'), { mode: 0o700 });
       await fs.writeFile(path.join(workspace, '.contextdrop', 'plan.json'), JSON.stringify(plan, null, 2), { mode: 0o600 });
       await fs.writeFile(path.join(workspace, '.contextdrop', 'task.md'), buildTaskInstructions(plan, harness), { mode: 0o600 });
+      if (connectionIds.length) await fs.appendFile(path.join(workspace, '.contextdrop', 'task.md'), `\n## Requested connections\n\nThe reviewed task may use ${connectionIds.join(' and ')} through the user's existing native Codex connections. Discover and verify the actual callable tools before claiming access. Use only connections relevant to this goal. Do not read credential files, enable new integrations, or copy service tokens. A missing tool is a limitation to report, not authorization to set it up. External publishing, account changes, and messages still require the user's explicit approval of that concrete action.\n`);
+      await fs.writeFile(path.join(workspace, '.gitignore'), '.contextdrop/\n.env\n.env.*\n', { mode: 0o600 });
       await execFileAsync('/usr/bin/git', ['init', '--quiet', workspace], { timeout: 10_000 });
       const now = new Date().toISOString();
-      const state: RunState = { id, status: 'launching', workspace, updatedAt: now, createdAt: now, executor: browserMode ? 'browser' : 'terminal', analysisId: plan.analysisId, sourceUrl: plan.sourceUrl, title: plan.title, goal: plan.goal, canStop: true, canResume: false, ...(!browserMode ? { harness, terminalMode: harness === 'claude' ? 'interactive' : options.terminalMode || 'interactive' } : {}) };
+      const state: RunState = { id, status: 'launching', workspace, updatedAt: now, createdAt: now, executor: browserMode ? 'browser' : 'terminal', analysisId: plan.analysisId, sourceUrl: plan.sourceUrl, title: plan.title, goal: plan.goal, canStop: true, canResume: false, launchFingerprint, ...(!browserMode ? { harness, terminalMode, connectionIds } : {}) };
       runs.set(id, { state, controlDir, requestKey: key });
       createdId = id;
       if (key) requests.set(key, id);
@@ -291,7 +331,7 @@ export function createCompanionServer(options: CompanionOptions) {
         return json(response, 201, state);
       }
       const configPath = path.join(controlDir, 'runner.json');
-      await fs.writeFile(configPath, JSON.stringify({ id, workspace, harness, ...(harness === 'claude' ? { claudeBinary: binary, terminalMode: 'interactive' } : { codexBinary: binary, terminalMode: options.terminalMode || 'interactive', codexModel: options.codexModel }) }), { mode: 0o600 });
+      await fs.writeFile(configPath, JSON.stringify({ id, workspace, harness, connectionIds, launchFingerprint, ...(harness === 'claude' ? { claudeBinary: binary, terminalMode: 'interactive' } : { codexBinary: binary, terminalMode: options.terminalMode || 'interactive', codexModel: options.codexModel }) }), { mode: 0o600 });
       if (state.terminalMode === 'exec') {
         await (options.launchRunner || launchBackgroundRunner)(configPath);
       } else {

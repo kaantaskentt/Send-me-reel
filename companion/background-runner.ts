@@ -4,13 +4,14 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { writeAtomicJson } from './run-store.js';
+import { assertExecutionSelection, runnerEnvironment } from './execution-policy.mjs';
 
 /** Start trusted, noninteractive Codex work without a Terminal window or shell. */
 export async function launchBackgroundRunner(configPath: string): Promise<void> {
   const config = JSON.parse(await fs.readFile(configPath, 'utf8'));
+  assertExecutionSelection(config.harness || 'codex', config.terminalMode, config.connectionIds);
   const controlDir = path.dirname(configPath);
-  const inherited = new Set(['PATH', 'HOME', 'USER', 'LOGNAME', 'SHELL', 'TERM', 'COLORTERM', 'TMPDIR', 'LANG', 'CODEX_HOME']);
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key, value]) => value !== undefined && (inherited.has(key) || /^LC_[A-Z_]+$/.test(key))));
+  const env = runnerEnvironment();
   const child = spawn(process.execPath, [fileURLToPath(new URL('./runner.mjs', import.meta.url)), configPath], {
     cwd: config.workspace, env, shell: false, detached: true, stdio: 'ignore',
   });

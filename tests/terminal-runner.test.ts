@@ -26,7 +26,7 @@ test('opt-in exec runner uses fixed sandboxed argv, streams progress and saves l
   try {
     const result = await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 });
     const args = JSON.parse(await fs.readFile(path.join(f.control, 'argv.json'), 'utf8'));
-    assert.deepEqual(args.slice(0, 8), ['-a', 'on-request', 'exec', '-C', f.workspace, '-s', 'workspace-write', '--skip-git-repo-check']);
+    assert.deepEqual(args.slice(0, 7), ['--approve-for-me', 'exec', '-C', f.workspace, '-s', 'workspace-write', '--skip-git-repo-check']);
     assert.ok(args.includes('--json'));
     assert.ok(args.includes('--ignore-user-config'));
     assert.equal(args[args.indexOf('-m') + 1], 'gpt-5.4-mini');
@@ -52,8 +52,9 @@ test('Claude handoff preserves local auth environment and starts a fixed interac
     await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000, env });
     const args = JSON.parse(await fs.readFile(path.join(f.control, 'argv.json'), 'utf8'));
     assert.deepEqual(args.slice(0, 6), ['--safe-mode', '--permission-mode', 'plan', '--no-chrome', '--name', 'ContextDrop inspection']);
-    assert.equal(args.length, 7);
-    assert.match(args[6], /Do not install dependencies, clone repositories, run project code/);
+    assert.equal(args.length, 9);
+    assert.deepEqual(args.slice(6, 8), ['--setting-sources', '']);
+    assert.match(args[8], /Do not install dependencies, clone repositories, run project code/);
     assert.ok(!args.some((arg: string) => /^(--bare|--print|-p|--dangerously-skip-permissions|--allowedTools|--chrome)$/.test(arg)));
     const keys: string[] = JSON.parse(await fs.readFile(path.join(f.control, 'environment-keys.json'), 'utf8'));
     for (const key of forbidden) assert.ok(!keys.includes(key), `${key} leaked to Claude`);
@@ -129,18 +130,17 @@ test('closing Terminal stops its owned exec process group instead of abandoning 
   } finally { runner.kill('SIGTERM'); await exited; await fs.rm(f.folder, { recursive: true, force: true }); }
 });
 
-test('interactive runner remains the separate default launch style', async () => {
+test('interactive Codex fails closed because it cannot ignore user config', async () => {
   const f = await fixture('interactive');
   try {
-    await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 });
-    const args = JSON.parse(await fs.readFile(path.join(f.control, 'argv.json'), 'utf8'));
-    assert.ok(args.includes('--no-alt-screen')); assert.ok(!args.includes('exec')); assert.ok(!args.includes('--json'));
+    await assert.rejects(execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 }), /Isolated interactive Codex is unavailable/);
+    await assert.rejects(fs.access(path.join(f.control, 'argv.json')));
   } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
 });
 
-test('neither runner mode passes worker secrets or arbitrary service environment into Codex', async () => {
-  const forbidden = ['OPENAI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_URL', 'JWT_SECRET', 'WHATSAPP_TOKEN', 'CONTEXTDROP_COMPANION_TOKEN', 'UNLISTED_FUTURE_SECRET'];
-  for (const mode of ['exec', 'interactive'] as const) {
+test('Codex exec does not pass worker secrets or shell startup controls', async () => {
+  const forbidden = ['OPENAI_API_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'DATABASE_URL', 'JWT_SECRET', 'WHATSAPP_TOKEN', 'CONTEXTDROP_COMPANION_TOKEN', 'UNLISTED_FUTURE_SECRET', 'BASH_ENV', 'ENV', 'ZDOTDIR', 'SHELL'];
+  for (const mode of ['exec'] as const) {
     const f = await fixture(mode);
     try {
       const env = { ...process.env, TERM: 'xterm-256color', LC_MESSAGES: 'C', ...Object.fromEntries(forbidden.map(key => [key, `fixture-sentinel-${key}`])) };
@@ -150,4 +150,44 @@ test('neither runner mode passes worker secrets or arbitrary service environment
       for (const key of ['PATH', 'HOME', 'TERM', 'LC_MESSAGES']) assert.ok(keys.includes(key), `${key} should support the local CLI`);
     } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
   }
+});
+
+test('runner rejects unknown connections and injected definitions before starting a CLI', async () => {
+  const f = await fixture('exec');
+  const original = JSON.parse(await fs.readFile(f.config, 'utf8'));
+  try {
+    for (const change of [{ connectionIds: ['evil'] }, { connectionIds: ['github', 'github'] }, { connectionIds: [{ id: 'github', command: 'sh' }] }, { connectionIds: null }, { mcpServers: { evil: { command: 'sh' } } }]) {
+      await fs.writeFile(f.config, JSON.stringify({ ...original, ...change }));
+      await assert.rejects(execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 }));
+      await assert.rejects(fs.access(path.join(f.control, 'argv.json')));
+    }
+  } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('Codex policy blocks ambient apps, plugins, hooks, rules and login shell profiles', async () => {
+  const f = await fixture('exec');
+  try {
+    await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 });
+    const args: string[] = JSON.parse(await fs.readFile(path.join(f.control, 'argv.json'), 'utf8'));
+    assert.ok(args.includes('--ignore-rules')); assert.ok(args.includes('--strict-config'));
+    for (const setting of ['allow_login_shell=false', 'shell_environment_policy.experimental_use_profile=false', 'features.hooks=false', 'features.plugins=false', 'features.apps=false', 'features.remote_plugin=false', 'features.shell_snapshot=false', 'skills.include_instructions=false', 'project_doc_max_bytes=0']) assert.ok(args.includes(setting), setting);
+    assert.ok(args.includes(`projects={${JSON.stringify(f.workspace)}={trust_level="untrusted"}}`));
+    const status = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+    assert.deepEqual(status.connectionIds, []);
+  } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
+});
+
+test('a reviewed connection request enables native Apps without forwarding tokens or enabling hooks', async () => {
+  const f = await fixture('exec');
+  try {
+    const config = JSON.parse(await fs.readFile(f.config, 'utf8'));
+    await fs.writeFile(f.config, JSON.stringify({ ...config, connectionIds: ['vercel', 'github'] }));
+    await execute(process.execPath, ['companion/runner.mjs', f.config], { cwd: process.cwd(), timeout: 15_000 });
+    const args: string[] = JSON.parse(await fs.readFile(path.join(f.control, 'argv.json'), 'utf8'));
+    assert.ok(args.includes('features.apps=true'));
+    assert.ok(args.includes('features.hooks=false'));
+    assert.ok(args.includes('--ignore-user-config'));
+    const status = JSON.parse(await fs.readFile(path.join(f.control, 'status.json'), 'utf8'));
+    assert.deepEqual(status.connectionIds, ['github', 'vercel']);
+  } finally { await fs.rm(f.folder, { recursive: true, force: true }); }
 });

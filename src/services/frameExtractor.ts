@@ -4,6 +4,8 @@ import ffprobePath from "ffprobe-static";
 import sharp from "sharp";
 import fs from "fs/promises";
 import path from "path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { ServiceError } from "../pipeline/types.js";
 
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -39,21 +41,20 @@ export function getSamplingPlan(duration: number): { intervalUsed: number; sampl
   return { intervalUsed, samplingLimited: intervalUsed > preferredInterval };
 }
 
-export function getVideoDuration(videoPath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoPath, (err, metadata) => {
-      if (err) return reject(err);
-      resolve(metadata.format.duration || 0);
-    });
-  });
+export async function getVideoDuration(videoPath: string, signal?: AbortSignal): Promise<number> {
+  signal?.throwIfAborted();
+  const { stdout } = await promisify(execFile)(ffprobePath.path, ["-v", "error", "-show_entries", "format=duration", "-of", "json", videoPath], { signal, timeout: 30_000, maxBuffer: 128 * 1_024 });
+  signal?.throwIfAborted();
+  return Number(JSON.parse(stdout).format?.duration || 0);
 }
 
-export async function extractFrames(videoPath: string, knownDuration?: number): Promise<ExtractedFrames> {
+export async function extractFrames(videoPath: string, knownDuration?: number, signal?: AbortSignal): Promise<ExtractedFrames> {
+  signal?.throwIfAborted();
   const framesDir = path.join(path.dirname(videoPath), "frames");
   await fs.mkdir(framesDir, { recursive: true });
 
   try {
-    const durationSec = knownDuration ?? await getVideoDuration(videoPath);
+    const durationSec = knownDuration ?? await getVideoDuration(videoPath, signal);
     const { intervalUsed, samplingLimited } = getSamplingPlan(durationSec);
     const timestampsSec: number[] = [];
     const rawPattern = path.join(framesDir, "raw_%04d.jpg");
@@ -61,6 +62,8 @@ export async function extractFrames(videoPath: string, knownDuration?: number): 
     // Select source frames and retain their measured presentation timestamps.
     // fps= used to invent evenly spaced timestamps for frames chosen between them.
     await new Promise<void>((resolve, reject) => {
+      const cleanup = () => { clearTimeout(timer); signal?.removeEventListener("abort", abort); };
+      const abort = () => { command.kill("SIGKILL"); cleanup(); reject(signal?.reason); };
       const command = ffmpeg(videoPath)
         .outputOptions([
           "-vf", `setpts=PTS-STARTPTS,select='isnan(prev_selected_t)+gte(t-prev_selected_t,${intervalUsed})',showinfo`,
@@ -71,12 +74,15 @@ export async function extractFrames(videoPath: string, knownDuration?: number): 
           const match = line.match(/\bpts_time:([\d.eE+-]+)/);
           if (match) timestampsSec.push(Number(match[1]));
         })
-        .on("end", () => { clearTimeout(timer); resolve(); })
-        .on("error", (err) => { clearTimeout(timer); reject(err); });
+        .on("start", () => { if (signal?.aborted) abort(); })
+        .on("end", () => { cleanup(); resolve(); })
+        .on("error", (err) => { cleanup(); reject(err); });
       const timer = setTimeout(() => {
         command.kill("SIGKILL");
+        cleanup();
         reject(new ServiceError("FRAME_EXTRACTION_FAILED", "Frame extraction timed out", true));
       }, EXTRACTION_TIMEOUT_MS);
+      signal?.addEventListener("abort", abort, { once: true });
       command.run();
     });
 
@@ -87,6 +93,7 @@ export async function extractFrames(videoPath: string, knownDuration?: number): 
 
     const paths: string[] = [];
     for (const file of rawFiles) {
+      signal?.throwIfAborted();
       const rawPath = path.join(framesDir, file);
       const resizedPath = path.join(framesDir, file.replace("raw_", "frame_"));
       await sharp(rawPath)

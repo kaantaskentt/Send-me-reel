@@ -11,9 +11,11 @@ import { detectPlatform, parseSourceUrl } from "../src/pipeline/urlRouter.js";
 import { extractFrames, getVideoDuration, validateVideoDuration, MAX_ANALYSIS_FRAMES, FRAME_MAX_WIDTH } from "../src/services/frameExtractor.js";
 import { resolveYtDlpExecutable, ANALYSIS_VIDEO_FORMAT, ANALYSIS_VIDEO_SORT, validateAnalysisVideoSize } from "../src/services/mediaRuntime.js";
 import { ytDlpMetadataArgs, parseYtDlpMetadata, YTDLP_METADATA_MAX_BYTES } from "../src/services/ytDlpMetadata.js";
+import { captureDownloadedVideo } from "../src/services/precisionVideoCapture.js";
+import { GEMINI_VIDEO_MODEL, GeminiVideoError, type GeminiVideoManifest } from "../src/services/geminiVideo.js";
 
 const execFileAsync = promisify(execFile);
-const HELP = `Usage: npx tsx scripts/analyze-one.ts URL [--output .contextdrop/local-analysis.json] [--timeout-seconds 720] [--note "What to reproduce"]\n\nCaptures public video/audio and sampled frame evidence locally. OPENAI_API_KEY enables actual transcription and frame analysis. Without it, capture remains incomplete and no model calls are made. No Supabase or Telegram configuration is required.`;
+const HELP = `Usage: npx tsx scripts/analyze-video.ts URL [--output .contextdrop/local-analysis.json] [--timeout-seconds 720] [--note "What to understand"] [--reader auto|gemini|openai]\n\nDownloaded videos are limited to 10 minutes. Auto uses configured GEMINI_API_KEY or GOOGLE_API_KEY for audio/video plus bounded exact screen crops. Without Gemini, it uses the explicit sampled-frame/Whisper OpenAI fallback. --reader openai selects that fallback directly. A failed Gemini request is checkpointed, never silently retried through a second paid provider. No database or execution configuration is required.`;
 
 function options(argv: string[]) {
   if (argv.includes("--help") || argv.includes("-h")) return null;
@@ -22,23 +24,27 @@ function options(argv: string[]) {
   let output = path.resolve(".contextdrop/local-analysis.json");
   let timeoutSeconds = 720;
   let note = "";
+  let reader: "auto" | "gemini" | "openai" = "auto";
   for (let i = 1; i < argv.length; i += 2) {
     if (!argv[i + 1]) throw new Error(`Missing value for ${argv[i]}`);
     if (argv[i] === "--output") output = path.resolve(argv[i + 1]);
     else if (argv[i] === "--timeout-seconds") timeoutSeconds = Number(argv[i + 1]);
     else if (argv[i] === "--note") note = argv[i + 1];
+    else if (argv[i] === "--reader" && ["auto", "gemini", "openai"].includes(argv[i + 1])) reader = argv[i + 1] as typeof reader;
     else throw new Error(`Unknown option ${argv[i]}`);
   }
   if (!Number.isFinite(timeoutSeconds) || timeoutSeconds < 30 || timeoutSeconds > 900) throw new Error("Timeout must be between 30 and 900 seconds.");
-  return { url, output, timeoutSeconds, note };
+  if (note.length > 2_000) throw new Error("Video question must be at most 2000 characters.");
+  return { url, output, timeoutSeconds, note, reader };
 }
 
 function safeError(error: unknown): string {
-  const detail = error && typeof error === "object" && "stderr" in error && typeof error.stderr === "string" && error.stderr.trim()
-    ? error.stderr.slice(-1400)
+  const detail = error && typeof error === "object" && "stderr" in error
+    ? "Local media command failed; source evidence is incomplete."
     : error instanceof Error ? error.message : String(error);
   return detail
     .replace(/(?:sk-|apify_api_)[^\s"'<>]+/g, "[redacted]")
+    .replace(/AIza[\w-]+|Bearer\s+[^\s"'<>]+/gi, "[redacted]")
     .replace(/https?:\/\/[^\s"'<>]+/g, "[source URL]")
     .slice(-900);
 }
@@ -47,14 +53,19 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   const parsed = options(argv);
   if (!parsed) { console.log(HELP); return; }
   const input = parsed;
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const reader = input.reader === "auto" ? geminiKey ? "gemini" : "openai" : input.reader;
+  const model = process.env.CONTEXTDROP_GEMINI_VIDEO_MODEL || GEMINI_VIDEO_MODEL;
   const startedAt = new Date().toISOString();
   const id = randomUUID();
   const captureDirectory = path.join(path.dirname(input.output), "captures", id);
   await fs.mkdir(captureDirectory, { recursive: true, mode: 0o700 });
   await fs.chmod(path.dirname(input.output), 0o700);
   const controller = new AbortController();
+  const cancel = () => controller.abort(new DOMException("Capture cancelled", "AbortError"));
+  process.once("SIGTERM", cancel); process.once("SIGINT", cancel);
   const ytdlpCommand = resolveYtDlpExecutable();
-  const timeout = setTimeout(() => controller.abort(new Error(`Capture exceeded ${input.timeoutSeconds} seconds`)), input.timeoutSeconds * 1000);
+  const timeout = setTimeout(() => controller.abort(new DOMException(`Capture exceeded ${input.timeoutSeconds} seconds`, "TimeoutError")), input.timeoutSeconds * 1000);
   const warnings: string[] = [];
   const stageResults: Array<{ stage: string; status: string; startedAt: string; completedAt?: string; error?: string }> = [];
   const analysis: any = {
@@ -64,9 +75,11 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     created_at: startedAt, completed_at: null,
     metadata: {
       capture_mode: "local", database_writes: false, ...(input.note ? { userNote: input.note } : {}),
-      source_evidence: { version: 1, media_kind: "video", warnings, models: { transcription: "whisper-1", frame_analysis: "gpt-5.4-mini" } },
+      source_evidence: { version: 1, media_kind: "video", warnings, provider: reader,
+        models: reader === "gemini" ? { native_video: model } : { transcription: "whisper-1", frame_analysis: "gpt-5.4-mini" } },
       local_evidence: { framePaths: [], timestampsSec: [], capturedAt: startedAt, sourceUrl: input.url, captureDirectory },
-      local_capture: { startedAt, timeoutSeconds: input.timeoutSeconds, stage: "metadata", stages: stageResults, openaiConfigured: Boolean(process.env.OPENAI_API_KEY), processId: process.pid, ytdlpExecutable: ytdlpCommand },
+      local_capture: { startedAt, timeoutSeconds: input.timeoutSeconds, stage: "metadata", stages: stageResults, reader, requestedReader: input.reader,
+        openaiConfigured: Boolean(process.env.OPENAI_API_KEY), geminiConfigured: Boolean(geminiKey), processId: process.pid, ytdlpExecutable: ytdlpCommand },
     },
   };
   let saveQueue = Promise.resolve();
@@ -104,6 +117,8 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     }
   }
   try {
+    if (reader === "gemini" && !geminiKey) throw new GeminiVideoError("GEMINI_NOT_CONFIGURED", "Gemini is not configured. Select --reader openai to use the existing sampled-frame fallback.");
+    if (reader === "openai") warnings.push(input.reader === "openai" ? "Explicit OpenAI fallback selected: sampled frame analysis and separate Whisper transcription." : "Gemini is unavailable; using the OpenAI sampled-frame/Whisper fallback. Configure Gemini for the hybrid reader.");
     const metadata = await stage("metadata", "scraping", async () => {
       const { stdout } = await execFileAsync(ytdlpCommand, ytDlpMetadataArgs(input.url), { timeout: 60_000, maxBuffer: YTDLP_METADATA_MAX_BYTES, signal: controller.signal });
       return parseYtDlpMetadata(stdout);
@@ -133,7 +148,7 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
       analysis.metadata.local_evidence.videoBytes = file.size;
     });
     const duration = await stage("duration_check", "scraping", async () => {
-      const measured = await getVideoDuration(videoPath);
+      const measured = await getVideoDuration(videoPath, controller.signal);
       validateVideoDuration(measured);
       analysis.metadata.duration = measured;
       analysis.metadata.source_evidence.duration_seconds = measured;
@@ -142,7 +157,63 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
     analysis.metadata.source_evidence.scrape_provider = "yt-dlp";
     analysis.metadata.source_evidence.download_provider = "yt-dlp";
 
-    const frames = await stage("frame_extraction", "transcribing", () => extractFrames(videoPath, duration));
+    if (reader === "gemini") {
+      const sourceEvidence = analysis.metadata.source_evidence;
+      sourceEvidence.transcript = { status: "not_requested", timing: "none", characters: 0 };
+      sourceEvidence.provider_files = { deleted: 0, cleanup_pending: 0 };
+      warnings.push("Speech fields are Gemini paraphrases, not a verbatim transcript. No separate Whisper or per-frame OpenAI calls were made.");
+      warnings.push("Reported provider usage covers received responses only; cancelled or lost responses may still incur provider charges.");
+      const checkpoint = async (manifest: GeminiVideoManifest) => {
+        sourceEvidence.native_video = manifest;
+        const evidence = manifest.segments.flatMap(segment => segment.status === "complete" && segment.evidence ? [segment.evidence] : []);
+        analysis.frame_descriptions = evidence.flatMap(part => part.observations);
+        analysis.visual_summary = evidence.map(part => part.summary).join("\n");
+        sourceEvidence.summary_source = "Gemini native audio/video and supplied exact source crop observations";
+        const precision = sourceEvidence.precision_video;
+        sourceEvidence.visuals = { status: manifest.status === "complete" ? "available" : evidence.length ? "partial" : manifest.status === "failed" ? "failed" : "pending",
+          extracted_frames: precision?.crops.length || 0, analyzed_frames: analysis.frame_descriptions.length, failed_frames: 0,
+          sampled_timestamps_seconds: analysis.frame_descriptions.map((observation: { timestampSec: number }) => observation.timestampSec),
+          observation_type: "native_video_and_precision_crop_observations", precision_coverage: "partial" };
+        for (const warning of [manifest.coverage.description, ...evidence.flatMap(part => part.limitations)]) if (!warnings.includes(warning)) warnings.push(warning);
+        analysis.metadata.local_capture.nativeProgress = { completedSegments: evidence.length, totalSegments: manifest.segments.length };
+        await save();
+      };
+      const result = await stage("hybrid_video_analysis", "analyzing", () => captureDownloadedVideo({ videoPath, captureId: id, sourceUrl: input.url, outputDirectory: captureDirectory, durationSeconds: duration,
+        apiKey: geminiKey!, model, question: input.note, signal: controller.signal, onCheckpoint: checkpoint,
+        onProviderResponse: async (response, range) => {
+          await fs.writeFile(path.join(captureDirectory, `provider-${range.startSec}.json`), JSON.stringify(response), { mode: 0o600 });
+        },
+        onWarning: warning => { if (!warnings.includes(warning)) warnings.push(warning); },
+        onPrecisionCheckpoint: async manifest => {
+          sourceEvidence.precision_video = manifest;
+          analysis.metadata.local_evidence.framePaths = manifest.crops.map(crop => crop.sourceFramePath);
+          analysis.metadata.local_evidence.timestampsSec = manifest.crops.map(crop => crop.timestampSec);
+          analysis.metadata.local_evidence.cropPaths = manifest.crops.map(crop => crop.cropPath);
+          if (manifest.status !== "running") for (const warning of manifest.limitations) if (!warnings.includes(warning)) warnings.push(warning);
+          await save();
+        },
+        onCleanup: async deleted => {
+          sourceEvidence.provider_files[deleted ? "deleted" : "cleanup_pending"]++;
+          if (!deleted) warnings.push("Temporary Gemini source-file deletion could not be confirmed; provider cleanup is pending.");
+          await save();
+        },
+      }));
+      controller.signal.throwIfAborted();
+      if (result.native.status !== "complete") {
+        warnings.push("Gemini did not complete. Select --reader openai to explicitly retry with the sampled-frame fallback; this capture did not call a second paid reader.");
+        throw new GeminiVideoError(result.native.segments.find(segment => segment.errorCode)?.errorCode || "NATIVE_VIDEO_INCOMPLETE", "Gemini capture did not produce complete validated evidence; checkpoints were retained.");
+      }
+      analysis.status = "done";
+      analysis.completed_at = new Date().toISOString();
+      analysis.metadata.local_capture.stage = "complete";
+      sourceEvidence.capture_complete = true;
+      await save();
+      console.log(JSON.stringify({ status: "done", output: input.output, provider: "gemini", duration_seconds: duration, observations: analysis.frame_descriptions.length,
+        preserved_crops: result.precision?.crops.length || 0, precision_status: result.precision?.status || "unavailable", usage: result.native.usage, warnings: warnings.length, database_writes: false }));
+      return;
+    }
+
+    const frames = await stage("frame_extraction", "transcribing", () => extractFrames(videoPath, duration, controller.signal));
     analysis.metadata.local_evidence.framePaths = frames.paths;
     analysis.metadata.local_evidence.timestampsSec = frames.timestampsSec;
     analysis.metadata.source_evidence.visuals = {
@@ -209,14 +280,23 @@ export async function main(argv = process.argv.slice(2)): Promise<void> {
   } catch (error) {
     analysis.status = "failed";
     analysis.error_message = safeError(error);
-    analysis.metadata.local_capture.errorCode = error && typeof error === "object" && "code" in error && typeof error.code === "string"
+    analysis.metadata.local_capture.errorCode = controller.signal.aborted ? controller.signal.reason?.name === "TimeoutError" ? "CAPTURE_TIMEOUT" : "CAPTURE_CANCELLED" : error && typeof error === "object" && "code" in error && typeof error.code === "string"
       ? error.code.slice(0, 100) : "CAPTURE_FAILED";
     analysis.metadata.local_capture.stage = "failed";
     analysis.metadata.source_evidence.capture_complete = false;
     await save();
     console.error(JSON.stringify({ status: "failed", output: input.output, error: safeError(error), database_writes: false }));
     process.exitCode = 1;
-  } finally { clearTimeout(timeout); }
+  } finally {
+    clearTimeout(timeout); process.removeListener("SIGTERM", cancel); process.removeListener("SIGINT", cancel);
+    // Keep successful originals for follow-up inspection. Failed/cancelled jobs retain only bounded evidence artifacts.
+    if (analysis.status === "failed") {
+      for (const entry of await fs.readdir(captureDirectory, { withFileTypes: true })) if (entry.isFile() && entry.name.startsWith("video.")) await fs.rm(path.join(captureDirectory, entry.name), { force: true });
+      delete analysis.metadata.local_evidence.videoPath;
+      analysis.metadata.local_evidence.sourceFileRemoved = true;
+      await save();
+    }
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {

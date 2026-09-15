@@ -10,7 +10,7 @@ export type ContentChoice = {
   executor: "browser" | "terminal";
 };
 export type ContentGuide = {
-  version: 3;
+  version: 4;
   analysisId: string;
   title: string;
   summary: string;
@@ -46,7 +46,7 @@ function line(value: unknown, max: number): string {
 export function parseContentGuide(value: unknown, analysis: Pick<Analysis, "id" | "frame_descriptions">): ContentGuide {
   if (!value || typeof value !== "object") throw new Error("Missing content guide");
   const data = value as Record<string, unknown>;
-  if (data.version !== undefined && data.version !== 3) throw new Error("Old guide version");
+  if (data.version !== undefined && data.version !== 4) throw new Error("Old guide version");
   if (data.analysisId !== undefined && data.analysisId !== analysis.id) throw new Error("Wrong guide source");
   if (!Array.isArray(data.choices) || data.choices.length !== 3) throw new Error("Expected three choices");
   const labels = new Set<string>();
@@ -61,5 +61,5 @@ export function parseContentGuide(value: unknown, analysis: Pick<Analysis, "id" 
     return { id: `choice-${index + 1}`, label, detail: line(item.detail, 100), kind: item.kind, request, mode: item.mode, executor: item.executor };
   });
   if (!Array.isArray(data.evidence) || data.evidence.length > 3 || data.evidence.some(index => !Number.isInteger(index) || index < 0 || index >= (analysis.frame_descriptions?.length ?? 0))) throw new Error("Invalid guide evidence");
-  return { version: 3, analysisId: analysis.id, title: line(data.title, 88), summary: line(data.summary, 180), choices, evidence: [...new Set(data.evidence as number[])] };
+  return { version: 4, analysisId: analysis.id, title: line(data.title, 88), summary: line(data.summary, 180), choices, evidence: [...new Set(data.evidence as number[])] };
 }

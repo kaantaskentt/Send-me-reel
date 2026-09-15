@@ -79,7 +79,7 @@ async function fixture(page: Page, initial?: ContentReply) {
       const body = request.postDataJSON(); expect(body.analysisId).toBe(analysisId);
       if (body.guide) {
         state.guides++;
-        conversation.guide = {version:3,analysisId,title:"A useful idea from your content",summary:"The creator shows a useful tool.",evidence:[0],choices:suggestions.map((label,index)=>({id:`choice-${index+1}`,label,detail:["Find its real page.","Understand how it helps.","Try it in a small project."][index],kind:index===2?"prepare_task":"ask",request:index===2?taskGoal:"Explain the useful idea in this content.",mode:index===2?"build":"research",executor:index===2?"terminal":"browser"}))};
+        conversation.guide = {version:4,analysisId,title:"A useful idea from your content",summary:"The creator shows a useful tool.",evidence:[0],choices:suggestions.map((label,index)=>({id:`choice-${index+1}`,label,detail:["Find its real page.","Understand how it helps.","Try it in a small project."][index],kind:index===2?"prepare_task":"ask",request:index===2?taskGoal:"Explain the useful idea in this content.",mode:index===2?"build":"research",executor:index===2?"terminal":"browser"}))};
         return route.fulfill({json:conversation});
       }
       state.messages.push(body.message);

@@ -66,6 +66,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const [browserConfigured, setBrowserConfigured] = useState(false);
   const [harness, setHarness] = useState<Harness>(initialHarness);
   const [harnesses, setHarnesses] = useState<Record<Harness, boolean>>({ codex: false, claude: false });
+  const [connections, setConnections] = useState<("github" | "vercel")[]>([]);
   const [macSupported, setMacSupported] = useState(true);
   const [reviewed, setReviewed] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
@@ -83,6 +84,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const harnessName = harness === "claude" ? "Claude Code" : "Codex";
   const runHarnessName = (run?.harness ?? harness) === "claude" ? "Claude Code" : "Codex";
   const terminalAvailable = macSupported && harnesses[harness];
+  const taskWarnings = plan?.warnings.filter(warning => !/^(Capture:|Prepared from the source content|No separate transcript was captured|Frame descriptions are model-generated)/.test(warning)) ?? [];
 
   useEffect(() => { setOrigin(window.location.origin); return () => { generationController.current?.abort(); pairingController.current?.abort(); }; }, []);
   useEffect(() => {
@@ -150,11 +152,12 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
       if (!response.ok) throw new Error(response.status === 401 ? "Pairing token was rejected. Copy the current token from the companion." : "The local companion is not ready.");
       const health = await response.json();
       if (controller.signal.aborted) return;
-      setMacSupported(!health.platform || health.platform === "darwin");
-      const terminalConfigured = health.capabilities?.terminal !== false;
+      if (health.version !== 1 || !["ready", "unavailable"].includes(health.status) || health.platform !== "darwin") throw new Error("This Mac worker needs an update. Restart ContextDrop and try again.");
+      setMacSupported(health.platform === "darwin");
+      const terminalConfigured = health.capabilities?.terminal === true;
       const detected = health.capabilities?.harnesses;
       setHarnesses({
-        codex: terminalConfigured && (detected ? detected.codex === true : health.codexAvailable !== false),
+        codex: terminalConfigured && detected?.codex === true,
         claude: terminalConfigured && detected?.claude === true,
       });
       setBrowserConfigured(health.capabilities?.browser?.configured === true);
@@ -173,7 +176,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
 
   async function launch(approved = false) {
     if (!plan || stale || (!reviewed && !approved) || demo || sessionOpen || launchBusy || launchInFlight.current || !paired || (executor === "terminal" ? !terminalAvailable : !browserConfigured)) return;
-    const fingerprint = JSON.stringify({ plan, executor, ...(executor === "terminal" ? { harness } : {}) });
+    const fingerprint = JSON.stringify({ plan, executor, ...(executor === "terminal" ? { harness, ...(harness === "codex" && connections.length ? { connectionIds: [...connections].sort() } : {}) } : {}) });
     const previous = launchAttempt.current;
     const deliberateRerun = previous?.runId === run?.id && !!run && !runIsActive(run.status);
     if (!previous || previous.fingerprint !== fingerprint || deliberateRerun) launchAttempt.current = { fingerprint, key: crypto.randomUUID() };
@@ -210,12 +213,14 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
       <details className={styles.taskChecks}><summary>See the steps{plan ? ` · ${plan.steps.length}` : ""}</summary>
         <p className={styles.taskGoal}>{goal}</p>
         {plan && <><ol className={styles.taskSteps}>{plan.steps.map(step => <li key={step.id}>{step.instruction}<small>{step.kind === "inferred" ? "Added suggestion · " : "From your content · "}{step.verification}</small></li>)}</ol>
-        {!!(plan.prerequisites.length + plan.warnings.length) && <><h3>Before starting</h3><ul>{[...plan.prerequisites, ...plan.warnings].map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+        {!!(plan.prerequisites.length + taskWarnings.length) && <><h3>Before starting</h3><ul>{[...plan.prerequisites, ...taskWarnings].map((item, index) => <li key={index}>{item}</li>)}</ul></>}
+        <p className={styles.taskPermission}>Small details may be missing from the source. The task checks what it uses.</p>
         <h3>What success looks like</h3><ul>{plan.successCriteria.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
       </details>
       <details className={styles.taskChecks}><summary>Change the task or app</summary>
         <label className={styles.field}>What you want<textarea aria-label="Your task outcome" className={styles.textarea} value={goal} maxLength={1200} rows={3} onChange={event => { setGoal(event.target.value); setReviewed(false); }} /></label>
         <label className={styles.field}>Use<select aria-label="Task app" className={styles.select} disabled={sessionOpen || launchBusy} value={executor === "browser" ? "browser" : harness} onChange={event => { const value = event.target.value; setExecutor(value === "browser" ? "browser" : "terminal"); if (value !== "browser") setHarness(value as Harness); setReviewed(false); }}><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="browser">Browser</option></select></label>
+        {executor === "terminal" && harness === "codex" && <fieldset className={styles.connectionOptions}><legend>Use my Codex connections</legend>{(["github", "vercel"] as const).map(id => <label key={id}><input type="checkbox" checked={connections.includes(id)} disabled={sessionOpen || launchBusy} onChange={event => { setConnections(current => event.target.checked ? [...current, id] : current.filter(item => item !== id)); setReviewed(false); }} />{id === "github" ? "GitHub" : "Vercel"}</label>)}</fieldset>}
         <button type="button" className={styles.secondaryButton} disabled={goal.trim().length < 8 || sessionOpen} onClick={() => void prepare()}>Update task</button>
       </details>
       {stale && <p role="status" className={styles.evidenceNote}>Click Update task to use your changes.</p>}
@@ -225,6 +230,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
     {paired && executor === "terminal" && !terminalAvailable && <p role="status" className={styles.evidenceNote}>{harnessName} isn’t available. Choose another app above, or sign in and restart ContextDrop.</p>}
     {paired && executor === "browser" && !browserConfigured && <p role="status" className={styles.evidenceNote}>Add your OpenAI key to use the browser.</p>}
     <p className={styles.taskPermission}>{executor === "browser" ? "You’ll see the browser here. It asks before clicks and typing. You handle logins and payments." : harness === "claude" ? "Claude Code opens in Terminal. Approve its plan there before it changes files." : "Codex can create files and run commands in this folder. You can watch and stop it here."}</p>
+    {executor === "terminal" && harness === "codex" && connections.length > 0 && <p className={styles.taskPermission}>Uses your {connections.map(id => id === "github" ? "GitHub" : "Vercel").join(" and ")} connections if available. Publishing needs your approval.</p>}
     <button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={18} className={styles.spinner} /> : <ArrowRight size={18} />}{launchBusy ? "Starting…" : sessionOpen ? "Task is running" : "Yes, start"}</button>
     {localError && <p role="alert" className={styles.error}>{localError}</p>}
     {run && <button type="button" className={styles.secondaryButton} onClick={() => window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: run }))}><Monitor size={18} />Watch task</button>}

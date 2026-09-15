@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { Analysis } from "./types";
 import { parseReplicationPlan } from "./execution-plan";
+import { capturedFrameIndex, sourceImageMime } from "./source-frames";
 
 export function isLocalStudioRequest(headers: Pick<Headers, "get">, mutation = false, env = process.env): boolean {
   if (env.NODE_ENV !== "development" || env.CONTEXTDROP_LOCAL_STUDIO !== "1") return false;
@@ -72,30 +73,15 @@ export async function writeLocalJson(name: "local-plan.json" | "local-plan-usage
 }
 
 export async function localFramePath(analysis: Analysis, index: number, studioRoot = localStudioRoot): Promise<string | null> {
-  const local = analysis.metadata?.local_evidence as { framePaths?: unknown[]; timestampsSec?: unknown[]; sourceUrl?: unknown } | undefined;
-  const observations = analysis.frame_descriptions ?? [];
-  if (!Number.isInteger(index) || index < 0 || index >= observations.length || index >= 96 || !Array.isArray(local?.framePaths)) return null;
-  if (local.sourceUrl !== undefined && local.sourceUrl !== analysis.source_url) return null;
-  let imageIndex = index;
-  if (Array.isArray(local.timestampsSec) && local.timestampsSec.length) {
-    // A failed vision batch removes observations, not extracted JPEGs. Associate
-    // by measured time so a surviving observation never opens an earlier image.
-    const observation = observations[index] as { timestampSec?: unknown } | null;
-    const timestamp = observation?.timestampSec;
-    if (typeof timestamp !== "number" || !Number.isFinite(timestamp) || local.timestampsSec.length !== local.framePaths.length) return null;
-    const matches = local.timestampsSec.flatMap((time, candidate) => typeof time === "number" && Number.isFinite(time) && Math.abs(time - timestamp) <= 0.001 ? [candidate] : []);
-    if (matches.length !== 1) return null;
-    imageIndex = matches[0];
-  } else if (local.framePaths.length !== observations.length) {
-    // Legacy captures without timestamps are safe to align only when complete.
-    return null;
-  }
+  const imageIndex = capturedFrameIndex(analysis, index);
+  if (imageIndex === null) return null;
+  const local = analysis.metadata?.local_evidence as { framePaths: unknown[] };
   const selected = local.framePaths[imageIndex];
   if (typeof selected !== "string") return null;
   try {
     const root = await fs.realpath(studioRoot);
     const filename = await fs.realpath(selected);
-    if (!filename.startsWith(root + path.sep) || !/\.jpe?g$/i.test(filename)) return null;
+    if (!filename.startsWith(root + path.sep) || !sourceImageMime(filename)) return null;
     return filename;
   } catch { return null; }
 }

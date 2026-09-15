@@ -8,6 +8,20 @@ import os from 'node:os';
 import type { AddressInfo } from 'node:net';
 import { createBrowserEgress } from '../companion/egress.js';
 import { GuidedBrowserRun, parseBrowserAction, parseBrowserPlannerResponse, browserActionResponseSchema, type BrowserAction } from '../companion/browser.js';
+import { parseConnectionIds, runnerEnvironment, assertExecutionSelection } from '../companion/execution-policy.mjs';
+
+test('connection policy permits only canonical IDs and never exports service or shell credentials', () => {
+  assert.deepEqual(parseConnectionIds(['vercel', 'github']), ['github', 'vercel']);
+  for (const value of [null, 'github', Array(1), ['github', 'github'], ['github;touch'], ['__proto__'], [{ id: 'github' }], ['github', 'vercel', 'other']]) assert.throws(() => parseConnectionIds(value));
+  assert.deepEqual(assertExecutionSelection('codex', 'exec', []), []);
+  assert.deepEqual(assertExecutionSelection('claude', 'interactive', []), []);
+  assert.throws(() => assertExecutionSelection('codex', 'interactive', []), /Isolated interactive Codex/);
+  assert.throws(() => assertExecutionSelection('claude', 'exec', []), /background execution is unavailable/);
+  assert.deepEqual(assertExecutionSelection('codex', 'exec', ['github']), ['github']);
+  assert.throws(() => assertExecutionSelection('claude', 'interactive', ['vercel']), /safe mode disables MCP/);
+  const env = runnerEnvironment({ HOME: '/home/fixture', CODEX_HOME: '/home/fixture/.codex', PATH: '/usr/bin', OPENAI_API_KEY: 'secret', ANTHROPIC_API_KEY: 'secret', GH_TOKEN: 'secret', VERCEL_TOKEN: 'secret', BASH_ENV: '/private/profile', ENV: '/private/profile', ZDOTDIR: '/private/profile', NODE_OPTIONS: '--require=evil', SHELL: '/private/shell', CLAUDE_CONFIG_DIR: '/private/config' });
+  assert.deepEqual(env, { HOME: '/home/fixture', CODEX_HOME: '/home/fixture/.codex', PATH: '/usr/bin' });
+});
 
 test('planner response schema excludes extra click text and its envelope still fails closed', () => {
   const click = { type: 'click', description: 'Generate the preview', targetId: 'e1', url: null, text: null };
