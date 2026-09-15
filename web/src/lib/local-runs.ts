@@ -7,6 +7,7 @@ export interface PersonalRun extends LocalRunState {
   title: string;
   goal: string;
   createdAt: string;
+  updatedAt?: string;
   harness?: "codex" | "claude";
   terminalMode?: "exec" | "interactive";
   canStop: boolean;
@@ -17,7 +18,28 @@ export interface RunOutput {
   id: string;
   mode: "streaming" | "interactive" | "browser";
   log: { text: string; truncated: boolean; updatedAt: string | null };
+  progress?: { phase: 'starting' | 'reading' | 'building' | 'checking' | 'working' | 'wrapping_up'; update: string | null; updatedAt: string | null };
   result: { text: string; path: string | null; source: "report" | "last_message" | null; verification: "unverified"; truncated: boolean };
+}
+
+export function taskStatusLabel(run: Pick<PersonalRun, "status" | "terminalMode">, output: RunOutput | null): string {
+  if (run.status !== "running") return runStatusLabel(run.status);
+  if (run.terminalMode === "interactive") return "Continue in Terminal";
+  if (output?.result.text.trim()) return "Wrapping up";
+  return ({ starting: "Starting", reading: "Reading the task", building: "Building", checking: "Checking the result", working: "Working", wrapping_up: "Wrapping up" })[output?.progress?.phase ?? "working"];
+}
+
+export function taskElapsed(run: Pick<PersonalRun, "status" | "createdAt" | "updatedAt">, now = Date.now()): string {
+  const start = Date.parse(run.createdAt);
+  const end = runIsActive(run.status) ? now : Date.parse(run.updatedAt || run.createdAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return "";
+  const seconds = Math.max(0, Math.floor((end - start) / 1000));
+  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, "0")}s`;
+}
+
+export function taskResultPreview(text: string): string {
+  const first = text.split(/\n\s*\n/).map(block => block.replace(/^(?:#{1,6} [^\n]*(?:\n|$))+/, "").trim()).find(Boolean) ?? "";
+  return first.length > 800 ? `${first.slice(0, 797).replace(/\s+\S*$/, "")}…` : first;
 }
 
 export function runIsActive(status: string): boolean {

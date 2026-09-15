@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type OpenAI from "openai";
-import { answerContent } from "../src/lib/local-conversation";
+import { answerContent, publicLookupKind } from "../src/lib/local-conversation";
 import { parseContentInspection } from "../src/lib/content-conversation";
 import type { Analysis } from "../src/lib/types";
 
@@ -12,6 +12,104 @@ const source = (id: string, overrides = {}) => ({ id, status: "done", source_url
 const call = (id: string, name: string, args: unknown) => ({ type:"function_call", call_id:id, name, arguments:JSON.stringify(args) });
 const response = (output: unknown[], output_text = "") => ({ status:"completed", output, output_text, usage:{input_tokens:10,output_tokens:10} });
 const final = (overrides = {}) => response([],JSON.stringify({answer:"These two sources complement each other.",suggestions:[],actions:[],evidence:[],sourceReferences:[],...overrides}));
+
+test("public link requests use a direct lookup; explanations and source-only questions do not", () => {
+  assert.equal(publicLookupKind("give me the repo link", ""), "repository");
+  assert.equal(publicLookupKind("Find this website", "A website showcase"), "web");
+  assert.equal(publicLookupKind("Where is the link?", "The caption names a GitHub skill"), "repository");
+  assert.equal(publicLookupKind("Explain what this repo does", "GitHub"), null);
+  assert.equal(publicLookupKind("Find the repo link but don't search online", "GitHub"), null);
+  assert.equal(publicLookupKind("Find the link in my saved library", "GitHub"), null);
+});
+
+test("a missing video URL is found in chat with README evidence in two model calls", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-direct-search-"));
+  try {
+    const current = source("skill", { caption: "Comment SPLIT for Falcon Loop. One model writes a plan, the other reviews it. Then they swap roles.", frame_descriptions: [{ onScreenText: ["Falcon"], description: "Free GitHub skill; no owner visible." }] });
+    const repository = { url: "https://github.com/public-author/falcon-loop", fullName: "public-author/falcon-loop", owner: "public-author", name: "falcon-loop", description: "Cross-model planning and review", archived: false, defaultBranch: "main", license: "MIT" };
+    let turns = 0, reads = 0;
+    const client = { responses: { create: async (request: { tool_choice: unknown; input: Array<{ type?: string; output?: string }> }) => {
+      if (turns++ === 0) {
+        assert.deepEqual(request.tool_choice, { type: "function", name: "find_repositories" });
+        assert.match(JSON.stringify(request.input), /Falcon Loop/);
+        return response([call("lookup", "find_repositories", { query: "Falcon Loop" })]);
+      }
+      const result = JSON.parse(request.input.find(item => item.type === "function_call_output")!.output!);
+      assert.equal(result.candidates[0].verification.sourceMatch, "candidate");
+      assert.match(result.candidates[0].readme.text, /independent reviewer/);
+      return final({ answer: `[Falcon Loop](${repository.url}) is likely the match: its writer and independent reviewer match the video, but the video doesn't prove the owner.`, actions: [{ id: "open", kind: "open_url", label: "Open Falcon Loop", detail: "Read the matching public project", url: repository.url, goal: null, mode: "research", executor: "browser", harness: "codex" }] });
+    } } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "give me the repo link", {
+      client, studioRoot: root, workspace: {},
+      searchRepositories: async query => { assert.equal(query, "Falcon Loop"); return { status: "ok", candidates: [repository], reason: "Public candidates" }; },
+      readReadme: async url => { reads++; assert.equal(url, repository.url); return { status: "ok", url, text: "The writer builds the plan; an independent reviewer checks it. Then swap roles.", truncated: false }; },
+      verifyRepository: async () => { assert.fail("A validated public search result must not trigger a redundant metadata lookup and model round"); },
+    });
+    assert.equal(turns, 2); assert.equal(reads, 1);
+    assert.equal(result.reply.actions[0].kind, "open_url");
+    assert.equal(result.reply.actions[0].url, repository.url);
+    assert.match(result.reply.answer, /likely the match/);
+    assert.ok(!result.reply.answer.includes("These repo links"), "Do not repeat an already clear qualification");
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("an empty GitHub lookup falls back to web search without launching a browser task", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-search-fallback-"));
+  try {
+    const current = source("skill", { caption: "A repository called Falcon Loop" });
+    let turns = 0;
+    const client = { responses: { create: async (request: { tool_choice: unknown }) => {
+      if (turns++ === 0) return response([call("lookup", "find_repositories", { query: "Falcon Loop" })]);
+      assert.equal(request.tool_choice, "required");
+      return response([{ type: "web_search_call", action: { type: "search", sources: [] } }], final({ answer: "I couldn't find a reliable public match.", actions: [{ id: "search", kind: "prepare_task", label: "Search Falcon Loop", detail: "Search for the repo", url: null, goal: "Find the public Falcon Loop repo", mode: "research", executor: "browser", harness: "codex" }] }).output_text);
+    } } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "give me the repo link", {
+      client, studioRoot: root, workspace: {}, searchRepositories: async () => ({ status: "unavailable", candidates: [], reason: "Rate limited" }),
+    });
+    assert.equal(turns, 2);
+    assert.deepEqual(result.reply.actions, []);
+    assert.ok(result.activity.includes("Searched the public web"));
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("a premature search-task proposal is recovered into an actual public lookup", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-offload-"));
+  try {
+    const current = source("skill", { caption: "A GitHub skill named Falcon Loop" });
+    let turns = 0;
+    const client = { responses: { create: async (request: { tool_choice: unknown }) => {
+      if (turns++ === 0) return response([call("local", "search_source", { query: "Falcon" })]);
+      if (turns === 2) return final({ answer: "I don't see a URL in the video.", actions: [{ id: "search", kind: "prepare_task", label: "Search Falcon Loop", detail: "Find the public source", url: null, goal: "Find the public Falcon Loop repo", mode: "research", executor: "browser", harness: "codex" }] });
+      assert.equal(request.tool_choice, "required");
+      return response([{ type: "web_search_call", action: { type: "search", sources: [{ url: "https://example.com/falcon-loop" }] } }], final({ answer: "A likely match is [Falcon Loop](https://example.com/falcon-loop)." }).output_text);
+    } } } as unknown as Pick<OpenAI, "responses">;
+    const result = await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "Where can I try that?", { client, studioRoot: root, workspace: {} });
+    assert.equal(turns, 3);
+    assert.match(result.reply.answer, /https:\/\/example.com\/falcon-loop/);
+    assert.deepEqual(result.reply.actions, []);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
+
+test("page reading is bounded, reusable, and limited to source or search URLs", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-page-read-"));
+  try {
+    const current = source("website", { caption: "The source links to https://example.com/official" });
+    let turns = 0, reads = 0;
+    const client = { responses: { create: async (request: { input: Array<{ type?: string; call_id?: string; output?: string }> }) => {
+      if (turns++ === 0) return response([call("unknown", "read_public_page", { url: "https://unknown.example/guessed" }), call("page", "read_public_page", { url: "https://example.com/official" }), call("same", "read_public_page", { url: "https://example.com/official" })]);
+      const outputs = request.input.filter(item => item.type === "function_call_output");
+      assert.match(JSON.parse(outputs.find(item => item.call_id === "unknown")!.output!).error, /Do not guess/);
+      const page = JSON.parse(outputs.find(item => item.call_id === "page")!.output!);
+      assert.equal(page.text.length, 16_000); assert.equal(page.truncated, true);
+      return final({ answer: "The official page explains the project." });
+    } } } as unknown as Pick<OpenAI, "responses">;
+    await answerContent(current, { version: 1, analysisId: current.id, messages: [] }, "Read what this page says", { client, studioRoot: root, workspace: {}, readPage: async (url, options) => {
+      reads++; assert.equal(url, "https://example.com/official"); assert.equal(options?.timeoutMs, 12_000);
+      return { url, title: "Official project", text: "A".repeat(20_000), truncated: false, mediaKind: "article", provider: "jina_reader", coverage: "reader_extract", warnings: [] };
+    } });
+    assert.equal(reads, 1);
+  } finally { await fs.rm(root, { recursive: true, force: true }); }
+});
 
 test("the actual answer loop searches late evidence, reads a second source and validates its citation", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "contextdrop-chat-tools-"));

@@ -6,6 +6,11 @@ import { randomUUID } from 'node:crypto';
 export const RUN_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 export const RUN_STATUSES = new Set(['launching', 'running', 'stopping', 'awaiting_approval', 'needs_input', 'failed', 'interrupted', 'stopped', 'finished_unverified']);
 export interface TextSnapshot { text: string; truncated: boolean; updatedAt: string | null; }
+export interface TaskProgress {
+  phase: 'starting' | 'reading' | 'building' | 'checking' | 'working' | 'wrapping_up';
+  update: string | null;
+  updatedAt: string | null;
+}
 export const emptySnapshot = (): TextSnapshot => ({ text: '', truncated: false, updatedAt: null });
 export const plainText = (value: unknown) => String(value).replace(/[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/g, '');
 
@@ -69,6 +74,33 @@ function readableEvents(snapshot: TextSnapshot): TextSnapshot {
   return { ...snapshot, text: text.slice(-24_000), truncated: snapshot.truncated || text.length > 24_000 };
 }
 
+/** A progress label describes the current event, never the success of the task. */
+export function taskProgress(snapshot: TextSnapshot): TaskProgress {
+  const progress: TaskProgress = { phase: 'starting', update: null, updatedAt: snapshot.updatedAt };
+  for (const line of snapshot.text.split('\n')) {
+    try {
+      const event = JSON.parse(line);
+      const item = event.item;
+      if (event.type === 'turn.started') progress.phase = 'reading';
+      if (event.type === 'item.started' && item?.type === 'command_execution') {
+        const command = typeof item.command === 'string' ? item.command : '';
+        progress.phase = /\b(?:pytest|unittest|vitest|playwright|test|lint|typecheck|tsc)\b/.test(command) ? 'checking'
+          : /\b(?:install|add|build)\b/.test(command) ? 'building'
+          : /\b(?:cat|head|sed|rg|ls|find|pwd)\b/.test(command) ? 'reading' : 'working';
+      }
+      if (event.type === 'item.started' && item?.type === 'file_change') progress.phase = 'building';
+      if (event.type === 'item.completed' && item?.type === 'command_execution') progress.phase = 'working';
+      if (event.type === 'item.completed' && item?.type === 'agent_message' && typeof item.text === 'string') {
+        // Keep code, paths and long explanations in the expandable activity log.
+        const paragraph = plainText(item.text).split(/\n\s*\n/)[0].replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[`*_#]/g, '').replace(/\s+/g, ' ').trim();
+        progress.update = paragraph.length > 240 ? `${paragraph.slice(0, 237).replace(/\s+\S*$/, '')}…` : paragraph || null;
+      }
+      if (event.type === 'turn.completed') progress.phase = 'wrapping_up';
+    } catch { /* A partial event is not a new progress signal. */ }
+  }
+  return progress;
+}
+
 export async function readRunOutput(root: string, state: { id: string; workspace: string; executor?: string; terminalMode?: string }) {
   const browser = state.executor === 'browser';
   const [events, stderr, report, lastMessage, browserHistory] = await Promise.all([
@@ -78,6 +110,7 @@ export async function readRunOutput(root: string, state: { id: string; workspace
     browser ? null : readRunFile(root, state.id, 'control', 'last-message.md', 32 * 1024),
     browser ? readRunFile(root, state.id, 'control', 'browser-state.json', 64 * 1024) : null,
   ]);
+  const progress = taskProgress(events || emptySnapshot());
   let log = readableEvents(events || emptySnapshot());
   if (browserHistory && !browserHistory.truncated) {
     try {
@@ -94,6 +127,7 @@ export async function readRunOutput(root: string, state: { id: string; workspace
   return {
     id: state.id,
     mode: browser ? 'browser' : state.terminalMode === 'exec' ? 'streaming' : 'interactive',
+    progress,
     log,
     result: {
       text: result ? plainText(result.text) : '',

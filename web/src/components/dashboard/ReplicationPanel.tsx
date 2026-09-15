@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import BrowserSession, { type LocalRunState as RunState } from "./BrowserSession";
 import ReplicationRehearsal from "./ReplicationRehearsal";
-import { ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Circle, Code2, Download, ExternalLink, FileText, Film, Loader2, Monitor, RefreshCw, Sparkles, Terminal, Unplug, WandSparkles, Workflow } from "lucide-react";
+import { ArrowRight, BookOpen, Check, CheckCircle2, ChevronRight, Circle, Code2, Download, ExternalLink, FileText, Film, Loader2, Monitor, RefreshCw, Sparkles, Terminal, Unplug, WandSparkles, Workflow, Zap } from "lucide-react";
 import type { Analysis } from "@/lib/types";
 import { buildSourceEvidence, parseReplicationPlan, replicationPlanMarkdown, type ReplicationPlan } from "@/lib/execution-plan";
 import { parseVerdict } from "@/lib/verdict-parser";
@@ -64,6 +64,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const [actionBusy, setActionBusy] = useState(false);
   const [executor, setExecutor] = useState<"terminal" | "browser">(initialExecutor);
   const [browserConfigured, setBrowserConfigured] = useState(false);
+  const [terminalAuto, setTerminalAuto] = useState(false);
   const [harness, setHarness] = useState<Harness>(initialHarness);
   const [harnesses, setHarnesses] = useState<Record<Harness, boolean>>({ codex: false, claude: false });
   const [connections, setConnections] = useState<("github" | "vercel")[]>([]);
@@ -161,6 +162,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
         claude: terminalConfigured && detected?.claude === true,
       });
       setBrowserConfigured(health.capabilities?.browser?.configured === true);
+      setTerminalAuto(health.execution === "streaming-terminal");
       setToken(candidate); setPairedToken(candidate); setPaired(true);
     } catch (e) { if (!controller.signal.aborted) setLocalError(e instanceof TypeError ? "Cannot reach the companion. Start it with this app’s exact origin and allow local network access if your browser asks." : e instanceof Error ? e.message : "Connection failed."); }
     finally { if (!controller.signal.aborted) setPairBusy(false); }
@@ -209,7 +211,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   if (compact) return <section className={styles.compactTask} aria-label="Review your task">
     {busy ? <p className={styles.thinking} role="status"><Loader2 size={20} className={styles.spinner} />Working out the steps…</p> : <>
       {plan && <p className={styles.taskGoal}>{plan.summary}</p>}
-      <p className={styles.taskLocation}><Monitor size={18} />{executor === "browser" ? "In a separate browser on your Mac" : harness === "claude" ? "In Claude Code on your Mac" : "In a new project folder on your Mac"}</p>
+      <p className={styles.taskLocation}>{executor === "terminal" && harness === "codex" && terminalAuto ? <Zap size={18} /> : <Monitor size={18} />}{executor === "browser" ? "In your Chrome on this Mac" : harness === "claude" ? "Claude Code · Review in Terminal" : terminalAuto ? "Auto · Codex · New project folder" : "Codex · Review in Terminal"}</p>
       <details className={styles.taskChecks}><summary>See the steps{plan ? ` · ${plan.steps.length}` : ""}</summary>
         <p className={styles.taskGoal}>{goal}</p>
         {plan && <><ol className={styles.taskSteps}>{plan.steps.map(step => <li key={step.id}>{step.instruction}<small>{step.kind === "inferred" ? "Added suggestion · " : "From your content · "}{step.verification}</small></li>)}</ol>
@@ -229,7 +231,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
     {!paired && <p className={styles.taskConnection}>{pairBusy ? "Connecting to your Mac…" : "Your Mac worker is not connected."}<button type="button" className={styles.textButton} disabled={pairBusy || !token} onClick={() => void pair()}>Reconnect</button></p>}
     {paired && executor === "terminal" && !terminalAvailable && <p role="status" className={styles.evidenceNote}>{harnessName} isn’t available. Choose another app above, or sign in and restart ContextDrop.</p>}
     {paired && executor === "browser" && !browserConfigured && <p role="status" className={styles.evidenceNote}>Add your OpenAI key to use the browser.</p>}
-    <p className={styles.taskPermission}>{executor === "browser" ? "You’ll see the browser here. It asks before clicks and typing. You handle logins and payments." : harness === "claude" ? "Claude Code opens in Terminal. Approve its plan there before it changes files." : "Codex can create files and run commands in this folder. You can watch and stop it here."}</p>
+    <p className={styles.taskPermission}>{executor === "browser" ? "You’ll see the browser here. It asks before clicks and typing. You handle logins and payments." : harness === "claude" ? "Approve the plan in Terminal before Claude changes files." : terminalAuto ? "Local steps run for you without repeated prompts. You can stop anytime. Extra access may be blocked." : "Review permissions in the Terminal window on your Mac."}</p>
     {executor === "terminal" && harness === "codex" && connections.length > 0 && <p className={styles.taskPermission}>Uses your {connections.map(id => id === "github" ? "GitHub" : "Vercel").join(" and ")} connections if available. Publishing needs your approval.</p>}
     <button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={18} className={styles.spinner} /> : <ArrowRight size={18} />}{launchBusy ? "Starting…" : sessionOpen ? "Task is running" : "Yes, start"}</button>
     {localError && <p role="alert" className={styles.error}>{localError}</p>}

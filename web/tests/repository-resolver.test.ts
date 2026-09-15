@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizePublicRepositoryUrl, searchPublicRepositories, verifyPublicRepository } from "../src/lib/repository-resolver";
+import { normalizePublicRepositoryUrl, searchPublicRepositories, verifyPublicRepository, readPublicRepositoryReadme } from "../src/lib/repository-resolver";
 import type { RepositorySourceClue } from "../src/lib/repository-resolver";
 
 const fixture = {
@@ -10,6 +10,27 @@ const fixture = {
 };
 const url = fixture.html_url;
 const reply = (body: unknown = fixture, status = 200): typeof fetch => async () => Response.json(body, { status });
+
+test("README lookup reads bounded Unicode text from the public API without credentials", async () => {
+  const content = "# A useful project 🚀\n" + "Usage instructions. ".repeat(1000);
+  const result = await readPublicRepositoryReadme(url, { fetch: async (input, init) => {
+    assert.equal(input, "https://api.github.com/repos/Panniantong/Agent-Reach/readme");
+    assert.equal(init?.redirect, "error"); assert.equal(init?.credentials, "omit");
+    assert.equal(new Headers(init?.headers).has("authorization"), false);
+    return Response.json({ encoding: "base64", content: Buffer.from(content).toString("base64") });
+  } });
+  assert.equal(result.status, "ok"); assert.equal(result.text.length, 14_000);
+  assert.match(result.text, /🚀/); assert.equal(result.truncated, true);
+});
+
+test("README lookup rejects private targets, malformed encodings, binary and unavailable data", async () => {
+  assert.equal((await readPublicRepositoryReadme("https://127.0.0.1/private", { fetch: async () => { assert.fail("Invalid URL must not fetch"); } })).status, "invalid");
+  for (const data of [{ encoding: "none", content: "x" }, { encoding: "base64", content: "a$" }, { encoding: "base64", content: "/w==" }, { encoding: "base64", content: "" }]) {
+    assert.equal((await readPublicRepositoryReadme(url, { fetch: reply(data) })).status, "unavailable");
+  }
+  for (const status of [404, 403, 429]) assert.equal((await readPublicRepositoryReadme(url, { fetch: reply({}, status) })).status, "unavailable");
+  assert.equal((await readPublicRepositoryReadme(url, { timeoutMs: 5, fetch: () => new Promise(() => {}) })).status, "unavailable");
+});
 
 test("repository roots normalize while hostile hosts, credentials, ports and paths never trigger fetch", async () => {
   assert.equal(normalizePublicRepositoryUrl("https://www.github.com/Panniantong/Agent-Reach.git/"), url);

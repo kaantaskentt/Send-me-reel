@@ -124,7 +124,7 @@ test("three choices preserve chat and require a confirmation before opening or r
   const question = "Find the referenced project and help me inspect it.";
   await page.getByLabel("Ask about your content").fill(question);
   await page.getByRole("button", { name: "Send message" }).click();
-  await expect(chat.getByText(question, { exact: true })).toBeVisible();
+  await expect(chat.getByRole("article").getByText(question, { exact: true })).toBeVisible();
   await chat.getByRole("button", {name:"Open verified project"}).click();
   const confirmation=page.getByRole("dialog",{name:"Open this page?"});
   await expect(confirmation.getByRole("link",{name:"Yes, open it"})).toHaveAttribute("href",knownUrl);
@@ -138,7 +138,7 @@ test("three choices preserve chat and require a confirmation before opening or r
   const review = page.getByRole("region", { name: "Review your task" });
   await expect(review).toBeVisible();
   await expect(review.getByRole("button", { name: "Yes, start", exact: true })).toBeEnabled();
-  await expect(review.getByText(/Claude Code opens in Terminal/)).toBeVisible();
+  await expect(review.getByText("Approve the plan in Terminal before Claude changes files.", { exact: true })).toBeVisible();
   await review.getByText("Change the task or app",{exact:true}).click();
   await expect(page.getByLabel("Your task outcome")).toHaveValue(taskGoal);
   await expect(review.getByLabel("Task app",{exact:true})).toHaveValue("claude");

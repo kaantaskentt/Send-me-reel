@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { parseReplicationPlan, type ReplicationPlan } from '../shared/execution-plan.js';
 
 import { GuidedBrowserRun, createOpenAIPlanner, type BrowserPlanner } from './browser.js';
+import { ChromePairing, chromePairingHtml } from './chrome-pairing.js';
+import type { ExistingChromeConnection } from './chrome-connector.js';
 import { resolveInstalledHarnesses, type Harness } from './harnesses.js';
 import { launchBackgroundRunner } from './background-runner.js';
 import { inspectConnections, type ConnectionId, type SetupStatus } from './connections.js';
@@ -37,6 +39,7 @@ export interface CompanionOptions {
   revealLocalPath?: (filename: string, target: 'workspace' | 'report') => Promise<void>;
   browserApiKey?: string;
   browserPlanner?: (plan: ReplicationPlan) => BrowserPlanner;
+  browserConnection?: ExistingChromeConnection;
   inspectSetup?: () => Promise<SetupStatus>;
 }
 function json(response: ServerResponse, code: number, body: unknown) {
@@ -73,6 +76,7 @@ export function createCompanionServer(options: CompanionOptions) {
   const runs = new Map<string, { state: RunState; controlDir: string; requestKey?: string; persistence?: Promise<void> }>();
   const requests = new Map<string, string>();
   const browsers = new Map<string, GuidedBrowserRun>();
+  const chromePairing = new ChromePairing();
   let preparing = false;
   let restored: Promise<void> | undefined;
   let setupCache: { expires: number; value: Promise<SetupStatus> } | undefined;
@@ -160,6 +164,18 @@ export function createCompanionServer(options: CompanionOptions) {
     const address = server.address();
     const expectedHost = typeof address === 'object' && address ? `127.0.0.1:${address.port}` : '';
     if (request.headers.host !== expectedHost) return json(response, 403, { error: 'Invalid loopback host' });
+    const url = new URL(request.url || '/', 'http://127.0.0.1');
+    const pairingToken = url.pathname.match(/^\/browser\/pair\/([a-zA-Z0-9_-]{43})$/)?.[1];
+    if (pairingToken) {
+      if (!['GET', 'POST'].includes(request.method || '') || !chromePairing.accepts(pairingToken)) return json(response, 404, { error: 'Chrome connection link expired. Start Connect Chrome again.' });
+      if (origin && origin !== `http://${expectedHost}`) return json(response, 403, { error: 'Open this connection page directly in your Chrome.' });
+      if (request.method === 'POST') {
+        if (origin !== `http://${expectedHost}`) return json(response, 403, { error: 'Select Chrome using the button on the connection page.' });
+        chromePairing.select(pairingToken);
+      }
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'" });
+      response.end(chromePairingHtml(Boolean(chromePairing.markerUrl))); return;
+    }
     if (origin && !options.allowedOrigins.includes(origin)) return json(response, 403, { error: 'This app origin is not paired' });
     if (origin) {
       response.setHeader('Access-Control-Allow-Origin', origin);
@@ -172,7 +188,9 @@ export function createCompanionServer(options: CompanionOptions) {
     const auth = request.headers.authorization || '';
     const wanted = `Bearer ${options.token}`;
     if (Buffer.byteLength(auth) !== Buffer.byteLength(wanted) || !timingSafeEqual(Buffer.from(auth), Buffer.from(wanted))) return json(response, 401, { error: 'Pair this browser with the token shown by the local companion' });
-    const url = new URL(request.url || '/', 'http://127.0.0.1');
+    if (request.method === 'POST' && url.pathname === '/browser/connect') {
+      return json(response, 200, { setupUrl: chromePairing.create(`http://${expectedHost}`), status: chromePairing.status });
+    }
     if (request.method === 'GET' && ['/health', '/connections'].includes(url.pathname)) {
       try {
         const setup = await readSetup();
@@ -180,7 +198,7 @@ export function createCompanionServer(options: CompanionOptions) {
         const ready = (harness: Harness) => (options.platform || process.platform) === 'darwin' && !modeUnavailableReason(harness, harness === 'claude' ? 'interactive' : options.terminalMode || 'interactive') && setup.harnesses?.[harness]?.installed === true && setup.harnesses[harness].supported === true && setup.harnesses[harness].auth === 'authenticated' && setup.harnesses[harness].available === true;
         const codex = Boolean(options.codexBinary) && ready('codex');
         const claude = Boolean(options.claudeBinary) && ready('claude');
-        return json(response, 200, { status: codex || claude ? 'ready' : 'unavailable', companion: 'reachable', platform: options.platform || process.platform, runner: codex ? 'codex' : claude ? 'claude' : null, execution: codex && options.terminalMode === 'exec' ? 'streaming-terminal' : claude ? 'interactive-terminal' : null, capabilities: { terminal: codex || claude, harnesses: { codex, claude }, browser: { configured: Boolean(options.browserApiKey || options.browserPlanner) } }, setup, version: 1 });
+        return json(response, 200, { status: codex || claude ? 'ready' : 'unavailable', companion: 'reachable', platform: options.platform || process.platform, runner: codex ? 'codex' : claude ? 'claude' : null, execution: codex && options.terminalMode === 'exec' ? 'streaming-terminal' : claude ? 'interactive-terminal' : null, capabilities: { terminal: codex || claude, harnesses: { codex, claude }, browser: { configured: Boolean(options.browserApiKey || options.browserPlanner), mode: 'existing-chrome', connection: options.browserConnection?.markerUrl ? 'selected' : chromePairing.status } }, setup, version: 1 });
       } catch { return json(response, 503, { status: 'unavailable', error: 'Local CLI setup could not be inspected. No connection readiness has been established.' }); }
     }
     try { await (restored ??= restoreRuns()); }
@@ -299,6 +317,7 @@ export function createCompanionServer(options: CompanionOptions) {
         if (status?.installed !== true || status.supported !== true || status.auth !== 'authenticated' || status.available !== true) return json(response, 409, { error: status?.unavailableReason || 'CLI readiness is unverified. Check local connection setup before launching.' });
       }
       if (browserMode && !options.browserApiKey && !options.browserPlanner) return json(response, 409, { error: 'Set OPENAI_API_KEY in the local companion environment to enable browser guidance' });
+      if (browserMode && !options.browserConnection?.markerUrl && !chromePairing.markerUrl) return json(response, 409, { error: 'Connect your Chrome first, then start this task again. Your signed-in Chrome will be used.' });
       const id = randomUUID();
       const runDir = path.join(options.rootDir, id);
       const workspace = path.join(runDir, 'project');
@@ -320,7 +339,7 @@ export function createCompanionServer(options: CompanionOptions) {
       if (key) requests.set(key, id);
       await persistRun(id);
       if (browserMode) {
-        const browser = new GuidedBrowserRun({ workspace, planner: options.browserPlanner ? options.browserPlanner(plan) : createOpenAIPlanner(plan, options.browserApiKey!), onState: (browserState) => {
+        const browser = new GuidedBrowserRun({ workspace, connection: options.browserConnection || { mode: 'existing-chrome', markerUrl: chromePairing.markerUrl }, planner: options.browserPlanner ? options.browserPlanner(plan) : createOpenAIPlanner(plan, options.browserApiKey!), onState: (browserState) => {
           // Persist a compact action log; screenshots stay in memory.
           const entry = runs.get(id)!;
           const compact = { ...browserState, screenshot: undefined };

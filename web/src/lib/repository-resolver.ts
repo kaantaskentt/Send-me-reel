@@ -34,6 +34,13 @@ export interface RepositorySearchResult {
   reason: string;
 }
 
+export interface RepositoryReadme {
+  status: "ok" | "unavailable" | "invalid";
+  url: string | null;
+  text: string;
+  truncated: boolean;
+}
+
 interface LookupOptions {
   /** Dependency injection for offline tests; no caller-supplied headers or endpoint. */
   fetch?: typeof fetch;
@@ -185,6 +192,34 @@ function conflictingRepositoryIdentities(clues: RepositorySourceClue[], reposito
   return [...conflicting].slice(0, 8);
 }
 
+/** Compare already validated GitHub metadata with original evidence. A README
+ * or search result must never be added to sourceClues to manufacture a match. */
+export function matchRepositoryToSource(repository: PublicRepository, sourceClues: RepositorySourceClue[]): Pick<RepositoryResolution, "sourceMatch" | "matchedClues" | "conflictingIdentities" | "reason"> {
+  const clues = Array.isArray(sourceClues) ? sourceClues : [];
+  const matchedClues = exactClues(clues, repository);
+  const conflictingIdentities = conflictingRepositoryIdentities(clues, repository);
+  const confirmed = matchedClues.some(clue => !clue.uncertain) && !conflictingIdentities.length;
+  return {
+    sourceMatch: confirmed ? "confirmed" : "candidate", matchedClues, conflictingIdentities,
+    reason: conflictingIdentities.length ? "This public repository exists, but the captured source attributes the same repository name to different owners. Reinspect the original moment or report this as a candidate; existence does not resolve the conflicting identity." : confirmed ? "This public repository exists and its exact owner/name appears in the supplied source evidence." : matchedClues.length ? "This public repository exists, but its source identity is marked uncertain. Reinspect the source before claiming a confirmed match." : "This public repository exists. The available source evidence does not confirm it is the one shown or discussed.",
+  };
+}
+
+/** Read text from GitHub's fixed API, without downloading or executing code. */
+export async function readPublicRepositoryReadme(proposedUrl: string, options: LookupOptions = {}): Promise<RepositoryReadme> {
+  const url = normalizePublicRepositoryUrl(proposedUrl);
+  if (!url) return { status: "invalid", url: null, text: "", truncated: false };
+  try {
+    const response = await publicApiJson(`/repos/${url.slice("https://github.com/".length)}/readme`, 256_000, options);
+    const data = record(response.value);
+    if (response.status !== 200 || data?.encoding !== "base64" || typeof data.content !== "string" || !/^[a-zA-Z0-9+/=\r\n]+$/.test(data.content)) throw new Error("No readable README");
+    const bytes = Uint8Array.from(atob(data.content.replace(/[\r\n]/g, "")), char => char.charCodeAt(0));
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes).replace(/\u0000/g, "").trim();
+    if (!text) throw new Error("Empty README");
+    return { status: "ok", url, text: text.slice(0, 14_000), truncated: text.length > 14_000 };
+  } catch { return { status: "unavailable", url, text: "", truncated: false }; }
+}
+
 export async function verifyPublicRepository(proposedUrl: string, sourceClues: RepositorySourceClue[] = [], options: LookupOptions = {}): Promise<RepositoryResolution> {
   const checkedAt = new Date().toISOString();
   const unresolved = (existence: RepositoryResolution["existence"], reason: string): RepositoryResolution => ({ existence, sourceMatch: "unknown", repository: null, matchedClues: [], reason, checkedAt });
@@ -197,16 +232,10 @@ export async function verifyPublicRepository(proposedUrl: string, sourceClues: R
     if (result.status !== 200) return unresolved("unavailable", "GitHub could not complete this public lookup. The repository has not been verified.");
     const repository = parseRepository(result.value);
     if (!repository || repository.fullName.toLowerCase() !== fullName.toLowerCase()) return unresolved("unavailable", "GitHub returned an unexpected repository identity. No match was confirmed.");
-    const matchedClues = exactClues(Array.isArray(sourceClues) ? sourceClues : [], repository);
-    const conflictingIdentities = conflictingRepositoryIdentities(Array.isArray(sourceClues) ? sourceClues : [], repository);
-    const confirmed = matchedClues.some(clue => !clue.uncertain) && !conflictingIdentities.length;
     return {
       existence: "verified",
-      sourceMatch: confirmed ? "confirmed" : "candidate",
       repository,
-      matchedClues,
-      conflictingIdentities,
-      reason: conflictingIdentities.length ? "This public repository exists, but the captured source attributes the same repository name to different owners. Reinspect the original moment or report this as a candidate; existence does not resolve the conflicting identity." : confirmed ? "This public repository exists and its exact owner/name appears in the supplied source evidence." : matchedClues.length ? "This public repository exists, but its source identity is marked uncertain. Reinspect the source before claiming a confirmed match." : "This public repository exists. The available source evidence does not confirm it is the one shown or discussed.",
+      ...matchRepositoryToSource(repository, sourceClues),
       checkedAt,
     };
   } catch { return unresolved("unavailable", "The public GitHub lookup failed or exceeded its limits. No match was confirmed."); }

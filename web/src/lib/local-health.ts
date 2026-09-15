@@ -9,6 +9,7 @@ export interface LocalHealth {
     connected: boolean;
     terminal: boolean;
     browser: boolean;
+    browserConnection: 'not_connected' | 'awaiting_selection' | 'selected';
     harnesses: { codex: boolean; claude: boolean };
     execution: "streaming-terminal" | "interactive-terminal" | null;
   };
@@ -31,7 +32,7 @@ export async function readLocalHealth(headers: Pick<Headers, "get">, dependencie
     status: "needs_setup",
     readers: { gemini: Boolean((env.GEMINI_API_KEY || env.GOOGLE_API_KEY)?.trim()), frames: openai, pages: true },
     chat: { configured: openai },
-    companion: { connected: false, terminal: false, browser: false, harnesses: { codex: false, claude: false }, execution: null },
+    companion: { connected: false, terminal: false, browser: false, browserConnection: 'not_connected', harnesses: { codex: false, claude: false }, execution: null },
     issues: [],
   };
   const host = headers.get("host")!;
@@ -57,8 +58,8 @@ export async function readLocalHealth(headers: Pick<Headers, "get">, dependencie
         } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
         const result = JSON.parse(Buffer.concat(chunks).toString("utf8"));
         const caps = result?.capabilities;
-        if (result?.status === "ready" && result?.version === 1 && result?.platform === "darwin" && typeof caps?.terminal === "boolean" && typeof caps?.browser?.configured === "boolean" && typeof caps?.harnesses?.codex === "boolean" && typeof caps?.harnesses?.claude === "boolean" && ["streaming-terminal", "interactive-terminal"].includes(result.execution)) {
-          health.companion = { connected: true, terminal: caps.terminal, browser: caps.browser.configured, harnesses: { codex: caps.harnesses.codex, claude: caps.harnesses.claude }, execution: result.execution };
+        if ((result?.status === "ready" || (result?.status === "unavailable" && result?.companion === "reachable")) && result?.version === 1 && result?.platform === "darwin" && typeof caps?.terminal === "boolean" && typeof caps?.browser?.configured === "boolean" && typeof caps?.harnesses?.codex === "boolean" && typeof caps?.harnesses?.claude === "boolean" && ["streaming-terminal", "interactive-terminal", null].includes(result.execution)) {
+          health.companion = { connected: true, terminal: caps.terminal, browser: caps.browser.configured, browserConnection: caps.browser.mode === 'existing-chrome' && ['awaiting_selection', 'selected'].includes(caps.browser.connection) ? caps.browser.connection : 'not_connected', harnesses: { codex: caps.harnesses.codex, claude: caps.harnesses.claude }, execution: result.execution };
         }
       } else await response.body?.cancel().catch(() => {});
     }

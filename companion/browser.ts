@@ -1,4 +1,4 @@
-import { chromium, type Browser, type Page, type ElementHandle } from 'playwright';
+import { chromium, type Browser, type Page, type ElementHandle, type BrowserContext, type Route } from 'playwright';
 import OpenAI from 'openai';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
@@ -6,6 +6,7 @@ import path from 'node:path';
 import { resolvePublicUrl } from '../src/services/publicUrl.js';
 import { createBrowserEgress, type ResolveDestination } from './egress.js';
 import type { ReplicationPlan } from '../shared/execution-plan.js';
+import { connectExistingChrome, TaskTabScope, type ExistingChromeConnection } from './chrome-connector.js';
 
 export interface BrowserAction { type: 'navigate' | 'click' | 'fill' | 'scroll' | 'back' | 'wait' | 'ask_user' | 'finish'; description: string; targetId: string | null; url: string | null; text: string | null; }
 export interface BrowserState { status: string; updatedAt?: string; message?: string; currentUrl?: string; screenshot?: string; pendingAction?: BrowserAction & { id: string }; history: { action: string; status: string }[]; }
@@ -74,6 +75,8 @@ export function createOpenAIPlanner(plan: ReplicationPlan, apiKey: string): Brow
 export class GuidedBrowserRun {
   state: BrowserState = { status: 'launching', history: [] };
   private browser?: Browser;
+  private tabs?: TaskTabScope;
+  private removePageGuard?: () => Promise<void>;
   private egress?: Awaited<ReturnType<typeof createBrowserEgress>>;
   private page?: Page;
   private pendingObservation?: BrowserObservation;
@@ -82,44 +85,70 @@ export class GuidedBrowserRun {
   private busy = false;
   private steps = 0;
   private closed = false;
-  constructor(private options: { workspace: string; planner: BrowserPlanner; onState: (state: BrowserState) => void; headless?: boolean; validateUrl?: (url: string) => Promise<void>; resolveDestination?: ResolveDestination }) {}
+  constructor(private options: { workspace: string; planner: BrowserPlanner; onState: (state: BrowserState) => void; headless?: boolean; validateUrl?: (url: string) => Promise<void>; resolveDestination?: ResolveDestination; connection?: ExistingChromeConnection; connectChrome?: typeof connectExistingChrome }) {}
   get canResume() { return !this.closed && !this.busy && Boolean(this.page && !this.page.isClosed()) && this.steps < 30 && ['needs_input', 'failed'].includes(this.state.status); }
   private update(patch: Partial<BrowserState>) { this.state = { ...this.state, ...patch, updatedAt: new Date().toISOString() }; this.options.onState(this.state); }
   async start() {
     try {
-      this.egress = await createBrowserEgress(this.options.resolveDestination);
-      if (this.closed) { this.egress.close(); return; }
-      this.browser = await chromium.launch({ headless: this.options.headless ?? false, chromiumSandbox: true, args: ['--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--disable-quic'], proxy: { server: this.egress.url, bypass: '<-loopback>' } });
-      if (this.closed) { await this.browser.close(); this.egress.close(); return; }
-      const context = await this.browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true, serviceWorkers: 'block' });
-      if (this.closed) { await this.browser.close(); this.egress.close(); return; }
+      let context: BrowserContext;
+      if (this.options.connection?.mode === 'existing-chrome') {
+        const connected = await (this.options.connectChrome || connectExistingChrome)(this.options.connection);
+        this.browser = connected.browser; context = connected.context;
+      } else {
+        this.egress = await createBrowserEgress(this.options.resolveDestination);
+        if (this.closed) { this.egress.close(); return; }
+        this.browser = await chromium.launch({ headless: this.options.headless ?? false, chromiumSandbox: true, args: ['--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--disable-quic'], proxy: { server: this.egress.url, bypass: '<-loopback>' } });
+        if (this.closed) { await this.browser.close(); this.egress.close(); return; }
+        context = await this.browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true, serviceWorkers: 'block' });
+      }
+      if (this.closed) { await this.browser.close(); this.egress?.close(); return; }
       const validate = this.options.validateUrl || assertBrowserUrl;
-      await context.route('**/*', async route => {
-        try { await validate(route.request().url()); await route.continue(); } catch { await route.abort('blockedbyclient'); }
-      });
-      // WebSocket endpoints cannot bypass public-page checks.
-      await context.routeWebSocket('**/*', socket => socket.close());
       const watchPage = (page: Page) => {
         this.page = page;
         page.setDefaultTimeout(10_000);
         this.observeDownloads(page);
+        // Scope this interception to task tabs; never alter existing tabs.
+        void page.routeWebSocket('**/*', socket => socket.close()).catch(() => {});
         page.on('close', () => {
           if (this.closed || this.page !== page) return;
           // A popup closing must not strand the run on a dead Page. A pending
           // approval belonged to the closed tab and must never transfer to another.
-          this.page = context.pages().filter(candidate => !candidate.isClosed()).at(-1);
+          this.page = this.tabs?.pages().at(-1);
           if (this.page) this.update({ status: 'needs_input', pendingAction: undefined, currentUrl: this.page.url(), screenshot: undefined, message: 'The active tab closed. Continue to inspect the remaining tab before taking another action.' });
           else this.update({ status: 'failed', pendingAction: undefined, screenshot: undefined, message: 'All task tabs are closed. Stop this attempt and start a new task.' });
         });
       };
-      context.on('page', watchPage);
-      this.page = await context.newPage();
+      this.tabs = new TaskTabScope(watchPage);
+      const handlePage = (page: Page) => { void this.tabs!.owns(page).catch(() => {}); };
+      context.on('page', handlePage);
+      const guard = async (route: Route) => {
+        try {
+          let page: Page;
+          try { page = route.request().frame().page(); } catch { await route.fallback(); return; }
+          // Existing user tabs and their popups keep their normal traffic.
+          // The opener check also guards the first navigation of a task popup.
+          if (!await this.tabs!.owns(page)) { await route.fallback(); return; }
+          await validate(route.request().url()); await route.continue();
+        } catch { await route.abort('blockedbyclient').catch(() => {}); }
+      };
+      await context.route('**/*', guard);
+      this.removePageGuard = async () => { context.off('page', handlePage); await context.unroute('**/*', guard).catch(() => {}); };
+      const root = await context.newPage();
+      this.tabs.claimRoot(root);
+      if (this.closed) { await this.tabs.close(); await this.removePageGuard(); await this.browser.close(); return; }
       this.browser.on('disconnected', () => { this.egress?.close(); if (!this.closed) { this.closed = true; this.update({ status: 'stopped', pendingAction: undefined, message: 'Browser closed. Review the actions already taken before restarting.' }); } });
       await this.advance();
-    } catch (error) { this.fail(error); }
+    } catch (error) {
+      await this.tabs?.close(); await this.removePageGuard?.(); await this.browser?.close().catch(() => {}); this.egress?.close();
+      this.fail(error);
+    }
   }
   private observeDownloads(page: Page) {
     page.on('download', async download => {
+      if (this.options.connection?.mode === 'existing-chrome') {
+        this.update({ history: [...this.state.history, { action: 'Download handed to your Chrome. Check Chrome Downloads for its status.', status: 'handed_to_chrome' }] });
+        return;
+      }
       try {
         const folder = path.join(this.options.workspace, 'downloads');
         await fs.mkdir(folder, { recursive: true });
@@ -174,6 +203,11 @@ export class GuidedBrowserRun {
         if (action.type === 'finish') {
           this.update({ status: 'finished_unverified', message: action.description, history: [...this.state.history, { action: action.description, status: 'reported_by_agent' }] });
           await fs.writeFile(path.join(this.options.workspace, 'BROWSER-RESULT.json'), JSON.stringify({ ...this.state, screenshot: undefined }, null, 2));
+          if (this.options.connection?.mode === 'existing-chrome') {
+            // Leave the result visible to the user, but release all automation
+            // hooks so the next task can attach without competing sessions.
+            this.closed = true; await this.removePageGuard?.(); await this.browser?.close();
+          }
           return;
         }
         if (action.type === 'ask_user') { this.update({ status: 'needs_input', message: action.description }); return; }
@@ -245,5 +279,5 @@ export class GuidedBrowserRun {
     if (!this.canResume) throw new Error('This run cannot continue. Check that a task tab is still open.');
     await this.advance();
   }
-  async stop() { this.closed = true; this.egress?.close(); await this.pendingTarget?.dispose().catch(() => {}); this.pendingTarget = undefined; await this.browser?.close(); this.update({ status: 'stopped', pendingAction: undefined, message: 'Browser run stopped. Previous actions have not been undone.' }); }
+  async stop() { this.closed = true; this.egress?.close(); await this.pendingTarget?.dispose().catch(() => {}); this.pendingTarget = undefined; await this.tabs?.close(); await this.removePageGuard?.(); await this.browser?.close(); this.update({ status: 'stopped', pendingAction: undefined, message: 'Task stopped. Your other Chrome tabs stay open. Previous actions have not been undone.' }); }
 }

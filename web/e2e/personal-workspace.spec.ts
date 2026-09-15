@@ -20,7 +20,7 @@ async function fixtures(page: Page, initialStatus = "running") {
   const run: PersonalRun = {
     id: runId, executor: "terminal", analysisId: "bbbbbbbb-2222-4222-8222-bbbbbbbbbbbb", sourceUrl: originalSource,
     title, goal: "Make a small local example from the original repository.", status: initialStatus,
-    workspace: "/private/tmp/contextdrop-ui-fixture/project", createdAt: "2026-09-13T10:00:00Z",
+    workspace: "/private/tmp/contextdrop-ui-fixture/project", createdAt: "2026-09-13T10:00:00Z", updatedAt: "2026-09-13T10:02:46Z",
     harness: "codex", terminalMode: "exec", canStop: initialStatus === "running", canResume: false,
   };
   const output: RunOutput = {
@@ -28,7 +28,7 @@ async function fixtures(page: Page, initialStatus = "running") {
     result: { text: "# Fixture result\nCreated example.html. The agent reports a heading check; review the actual result.\n<script>window.shouldNeverExecute=true</script>", path: "CONTEXTDROP-RESULT.md", source: "report", verification: "unverified", truncated: false },
   };
   const state = {
-    run, listReads: 0, outputReads: 0, libraryReads: 0, stops: 0, reveals: 0, phonePairs: 0, phoneSyncs: 0, inboxDismisses: 0, captureAttempts: 0,
+    run, output, listReads: 0, outputReads: 0, libraryReads: 0, stops: 0, reveals: 0, phonePairs: 0, phoneSyncs: 0, inboxDismisses: 0, captureAttempts: 0,
     forbidden: [] as string[], errors: [] as string[], token: "",
     share: { available: true, shortcutAvailable: true, items: [] as { id: string; url: string; receivedAt: string; source: "iphone" }[], lastSyncedAt: "2026-09-13T10:02:00Z" },
     allowRejectedCapture: false,
@@ -110,26 +110,28 @@ test("Tasks recovers previous work after reload and keeps original source, actua
   const tasks = page.getByRole("dialog", { name: "Your tasks", exact: true });
   await expect(tasks.getByRole("button", { name: new RegExp(title) })).toBeVisible();
   await tasks.getByRole("button", { name: new RegExp(title) }).click();
-  const workroom = page.getByRole("dialog", { name: title, exact: true });
-  await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
-  await expect(workroom.getByText(/This task keeps its original source/)).toBeVisible();
+  const workroom = page.getByRole("dialog", { name: "Your task", exact: true });
+  await expect(workroom.getByRole("heading", { name: title })).toBeVisible();
+  await expect(workroom.getByText("Auto · Codex", { exact: true })).toBeVisible();
   await expect(workroom.getByRole("region", { name: "Task result" })).toContainText("Created example.html");
-  await expect(workroom.locator("details")).not.toHaveAttribute("open", "");
-  await workroom.getByRole("button", { name: "Activity", exact: true }).click();
+  await expect(workroom.locator("details[open]")).toHaveCount(0);
+  await expect(workroom.getByText("2m 46s", { exact: true })).toBeVisible();
+  await expect(workroom.getByText("$ node check-example.mjs", { exact: false })).not.toBeVisible();
+  await workroom.getByText("Activity & details", { exact: true }).click();
+  await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
   await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("$ node check-example.mjs");
   await expect(workroom.getByRole("status")).toHaveText("Finished · review the result");
-  await workroom.getByRole("button", { name: "Result", exact: true }).click();
-  await expect(workroom.getByText(/Agent report · review required/)).toBeVisible();
+  await expect(workroom.getByText("Open the files to check the result.", { exact: true })).toBeVisible();
   await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("Created example.html");
-  await workroom.getByText("Full report & checks", { exact: true }).click();
+  await workroom.getByText("Report & checks", { exact: true }).click();
   expect(await page.evaluate(() => "shouldNeverExecute" in window)).toBe(false);
-  await workroom.getByRole("button", { name: "Open workspace", exact: true }).click();
+  await workroom.getByRole("button", { name: "Open files", exact: true }).click();
   expect(state.reveals).toBe(1);
   await page.reload();
   await page.getByRole("button", { name: "Tasks", exact: true }).click();
   await tasks.getByRole("button", { name: new RegExp(title) }).click();
+  await workroom.getByText("Activity & details", { exact: true }).click();
   await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
-  await workroom.getByRole("button", { name: "Activity", exact: true }).click();
   await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("Fixture check: rendered heading found.");
   expect(state.listReads).toBeGreaterThanOrEqual(2);
   expect(state.outputReads).toBeGreaterThanOrEqual(2);
@@ -145,17 +147,38 @@ test("Tasks stops only the selected run, acknowledges stopping, and keeps source
   await expect(page.getByRole("heading", {name:"Saved source actions",exact:true})).toBeVisible();
   await page.getByRole("button", { name: /^Tasks/ }).click();
   await page.getByRole("dialog", { name: "Your tasks", exact: true }).getByRole("button", { name: new RegExp(title) }).click();
-  const workroom = page.getByRole("dialog", { name: title, exact: true });
-  await expect(workroom.getByRole("status")).toHaveText("Working");
+  const workroom = page.getByRole("dialog", { name: "Your task", exact: true });
+  await expect(workroom.getByRole("status")).toHaveText("Wrapping up");
   await workroom.getByRole("button", { name: "Stop task", exact: true }).click();
   await expect(workroom.getByRole("status")).toHaveText("Stopping");
   await expect(workroom.getByRole("button", { name: "Stop task", exact: true })).toBeDisabled();
   expect(state.stops).toBe(1);
   state.run.status = "stopped"; state.run.canStop = false;
   await expect(workroom.getByRole("status")).toHaveText("Stopped");
+  await workroom.getByText("Activity & details", { exact: true }).click();
   await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
   expect(await workroom.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("body *")].filter(element => {const r=element.getBoundingClientRect();return r.width>0 && r.right>innerWidth+1;}).slice(0,12).map(element=>({tag:element.tagName,class:element.className,width:element.getBoundingClientRect().width,right:element.getBoundingClientRect().right}))))).toBe(true);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("Tasks shows live progress and reveals a report without making the user switch tabs", async ({ page }) => {
+  const state = await fixtures(page);
+  state.output.result.text = "";
+  state.output.progress = { phase: "building", update: "Building the example page.", updatedAt: "2026-09-13T10:00:05Z" };
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: /^Tasks/ }).click();
+  await page.getByRole("dialog", { name: "Your tasks", exact: true }).getByRole("button", { name: new RegExp(title) }).click();
+  const workroom = page.getByRole("dialog", { name: "Your task", exact: true });
+  await expect(workroom.getByRole("status")).toHaveText("Building");
+  await expect(workroom.getByText("Building the example page.", { exact: true })).toBeVisible();
+  await expect(workroom.locator("details[open]")).toHaveCount(0);
+  state.output.result.text = "Created example.html. Open the file to review it.";
+  await expect(workroom.getByRole("status")).toHaveText("Wrapping up");
+  await expect(workroom.getByRole("region", { name: "Task result" })).toContainText("Created example.html");
+  state.run.status = "finished_unverified"; state.run.canStop = false;
+  await expect(workroom.getByRole("status")).toHaveText("Finished · review the result");
+  await expect(workroom.getByRole("button", { name: "Stop task" })).toHaveCount(0);
   expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
 });
 
