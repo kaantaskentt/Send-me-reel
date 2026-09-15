@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
+import { analysisProgress } from "@/lib/analysis-progress";
 
 export async function GET(
   _request: NextRequest,
@@ -12,41 +13,30 @@ export async function GET(
   }
 
   const { id } = await params;
-  const db = getSupabase();
-
-  const { data: analysis } = await db
-    .from("analyses")
-    .select("status, verdict, error_message")
-    .eq("id", id)
-    .eq("user_id", session.sub)
-    .single();
-
-  if (!analysis) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
   }
-
-  // Staleness check — if pending for over 2 minutes, something went wrong
-  if (analysis.status === "pending") {
-    const { data: row } = await db
+  try {
+    const { data: analysis, error } = await getSupabase()
       .from("analyses")
-      .select("created_at")
+      .select("status, verdict, created_at, credits_reserved_at, credits_refunded_at")
       .eq("id", id)
-      .single();
+      .eq("user_id", session.sub)
+      .maybeSingle();
 
-    if (row) {
-      const age = Date.now() - new Date(row.created_at).getTime();
-      if (age > 2 * 60 * 1000) {
-        return NextResponse.json({
-          status: "failed",
-          error: "Analysis timed out. Your credit has been refunded.",
-        });
-      }
+    if (error) throw new Error("Status read failed");
+
+    if (!analysis) {
+      return NextResponse.json({ error: "Analysis not found" }, { status: 404 });
     }
-  }
 
-  return NextResponse.json({
-    status: analysis.status,
-    verdict: analysis.status === "done" ? analysis.verdict : undefined,
-    error: analysis.status === "failed" ? analysis.error_message : undefined,
-  });
+    const progress = analysisProgress(analysis);
+    return NextResponse.json({
+      ...progress,
+      verdict: analysis.status === "done" ? analysis.verdict : undefined,
+      error: analysis.status === "failed" ? progress.message : undefined,
+    }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch {
+    return NextResponse.json({ error: "We couldn’t check your link. Try again in a moment." }, { status: 503 });
+  }
 }

@@ -1,130 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAuth } from "@/lib/supabase-auth";
-import { getSupabase } from "@/lib/supabase";
-import { setSessionCookie, verifyToken } from "@/lib/auth";
-import { mergeAccounts } from "@/lib/merge-accounts";
-import { SignJWT } from "jose";
+import { getSupabaseAuth } from "../../../../../lib/supabase-auth";
+import { getSupabase } from "../../../../../lib/supabase";
+import { getSession, setSessionCookie, signToken, verifyToken } from "../../../../../lib/auth";
+import { mergeAccounts } from "../../../../../lib/merge-accounts";
+import { readBoundedJson } from "../../../../../lib/bounded-json";
+import { isSameOriginAuthRequest, parseGoogleCallback, providerRequestError, type GoogleAuthError } from "../../../../../lib/google-auth";
+import { GOOGLE_FLOW_COOKIE, googleFlowCookieOptions, googleAuthConfigured, googleAuthStorage, readGoogleFlow } from "../../../../../lib/google-auth-state";
 
 export async function POST(request: NextRequest) {
-  const { access_token, claim_token } = await request.json();
+  const failure = (error: GoogleAuthError, status: number) => NextResponse.json({ success: false, error }, { status, headers: { "Cache-Control": "no-store" } });
+  if (!isSameOriginAuthRequest(request)) return failure("google_invalid", 403);
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return failure("google_invalid", 415);
+  let input;
+  try { input = parseGoogleCallback(await readBoundedJson(request, 4096)); }
+  catch { return failure("google_invalid", 400); }
+  if (!input) return failure("google_invalid", 400);
+  if (!googleAuthConfigured()) return failure("google_unavailable", 503);
 
-  if (!access_token) {
-    return NextResponse.json({ success: false, error: "Missing token" }, { status: 400 });
-  }
+  const flow = await readGoogleFlow(request.cookies.get(GOOGLE_FLOW_COOKIE)?.value, input.state, process.env.JWT_SECRET!);
+  if (!flow) return failure("google_expired", 401);
 
-  // Use the access token to get the user's info from Supabase Auth
-  const supabase = getSupabaseAuth();
-  const { data: authData, error: authError } = await supabase.auth.getUser(access_token);
+  try {
+    // The one-use provider code is useless without this browser's encrypted verifier.
+    const supabase = getSupabaseAuth(googleAuthStorage(flow.verifier));
+    const { data, error } = await supabase.auth.exchangeCodeForSession(input.code);
+    if (error || !data.session) {
+      const code = error ? providerRequestError(error, "google_expired") : "google_expired";
+      return failure(code, code === "google_unavailable" ? 503 : 401);
+    }
+    const { data: authData, error: authError } = await supabase.auth.getUser(data.session.access_token);
+    const identity = authData.user;
+    if (authError) {
+      const code = providerRequestError(authError, "google_failed");
+      return failure(code, code === "google_unavailable" ? 503 : 401);
+    }
+    if (!identity?.email || !identity.email_confirmed_at || !identity.identities?.some(item => item.provider === "google")) return failure("google_failed", 401);
 
-  if (authError || !authData.user?.email) {
-    console.error("Google auth callback error:", authError);
-    return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 });
-  }
+    const claim = flow.claimToken ? await verifyToken(flow.claimToken) : null;
+    if (flow.claimToken && (!claim || typeof claim.sub !== "string" || !claim.tid)) return failure("google_claim_failed", 401);
 
-  const email = authData.user.email;
-  const googleName = authData.user.user_metadata?.full_name as string | undefined;
-  const displayName = googleName || email.split("@")[0];
+    const email = identity.email;
+    const name = identity.user_metadata?.full_name;
+    const googleName = typeof name === "string" ? name.trim().slice(0, 200) : "";
+    const db = getSupabase();
+    const { data: foundUser, error: lookupError } = await db.from("users").select("*").eq("email", email).maybeSingle();
+    if (lookupError) return failure("google_account_failed", 503);
+    let user = foundUser;
 
-  // Look up or create user in our users table (same logic as email callback)
-  const db = getSupabase();
+    const existingSession = await getSession();
+    if (existingSession && existingSession.sub !== user?.id) return failure("account_conflict", 409);
 
-  let { data: user } = await db
-    .from("users")
-    .select("*")
-    .eq("email", email)
-    .single();
-
-  if (!user) {
-    // Create new user from Google signup
-    const { data: newUser, error: createErr } = await db
-      .from("users")
-      .insert({
-        email,
-        first_name: displayName,
-        onboarded: false,
-      })
-      .select()
-      .single();
-
-    if (createErr) {
-      console.error("User creation error:", createErr);
-      return NextResponse.json({ success: false, error: "Failed to create account" }, { status: 500 });
+    if (!user) {
+      const { data: newUser, error: createError } = await db.from("users").insert({ email, first_name: googleName || email.split("@")[0], onboarded: false }).select().single();
+      if (createError?.code === "23505") {
+        // Another tab may have created the same verified identity while this one returned.
+        const retry = await db.from("users").select("*").eq("email", email).maybeSingle();
+        if (retry.error || !retry.data) return failure("google_account_failed", 503);
+        user = retry.data;
+      } else {
+        if (createError || !newUser) return failure("google_account_failed", 503);
+        user = newUser;
+        const { error: creditsError } = await db.from("credits").insert({ user_id: user.id });
+        if (creditsError) console.error("[google-auth] credits_initialization_failed");
+      }
+    } else if (googleName && user.first_name !== googleName) {
+      const { data: updated, error: updateError } = await db.from("users").update({ first_name: googleName }).eq("id", user.id).select().single();
+      if (!updateError && updated) user = updated;
     }
 
-    user = newUser;
-
-    // Create initial credits (50 free)
-    const { error: creditsErr } = await db.from("credits").insert({ user_id: user.id });
-    if (creditsErr) {
-      console.error("Credits creation error:", creditsErr);
-    }
-  } else if (googleName && user.first_name !== googleName) {
-    // User exists (likely from Telegram onboarding). Refresh their name from Google —
-    // this fixes weird/typo names set during the bot's onboarding prompt.
-    const { data: updated } = await db
-      .from("users")
-      .update({ first_name: googleName })
-      .eq("id", user.id)
-      .select()
-      .single();
-    if (updated) {
-      console.log(`[google-callback] Updated first_name for ${user.id}: "${user.first_name}" → "${googleName}"`);
-      user = updated;
-    }
-  }
-
-  // ── Claim flow: merge a Telegram-only account into this Google account ──
-  // (Demi fix — Apr 2026)
-  if (claim_token && typeof claim_token === "string") {
-    const claimPayload = await verifyToken(claim_token);
-    if (claimPayload && claimPayload.sub !== user.id) {
-      // Verify the claim token's user exists and is telegram-only
-      const { data: claimUser } = await db
-        .from("users")
-        .select("id, telegram_id, email")
-        .eq("id", claimPayload.sub)
-        .single();
-
-      if (claimUser && claimUser.telegram_id && !claimUser.email) {
-        // Safe to merge: Google user is the keep target, telegram user is the orphan
+    let claimedTelegram = false;
+    if (claim) {
+      if (claim.sub === user.id && claim.tid === user.telegram_id) {
+        claimedTelegram = true;
+      } else {
+        const { data: claimUser, error: claimError } = await db.from("users").select("id, telegram_id, email").eq("id", claim.sub).maybeSingle();
+        if (claimError || !claimUser || !claimUser.telegram_id || claimUser.telegram_id !== claim.tid || claimUser.email || (user.telegram_id && user.telegram_id !== claimUser.telegram_id)) return failure("google_claim_failed", 409);
         const result = await mergeAccounts(user.id, claimUser.id);
-        if (result.merged) {
-          // Re-fetch the unified user so we get the new telegram_id
-          const { data: refreshed } = await db
-            .from("users")
-            .select("*")
-            .eq("id", user.id)
-            .single();
-          if (refreshed) user = refreshed;
-          console.log(`[google-callback] Claimed telegram account ${claimUser.id} into ${user.id}`);
-        }
+        if (!result.merged) return failure("google_claim_failed", 409);
+        const { data: refreshed, error: refreshError } = await db.from("users").select("*").eq("id", user.id).single();
+        if (refreshError || !refreshed || refreshed.telegram_id !== claim.tid) return failure("google_claim_failed", 503);
+        user = refreshed;
+        claimedTelegram = true;
       }
     }
+
+    await setSessionCookie(await signToken({ sub: user.id, username: user.telegram_username || user.email || "", tid: user.telegram_id || 0 }));
+    const response = NextResponse.json({ success: true, redirect: claimedTelegram || user.onboarded ? "/dashboard" : "/context" }, { headers: { "Cache-Control": "no-store" } });
+    response.cookies.set(GOOGLE_FLOW_COOKIE, "", { ...googleFlowCookieOptions, maxAge: 0 });
+    return response;
+  } catch {
+    console.error("[google-auth] callback_failed");
+    return failure("google_account_failed", 503);
   }
-
-  // Generate our standard JWT
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    return NextResponse.json({ success: false, error: "Config error" }, { status: 500 });
-  }
-
-  const token = await new SignJWT({
-    sub: user.id,
-    username: user.telegram_username || user.email || "",
-    tid: user.telegram_id || 0,
-  })
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("30d")
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(secret));
-
-  // Set session cookie
-  await setSessionCookie(token);
-
-  // Redirect to dashboard. After a successful claim, the user goes straight to
-  // dashboard regardless of onboarded status (they already onboarded via the bot).
-  const claimedTelegram = !!user.telegram_id && !!claim_token;
-  const redirect = claimedTelegram || user.onboarded ? "/dashboard" : "/context";
-
-  return NextResponse.json({ success: true, redirect });
 }

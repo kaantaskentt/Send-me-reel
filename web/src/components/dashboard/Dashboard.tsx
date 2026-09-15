@@ -110,6 +110,7 @@ export default function Dashboard() {
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingUrl] = useState<string | undefined>(() => {
     try { return window.sessionStorage.getItem("pendingLink") || undefined; } catch { return undefined; }
@@ -166,17 +167,23 @@ export default function Dashboard() {
     const params = new URLSearchParams({ page: String(pageNum), limit: "50" });
     if (platform !== "all") params.set("platform", platform);
     if (search) params.set("search", search);
-    return fetch(`/api/analyses?${params}`, { signal }).then(res => res.json()).then(data => {
+    return fetch(`/api/analyses?${params}`, { signal }).then(async res => {
+      if (!res.ok) throw new Error(res.status === 401 ? "Sign in again to see your saved links." : "We couldn’t load your saved links. Try again.");
+      const data = await res.json();
+      if (!Array.isArray(data?.analyses)) throw new Error("We couldn’t load your saved links. Try again.");
+      return data;
+    }).then(data => {
       if (signal?.aborted) return;
       if (data.analyses) {
-        if (!append) setPage(pageNum);
+        setFeedError(null);
+        setPage(pageNum);
         setFeedTime(Date.now());
         setAnalyses((prev) => append ? [...prev, ...data.analyses] : data.analyses);
         setTotal(data.total ?? 0);
         setHasMore(data.hasMore ?? false);
       }
-    }).catch(() => {
-      // ignore — empty state renders naturally
+    }).catch(error => {
+      if (!signal?.aborted) setFeedError(error instanceof Error && error.message.startsWith("Sign in again") ? error.message : "We couldn’t load your saved links. Try again.");
     }).finally(() => { if (!signal?.aborted) setLoading(false); });
   }, [platform, search]);
 
@@ -186,7 +193,7 @@ export default function Dashboard() {
     return () => controller.abort();
   }, [fetchAnalyses]);
 
-  const loadMore = () => { const next = page + 1; setLoading(true); setPage(next); fetchAnalyses(next, true); };
+  const loadMore = () => { setLoading(true); void fetchAnalyses(page + 1, true); };
   const handleDeleted = (id: string) => {
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
     setTotal((t) => t - 1);
@@ -335,7 +342,7 @@ export default function Dashboard() {
 
         <main className="cd-main-content cd-main-mobile-pad" style={{ flex: 1, minWidth: 0, padding: "1.5rem", maxWidth: 860 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <PasteLinkInput onAnalyzed={() => { setLoading(true); void fetchAnalyses(1); }} autoSubmitUrl={pendingUrl} />
+            <PasteLinkInput onAnalyzed={id => { setLoading(true); setOpenCardId(id); void fetchAnalyses(1); }} autoSubmitUrl={pendingUrl} />
 
             <AnimatePresence initial={false} mode="wait">
               {hero && !heroDismissed && (
@@ -424,9 +431,14 @@ export default function Dashboard() {
               </p>
             )}
 
+            {feedError && <div role="alert" style={{ padding: 16, border: "1px solid #e7e2d9", borderRadius: 14, display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ flex: 1 }}>{feedError}</span>
+              <button type="button" onClick={() => { setLoading(true); void fetchAnalyses(1); }} style={{ border: 0, borderRadius: 8, padding: "10px 14px", cursor: "pointer" }}>Try again</button>
+              <Link href="/login">Sign in</Link>
+            </div>}
             {loading && analyses.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{[1,2,3].map((i) => <CardSkeleton key={i} />)}</div>
-            ) : analyses.length === 0 ? (
+            ) : analyses.length === 0 && feedError ? null : analyses.length === 0 ? (
               <EmptyState isFiltered={isFiltered} onClearFilters={clearFilters} />
             ) : feed.length === 0 ? (
               <div

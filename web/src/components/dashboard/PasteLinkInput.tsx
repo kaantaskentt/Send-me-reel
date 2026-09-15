@@ -2,32 +2,45 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { AnalysisPollError, watchAnalysis } from "@/lib/analysis-progress";
+import Link from "next/link";
 
-type Status = "idle" | "submitting" | "processing" | "done" | "failed";
+type Status = "idle" | "submitting" | "processing" | "paused" | "done" | "failed";
 
-const PROCESSING_LABELS: Record<string, string> = {
-  pending: "Queuing…",
-  scraping: "Finding the content…",
-  transcribing: "Listening to audio…",
-  analyzing: "Watching the visuals…",
-  generating: "Writing your verdict…",
-};
-
-export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyzed?: () => void; autoSubmitUrl?: string }) {
+export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyzed?: (id: string) => void; autoSubmitUrl?: string }) {
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [statusText, setStatusText] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
+  const requestRef = useRef<{ url: string; note: string; key: string } | null>(null);
+  const submittingRef = useRef(false);
+  const completedRef = useRef(onAnalyzed);
   const autoSubmittedRef = useRef(false);
 
+  useEffect(() => { completedRef.current = onAnalyzed; }, [onAnalyzed]);
   useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
+    if (!analysisId || status !== "processing") return;
+    const controller = new AbortController();
+    void watchAnalysis(analysisId, {
+      signal: controller.signal,
+      onProgress: progress => setStatusText(progress.message),
+    }).then(progress => {
+      if (controller.signal.aborted) return;
+      setStatus(progress.status === "done" ? "done" : "failed");
+      if (progress.status === "done") { setUrl(""); completedRef.current?.(analysisId); }
+      else setError(progress.message);
+    }).catch(failure => {
+      if (controller.signal.aborted) return;
+      setStatus("paused");
+      setNeedsSignIn(failure instanceof AnalysisPollError && failure.kind === "sign-in");
+      setError(failure instanceof AnalysisPollError ? failure.message : "We couldn’t check your link. Try again.");
+    });
+    return () => controller.abort();
+  }, [analysisId, status]);
 
   useEffect(() => {
     if (autoSubmitUrl && !autoSubmittedRef.current) {
@@ -35,18 +48,23 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
       setUrl(autoSubmitUrl);
       submit(autoSubmitUrl, "");
     }
-    // submit is stable (defined in render body, only uses setters)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSubmitUrl]);
 
   async function submit(targetUrl: string, targetNote: string) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setStatus("submitting");
     setError(null);
+    setNeedsSignIn(false);
+    if (requestRef.current?.url !== targetUrl || requestRef.current?.note !== targetNote) {
+      requestRef.current = { url: targetUrl, note: targetNote, key: crypto.randomUUID() };
+    }
 
     try {
       const res = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": requestRef.current.key },
+        signal: AbortSignal.timeout(30_000),
         body: JSON.stringify({
           url: targetUrl,
           note: targetNote || undefined,
@@ -55,50 +73,24 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: "Something went wrong" }));
-        setError(data.error || "Couldn't start that analysis.");
+        setError(res.status === 401 ? "Sign in again to add your link." : data.error || "Couldn't start that analysis.");
+        setNeedsSignIn(res.status === 401);
         setStatus("failed");
         return;
       }
 
       const { analysisId } = await res.json();
+      if (typeof analysisId !== "string" || !/^[0-9a-f-]{36}$/i.test(analysisId)) throw new Error("Invalid saved link");
+      requestRef.current = null;
+      setAnalysisId(analysisId);
       setStatus("processing");
-      setStatusText(PROCESSING_LABELS.pending);
+      setStatusText("Your link is saved. Waiting to start…");
       setNote("");
       setNoteOpen(false);
-
-      // Poll status
-      pollRef.current = setInterval(async () => {
-        try {
-          const statusRes = await fetch(`/api/analyze/${analysisId}/status`);
-          if (!statusRes.ok) return;
-          const data = await statusRes.json();
-
-          if (data.status === "done") {
-            setStatus("done");
-            setStatusText("Verdict ready");
-            if (pollRef.current) clearInterval(pollRef.current);
-            onAnalyzed?.();
-            // Auto-dismiss the success banner after 4s and clear the input
-            setTimeout(() => {
-              setStatus("idle");
-              setStatusText("");
-              setUrl("");
-            }, 4000);
-          } else if (data.status === "failed") {
-            setStatus("failed");
-            setError(data.error_message || "Analysis failed — your credit has been refunded.");
-            if (pollRef.current) clearInterval(pollRef.current);
-          } else if (PROCESSING_LABELS[data.status]) {
-            setStatusText(PROCESSING_LABELS[data.status]);
-          }
-        } catch {
-          // Transient poll error — keep polling
-        }
-      }, 3000);
     } catch {
-      setError("Network error. Try again.");
+      setError("We couldn’t confirm your save. Try the same link again; it won’t use another credit.");
       setStatus("failed");
-    }
+    } finally { submittingRef.current = false; }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -114,6 +106,7 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
       <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
         <input
           type="text"
+          aria-label="Link to analyze"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Paste any link — Instagram, TikTok, X, YouTube, or article"
@@ -234,7 +227,7 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
               style={{ width: 8, height: 8, borderRadius: "50%", background: "#f97316", flexShrink: 0 }}
             />
-            <span>{statusText || "Processing…"}</span>
+            <span role="status">{statusText || "Reading your content…"}</span>
           </motion.div>
         )}
 
@@ -261,9 +254,10 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
           </motion.div>
         )}
 
-        {status === "failed" && error && (
+        {(status === "failed" || status === "paused") && error && (
           <motion.div
             key="failed"
+            role="alert"
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
@@ -280,9 +274,9 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
             }}
           >
             <span>{error}</span>
-            <button
+            {needsSignIn ? <Link href="/login" style={{ color: "inherit", whiteSpace: "nowrap" }}>Sign in</Link> : <button
               onClick={() => {
-                setStatus("idle");
+                setStatus(status === "paused" && analysisId ? "processing" : "idle");
                 setError(null);
               }}
               style={{
@@ -295,8 +289,8 @@ export default function PasteLinkInput({ onAnalyzed, autoSubmitUrl }: { onAnalyz
                 fontWeight: 600,
               }}
             >
-              Dismiss
-            </button>
+              {status === "paused" && analysisId ? "Check again" : "Dismiss"}
+            </button>}
           </motion.div>
         )}
       </AnimatePresence>

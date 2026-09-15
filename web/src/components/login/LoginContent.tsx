@@ -2,16 +2,17 @@
 
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { GOOGLE_AUTH_ERRORS, pendingShareRedirect } from "@/lib/google-auth";
 
 const ERROR_MESSAGES: Record<string, string> = {
   expired_token: "Your sign-in link has expired.",
   auth_failed: "Sign-in failed. Please try again.",
-  google_failed: "Google sign-in failed. Please try again.",
-  google_no_token: "Google sign-in didn't complete. Please try again.",
-  google_callback_failed: "Something went wrong with Google sign-in.",
+  ...GOOGLE_AUTH_ERRORS,
+  google_no_token: GOOGLE_AUTH_ERRORS.google_invalid,
+  google_callback_failed: GOOGLE_AUTH_ERRORS.google_failed,
+  google_callback_error: GOOGLE_AUTH_ERRORS.google_network,
   missing_token: "Invalid sign-in link.",
   account_not_found: "Account not found.",
-  account_conflict: "This link belongs to another account. Your current account has not been changed. Use your own sign-in link.",
 };
 
 export default function LoginContent({
@@ -21,7 +22,7 @@ export default function LoginContent({
 }) {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
-  const errorMessage = errorParam ? ERROR_MESSAGES[errorParam] || "Something went wrong." : null;
+  const errorMessage = errorParam ? (Object.hasOwn(ERROR_MESSAGES, errorParam) ? ERROR_MESSAGES[errorParam] : "Sign-in couldn’t finish. Select a sign-in option below to try again.") : null;
 
   return (
     <div style={{ minHeight: "100vh", background: "#faf8f5", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: "'DM Sans', sans-serif" }}>
@@ -41,8 +42,9 @@ export default function LoginContent({
 
         {/* Error */}
         {errorMessage && (
-          <div style={{ width: "100%", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 14, padding: "12px 16px", marginBottom: 20, textAlign: "center" }}>
+          <div role="alert" style={{ width: "100%", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 14, padding: "12px 16px", marginBottom: 20, textAlign: "center" }}>
             <p style={{ fontSize: 13, color: "#dc2626", margin: 0 }}>{errorMessage}</p>
+            {errorParam === "account_conflict" && <Link href="/dashboard" style={{ display: "inline-block", marginTop: 8, fontSize: 13, color: "#1c1917" }}>Return to your dashboard</Link>}
           </div>
         )}
 
@@ -50,7 +52,7 @@ export default function LoginContent({
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a href="/api/auth/google" onClick={() => {
           const pendingUrl = searchParams.get("url");
-          if (searchParams.get("next") === "/share" && pendingUrl) {
+          if (searchParams.get("next") === "/share" && pendingUrl && pendingShareRedirect(encodeURIComponent(pendingUrl))) {
             document.cookie = `cd_pending_url=${encodeURIComponent(pendingUrl)}; path=/; max-age=600; SameSite=Lax`;
           }
         }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%", padding: "14px 24px", background: "#fff", color: "#1c1917", fontWeight: 600, fontSize: 14, borderRadius: 100, textDecoration: "none", boxSizing: "border-box", border: "1px solid #e7e2d9", marginBottom: 16, cursor: "pointer", transition: "all 0.15s" }}>
