@@ -1,9 +1,10 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, FileUp, Link2, Loader2, Upload, X } from "lucide-react";
 import { captureStageLabel } from "@/lib/capture-feedback";
 import { publicLink } from "@/lib/content-conversation";
+import { claimLocalLinkHandoff, contentLink, sameContentLink, type LocalLinkHandoff } from "@/lib/link-handoff";
 import styles from "./studio.module.css";
 import guided from "./guided.module.css";
 
@@ -16,9 +17,9 @@ function fileLimit(file: File): string | null {
   return file.size > megabytes * 1024 * 1024 ? `This file is too large. Choose a file under ${megabytes} MB.` : null;
 }
 
-export default function LocalCapture({ initialUrl = "", initialStatus = "empty", initialError = "", compact = false, geminiAvailable = false }: { initialUrl?: string; initialStatus?: string; initialError?: string; compact?: boolean; geminiAvailable?: boolean }) {
+export default function LocalCapture({ initialUrl = "", initialStatus = "empty", initialError = "", compact = false, geminiAvailable = false, requestedUrl, handoff }: { initialUrl?: string; initialStatus?: string; initialError?: string; compact?: boolean; geminiAvailable?: boolean; requestedUrl?: string; handoff?: LocalLinkHandoff }) {
   const router = useRouter();
-  const [url, setUrl] = useState(initialStatus === "done" ? "" : initialUrl.startsWith("https:") ? initialUrl : "");
+  const [url, setUrl] = useState(requestedUrl ?? (initialStatus === "done" ? "" : contentLink(initialUrl) ?? ""));
   const [status, setStatus] = useState(initialStatus);
   const [stage, setStage] = useState("");
   const [error, setError] = useState(initialError);
@@ -31,6 +32,8 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
   const [progress, setProgress] = useState<Progress | null>(null);
   const [inboxId, setInboxId] = useState<string | null>(null);
   const linkInput = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
+  const expectedSource = useRef(requestedUrl ?? initialUrl);
   const active = !["empty", "done", "failed"].includes(status);
   useEffect(() => {
     function receive(event: Event) {
@@ -57,41 +60,64 @@ export default function LocalCapture({ initialUrl = "", initialStatus = "empty",
         const data = await response.json();
         if (controller.signal.aborted) return;
         setConnectionIssue(false);
+        if (requestedUrl && data.status !== "empty" && expectedSource.current !== data.sourceUrl && !sameContentLink(expectedSource.current, data.sourceUrl)) {
+          finished = true;
+          setStatus("failed"); setError("Another link is being read. Your link is still here; try again when it finishes.");
+          return;
+        }
         if (data.status !== "empty") { setStatus(data.status); setStage(data.stage ?? data.status); setError(data.error?.message ?? ""); setProgress(data.progress ?? null); }
         finished = data.status === "done" || data.status === "failed";
         if (data.status === "done") { setUrl(""); setQuestion(""); setProvider("auto"); setFile(null); setMode("link"); }
-        if (finished) router.refresh();
+        if (data.status === "done" && requestedUrl) router.replace("/replicate/local");
+        else if (finished) router.refresh();
       } catch { if (!controller.signal.aborted) setConnectionIssue(true); }
       finally { if (!controller.signal.aborted && !finished) timer = setTimeout(check, 3_000); }
     }
     void check();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [active, submitting, router]);
-  async function capture(event: React.FormEvent) {
-    event.preventDefault();
+  }, [active, submitting, router, requestedUrl]);
+  const capture = useCallback(async (event?: React.FormEvent, targetUrl = url) => {
+    event?.preventDefault();
+    if (submittingRef.current || active) return;
     if (mode === "file" && !file) { setError("Choose a file to read first."); return; }
     if (file && mode === "file") { const issue = fileLimit(file); if (issue) { setError(issue); return; } }
+    const link = mode === "link" ? contentLink(targetUrl) : null;
+    if (mode === "link" && !link) { setError("Paste a full public link, starting with https://."); return; }
+    submittingRef.current = true;
+    if (link) { setUrl(link); expectedSource.current = link; }
     setError(""); setSubmitting(true); setStatus("starting"); setStage("starting"); setProgress(null);
     try {
       const response = mode === "file" && file
         ? await fetch("/api/local/upload", { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream", "X-ContextDrop-Filename": encodeURIComponent(file.name), ...(question.trim() ? { "X-ContextDrop-Question": encodeURIComponent(question.trim()) } : {}) }, body: file })
-        : await fetch("/api/local/capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: url.trim(), provider, ...(question.trim() ? { question: question.trim() } : {}) }) });
+        : await fetch("/api/local/capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: link, provider, ...(question.trim() ? { question: question.trim() } : {}) }) });
       const data = await response.json();
       if (response.status === 409 && ["scraping", "transcribing", "analyzing"].includes(data.status)) {
+        if (requestedUrl && !sameContentLink(link, data.sourceUrl)) throw new Error("Another link is being read. Your link is still here; try again when it finishes.");
         setStatus(data.status); setStage(data.stage ?? data.status); setError("");
         if (typeof data.sourceUrl === "string" && data.sourceUrl.startsWith("https:")) setUrl(data.sourceUrl);
         router.refresh(); return;
       }
       if (!response.ok) throw new Error(data.error ?? "Reading could not start.");
+      if (typeof data.sourceUrl === "string") expectedSource.current = data.sourceUrl;
       if (inboxId && mode === "link") {
         // A received link stays in the inbox until capture was actually accepted.
         // A failed dismissal is harmless: preserve it for an explicit later retry.
         await fetch("/api/local/inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "dismiss", id: inboxId }), signal: AbortSignal.timeout(3000) }).catch(() => {});
       }
-      router.refresh();
+      // An accepted upload or a different link replaces the old landing handoff.
+      // Keep it until acceptance so a rejected request still has a usable retry.
+      if (requestedUrl && mode === "file") router.replace("/replicate/local");
+      else if (requestedUrl && link && !sameContentLink(link, requestedUrl)) router.replace(`/replicate/local?link=${encodeURIComponent(link)}`);
+      else router.refresh();
     } catch (e) { setStatus("failed"); setError(e instanceof Error ? e.message : "Reading could not start. Your previous conversations are still saved."); }
-    finally { setSubmitting(false); }
-  }
+    finally { submittingRef.current = false; setSubmitting(false); }
+  }, [active, file, inboxId, mode, provider, question, requestedUrl, router, url]);
+  useEffect(() => {
+    if (!handoff) return;
+    let claimed = false;
+    try { claimed = claimLocalLinkHandoff(handoff, window.sessionStorage); } catch { /* Manual Read remains available. */ }
+    if (claimed && !active) void capture(undefined, handoff.url);
+  }, [handoff, active, capture]);
   const completed = Math.max(0, Number(progress?.completedSegments) || 0);
   const total = Math.max(0, Number(progress?.totalSegments) || 0);
   return <section aria-label="Add content" className={guided.ingest} data-compact={compact}>

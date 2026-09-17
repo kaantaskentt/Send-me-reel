@@ -10,6 +10,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import HeroDemoAnimation from "./HeroDemoAnimation";
 import { useRouter } from "next/navigation";
+import { contentLink, linkLoginDestination, localLinkDestination } from "@/lib/link-handoff";
 
 const ROTATING_WORDS = ["summarized.", "understood.", "clarified.", "actioned.", "finally useful."];
 
@@ -61,57 +62,58 @@ function HeroSubheadline() {
   );
 }
 
-function isValidUrl(s: string) {
-  try {
-    const url = new URL(s.startsWith("http") ? s : `https://${s}`);
-    return url.hostname.includes(".");
-  } catch {
-    return false;
-  }
-}
-
-function HeroAnalysePanel() {
+function HeroAnalysePanel({ localStudio }: { localStudio: boolean }) {
   const router = useRouter();
   const [link, setLink] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [focused, setFocused] = useState(false);
   const [checking, setChecking] = useState(false);
   const [urlError, setUrlError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const navigating = useRef(false);
 
-  const handleSubmit = async () => {
-    if (!link.trim() || checking) return;
-    if (!isValidUrl(link.trim())) {
+  const handleSubmit = async (value = link) => {
+    if (!value.trim() || navigating.current) return;
+    const target = contentLink(value);
+    if (!target) {
       setUrlError(true);
       return;
     }
     setUrlError(false);
+    navigating.current = true;
     setChecking(true);
+    if (localStudio) {
+      let storage: Storage | null = null;
+      try { storage = window.sessionStorage; } catch { /* The workspace can still prefill the link. */ }
+      router.push(localLinkDestination(target, storage, crypto.randomUUID()));
+      return;
+    }
+    let signedOut = false;
     try {
-      const res = await fetch("/api/user");
+      const res = await fetch("/api/user", { signal: AbortSignal.timeout(5_000), cache: "no-store" });
+      signedOut = res.status === 401;
       if (res.ok) {
         const data = await res.json();
         if (data?.user) {
-          sessionStorage.setItem("pendingLink", link.trim());
-          router.push("/dashboard");
+          try { sessionStorage.setItem("pendingLink", target); router.push("/dashboard"); }
+          catch { router.push(`/share?url=${encodeURIComponent(target)}`); }
           return;
         }
       }
     } catch {}
-    sessionStorage.setItem("pendingLink", link.trim());
-    setChecking(false);
-    setSubmitted(true);
+    // If the session check is unavailable, let the server's existing share flow
+    // resolve auth while keeping the link. A signed-in /login redirect drops query data.
+    router.push(signedOut ? linkLoginDestination(target) : `/share?url=${encodeURIComponent(target)}`);
   };
 
   return (
     <motion.div
+      id="start"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.26, ease: [0.16, 1, 0.3, 1] }}
       className="w-full max-w-xl mb-10"
     >
       <AnimatePresence mode="wait">
-        {!submitted ? (
           <motion.div key="input" initial={{ opacity: 1 }} exit={{ opacity: 0, y: -6 }}>
             <div
               className="flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-200"
@@ -128,11 +130,20 @@ function HeroAnalysePanel() {
                 <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
               </svg>
               <input
+                id="content-link-input"
                 ref={inputRef}
                 type="text"
+                aria-label="Link to read"
                 placeholder="Paste any link — YouTube, TikTok, X, Instagram, article..."
                 value={link}
                 onChange={(e) => { setLink(e.target.value); setUrlError(false); }}
+                onPaste={(event) => {
+                  const pasted = event.clipboardData.getData("text").trim();
+                  if (!contentLink(pasted)) return;
+                  event.preventDefault();
+                  setLink(pasted);
+                  void handleSubmit(pasted);
+                }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
@@ -140,7 +151,8 @@ function HeroAnalysePanel() {
                 style={{ color: "#FAFAFA", fontFamily: "'Inter', sans-serif" }}
               />
               <button
-                onClick={handleSubmit}
+                aria-label="Read this link"
+                onClick={() => void handleSubmit()}
                 disabled={!link.trim() || checking}
                 className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-150 hover:brightness-110 disabled:opacity-30"
                 style={{ background: link.trim() ? "#F97316" : "rgba(249,115,22,0.3)" }}
@@ -172,66 +184,12 @@ function HeroAnalysePanel() {
               </a>
             </p>
           </motion.div>
-        ) : (
-          <motion.div
-            key="submitted"
-            initial={{ opacity: 0, scale: 0.97, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", damping: 24, stiffness: 300 }}
-            className="rounded-2xl px-5 py-4 flex items-start gap-4"
-            style={{
-              background: "rgba(249,115,22,0.08)",
-              border: "1px solid rgba(249,115,22,0.2)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            }}
-          >
-            <div className="mt-0.5 w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center" style={{ background: "#F97316" }}>
-              <svg width="9" height="9" viewBox="0 0 10 10" fill="none">
-                <path d="M1.5 5L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold" style={{ color: "#FAFAFA" }}>Got it — analysing your link…</p>
-              <p className="text-xs mt-1" style={{ color: "#A1A1AA" }}>Sign in to see your card. Takes about 30 seconds.</p>
-              <div className="flex flex-col items-stretch gap-3 mt-3">
-                {/* OAuth must navigate the document so the provider redirect can run. */}
-                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-                <a
-                  href="/api/auth/google"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    padding: "14px 24px",
-                    background: "#F97316",
-                    color: "#fff",
-                    fontWeight: 600,
-                    fontSize: 14,
-                    borderRadius: 100,
-                    textDecoration: "none",
-                    textAlign: "center",
-                    boxSizing: "border-box",
-                    fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Sign in with Google →
-                </a>
-                <button
-                  onClick={() => { setSubmitted(false); setLink(""); }}
-                  className="text-xs transition-colors hover:text-white"
-                  style={{ color: "#52525B", background: "none", border: "none", cursor: "pointer", padding: "4px 0" }}
-                >
-                  Try another link
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </motion.div>
   );
 }
 
-export default function HeroSection() {
+export default function HeroSection({ localStudio = false }: { localStudio?: boolean }) {
   const [wordIndex, setWordIndex] = useState(0);
 
   useEffect(() => {
@@ -319,7 +277,7 @@ export default function HeroSection() {
           <HeroSubheadline />
         </motion.div>
 
-        <HeroAnalysePanel />
+        <HeroAnalysePanel localStudio={localStudio} />
 
         <motion.div
           className="w-full mt-4"

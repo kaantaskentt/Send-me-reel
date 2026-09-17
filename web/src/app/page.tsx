@@ -12,20 +12,19 @@ import PersonasSection from "@/components/landing/PersonasSection";
 import PricingSection from "@/components/landing/PricingSection";
 import FinalCTASection from "@/components/landing/FinalCTASection";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
-import { isLocalStudioRequest } from "@/lib/local-studio";
+import { isPersonalLanding } from "@/lib/link-handoff";
 
 export default async function Home() {
-  if (process.env.NODE_ENV === "development" && isLocalStudioRequest(await headers())) redirect("/replicate/local");
+  const localStudio = process.env.NODE_ENV === "development" && isPersonalLanding(await headers(), process.env);
   return (
     <div className="min-h-screen" style={{ background: "#0a0a0a" }}>
-      <NavBar />
-      <HeroSection />
+      <NavBar localStudio={localStudio} />
+      <HeroSection localStudio={localStudio} />
       <ProblemSection />
       <HowItWorksSection />
       <PersonasSection />
       <PricingSection />
-      <FinalCTASection />
+      <FinalCTASection localStudio={localStudio} />
     </div>
   );
 }

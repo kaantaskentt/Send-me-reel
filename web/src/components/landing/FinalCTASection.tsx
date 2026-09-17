@@ -2,12 +2,13 @@
 
 /*
  * FinalCTASection + Footer — Manus "Dark Signal" port (Apr 26)
- * Orange radial glow + dot grid, centered CTA → /signup.
+ * Orange radial glow + dot grid, centered CTA → the link input.
  */
 
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,8 +24,9 @@ function useInView(threshold = 0.2) {
   return { ref, inView };
 }
 
-export default function FinalCTASection() {
+export default function FinalCTASection({ localStudio = false }: { localStudio?: boolean }) {
   const { ref, inView } = useInView();
+  const workspaceHref = localStudio ? "/replicate/local" : "/dashboard";
 
   return (
     <>
@@ -81,25 +83,30 @@ export default function FinalCTASection() {
                 fontFamily: "'Inter', sans-serif",
               }}
             >
-              Your first 20 analyses are free. No card. No signup form. Just open the bot and send a link.
+              Paste a link. Ask about it. Choose something to try.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
-                href="/signup"
+                href="/#start"
+                onClick={(event) => {
+                  const input = document.getElementById("content-link-input");
+                  if (!input) return;
+                  event.preventDefault();
+                  input.scrollIntoView({ block: "center", behavior: "auto" });
+                  input.focus({ preventScroll: true });
+                }}
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-xl font-bold text-white text-base transition-all duration-150 hover:brightness-110 active:scale-95"
                 style={{ background: "#F97316", boxShadow: "0 0 32px rgba(249,115,22,0.3)", textDecoration: "none" }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.941z"/>
-                </svg>
-                Start free
+                Paste a link
+                <ArrowRight size={18} aria-hidden="true" />
               </Link>
               <Link
-                href="/dashboard"
+                href={workspaceHref}
                 className="text-sm font-medium transition-colors duration-150 hover:text-white"
                 style={{ color: "#71717A", textDecoration: "none" }}
               >
-                Preview the dashboard →
+                Open your workspace →
               </Link>
             </div>
           </motion.div>
@@ -136,7 +143,7 @@ export default function FinalCTASection() {
               Pricing
             </a>
             <Link
-              href="/dashboard"
+              href={workspaceHref}
               className="text-xs transition-colors hover:text-white"
               style={{ color: "#52525B", textDecoration: "none", fontFamily: "'Inter', sans-serif" }}
             >

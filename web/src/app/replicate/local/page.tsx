@@ -13,15 +13,20 @@ import PhoneInbox from "@/components/dashboard/PhoneInbox";
 import styles from "@/components/dashboard/studio.module.css";
 import { getCaptureFailure } from "@/lib/capture-feedback";
 import { isLocalStudioRequest, readLocalAnalysis, readLocalCompanionToken, readLocalPlan } from "@/lib/local-studio";
+import { contentLink, parseLocalLinkHandoff, sameContentLink } from "@/lib/link-handoff";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your content, made useful | ContextDrop" };
 
-export default async function LocalStudioPage() {
+export default async function LocalStudioPage({ searchParams }: { searchParams: Promise<{ link?: string | string[]; handoff?: string | string[] }> }) {
   const requestHeaders = await headers();
   if (!isLocalStudioRequest(requestHeaders)) notFound();
+  const query = await searchParams;
+  const requestedUrl = contentLink(query.link);
+  const handoff = parseLocalLinkHandoff(query.link, query.handoff);
   const [pairingToken, capture] = await Promise.all([readLocalCompanionToken(requestHeaders.get("host") ?? ""), readLocalAnalysis(true)]);
-  const analysis = capture?.status === "done" ? capture : null;
+  const captureMatchesRequest = !requestedUrl || sameContentLink(requestedUrl, capture?.source_url);
+  const analysis = captureMatchesRequest && capture?.status === "done" ? capture : null;
   const savedPlan = analysis ? await readLocalPlan(analysis) : undefined;
   return <main className={`${styles.studio} ${guided.app}`}>
     <header className={guided.nav}>
@@ -34,7 +39,7 @@ export default async function LocalStudioPage() {
     </header>
     <div className={guided.main}>
       {!analysis && <div className={guided.emptyHero}><h1>Saved it? Try it.</h1><p>Drop a link. Find out what you can do with it.</p></div>}
-      <LocalCapture key={`capture-${capture?.id ?? "empty"}`} initialUrl={capture?.source_url} initialStatus={capture?.status} initialError={getCaptureFailure(capture)?.message} compact={!!analysis} geminiAvailable={!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)} />
+      <LocalCapture key={`capture-${handoff?.id ?? requestedUrl ?? capture?.id ?? "empty"}`} requestedUrl={requestedUrl ?? undefined} handoff={handoff ?? undefined} initialUrl={requestedUrl ?? capture?.source_url} initialStatus={captureMatchesRequest ? capture?.status : "empty"} initialError={captureMatchesRequest ? getCaptureFailure(capture)?.message : undefined} compact={!!analysis} geminiAvailable={!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)} />
       {analysis ? <ContentStudio key={`content-${analysis.id}`} analysis={analysis} pairingToken={pairingToken} savedPlan={savedPlan} /> : <div className={guided.emptyExamples}>{[{ title: "Find the tool", detail: "Even when it only appears on screen.", icon: ScanSearch }, { title: "Get the idea", detail: "Ask anything about what you saved.", icon: Lightbulb }, { title: "Try it yourself", detail: "Choose a task. Watch it happen.", icon: WandSparkles }].map(({ title, detail, icon: Icon }) => <div key={title}><Icon size={23} strokeWidth={1.6} /><h2>{title}</h2><p>{detail}</p></div>)}</div>}
     </div>
   </main>;
