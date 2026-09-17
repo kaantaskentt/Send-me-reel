@@ -139,6 +139,11 @@
 .evidenceImage { width: 100%; max-height: 50dvh; object-fit: contain; background: #17171b; border-radius: .8rem; margin-bottom: 1rem; }
 .evidenceText { font-size: .87rem; line-height: 1.75; overflow-wrap: anywhere; }
 .evidenceNote { margin-top: .9rem; font-size: .72rem; color: var(--muted); line-height: 1.65; }
+.setupSection { border-top:1px solid var(--line); margin-top:1.4rem; padding-top:1.2rem; margin-bottom:1.3rem; }
+.setupSection h3 { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:.9rem; font-weight:600; }
+.setupSection h3 span { color:var(--muted); font-size:.72rem; font-weight:400; }
+.setupSection>p:first-of-type { color:var(--muted); font-size:.8rem; line-height:1.65; margin-top:.45rem; }
+.setupSection>button { margin-top:.85rem; }
 .list { display: grid; gap: .5rem; margin-top: 1rem; }
 .listItem { display: flex; align-items: center; gap: .8rem; padding: .95rem; border: 1px solid var(--line); border-radius: .8rem; text-align: left; width: 100%; min-width: 0; }
 .listItem:hover { background: var(--surface-secondary); }
@@ -246,3 +251,23 @@
 .readinessList li { font-size:15px; }.readinessList li span:last-child { font-size:13px; }
 .compactTask { gap:20px; }.taskGoal { font-size:16px;line-height:1.65;color:var(--ink); }.taskLocation { display:flex;align-items:center;gap:10px;background:#f3f6fd;border-radius:12px;padding:14px;font-size:14px;color:#526482; }.taskPermission { font-size:14px;line-height:1.6;color:var(--muted); }.taskChecks { padding-top:14px; }.taskChecks summary { font-size:14px;min-height:32px; }.taskChecks>.field { margin-top:14px; }.taskChecks>.secondaryButton { margin-top:12px; }.taskChecks h3 { font-size:15px;margin-top:16px; }.taskSteps,.taskChecks ul { font-size:14px;margin-top:16px; }.taskSteps small { font-size:12px; }.taskSteps { gap:12px; }.taskConnection { font-size:14px; }
 @media(max-width:700px) { .toolbarButton { font-size:12px;padding:8px;gap:5px; }.brand {font-size:20px}.dialogHeader{padding:16px 18px}.dialogBody{padding:20px}.primaryButton,.secondaryButton { white-space:normal; } }
+
+/* The personal workspace follows the chosen dark/orange design. Hosted screens
+   keep their existing theme; native dialogs inherit the local workspace tone. */
+.studio[data-theme="dark"] { --canvas:#0b0b0c; --surface:#151517; --surface-secondary:#1b1b1e; --ink:#f4f4f5; --muted:#aaaab4; --faint:#888892; --line:#2d2d32; --accent:#ff914a; --accent-solid:#b94a0c; --accent-soft:#2b1d14; --success:#83d38e; color-scheme:dark; }
+.studio[data-theme="dark"] .brandMark { background:#f9761c; }
+.studio[data-theme="dark"] .dialog { --surface:#151517; --surface-secondary:#1e1e22; --ink:#f4f4f5; --muted:#aaaab4; --line:#323238; --accent:#ff914a; --accent-solid:#b94a0c; --accent-soft:#2b1d14; background:var(--surface); border-color:var(--line); color-scheme:dark; box-shadow:0 28px 100px #0008; }
+.studio[data-theme="dark"] .dialogHeader { background:#171719f5; }
+.studio[data-theme="dark"] .dialog::backdrop { background:#0009; }
+.studio[data-theme="dark"] :is(.toolbarButton,.textButton,.secondaryButton,.iconButton):hover { background:#25252a; }
+.studio[data-theme="dark"] :is(.input,.textarea,.select) { border-color:#3b3b42; }
+.studio[data-theme="dark"] .evidenceButton { display:inline-flex; align-items:center; gap:5px; background:#241b16; }
+.studio[data-theme="dark"] .listItem[aria-current="true"] { background:#281e17; border-color:#87532f; }
+.studio[data-theme="dark"] .primaryButton:hover { background:#d4570d; }
+.studio[data-theme="dark"] .taskLocation { color:#c4c4ce; background:#202024; border-color:#34343a; }
+.studio[data-theme="dark"] .readinessList li { border-color:#323238; }
+.studio[data-theme="dark"] .readinessList li>span:last-child { color:#c4c4cc; }
+.studio[data-theme="dark"] .error { background:#311c1b; border-color:#60332e; color:#ffc3b9; }
+.studio[data-theme="dark"] .toolbarButton { font-size:13px; font-weight:450; }
+.studio[data-theme="dark"] .taskCount { background:#342017; color:#ffb886; }
+@media(max-width:760px) { .studio[data-theme="dark"] .toolbarButton { padding-inline:7px; font-size:11px; }.studio[data-theme="dark"] .runtimeLabel { display:none; }.studio[data-theme="dark"] .captureOptionsContent { grid-template-columns:1fr; } }

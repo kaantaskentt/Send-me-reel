@@ -1,81 +1,75 @@
 "use client";
 
-import { useRef, type RefObject } from "react";
+import { useId, useRef, type RefObject } from "react";
 import Image from "next/image";
-import { ArrowLeft, ArrowUpRight, Check, ChevronRight, Circle, Expand, Loader2, Monitor, RotateCcw, Square, X } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Check, ChevronRight, Expand, Loader2, Monitor, RotateCcw, Square, X } from "lucide-react";
+import view from "./computer-session.module.css";
 
 export interface LocalRunState {
   id: string; status: string; workspace?: string; error?: string; message?: string;
-  currentUrl?: string; screenshot?: string;
-  pendingAction?: { id: string; type: string; description: string; targetId?: string; url?: string; text?: string };
+  executor?: "terminal" | "browser" | "computer";
+  currentUrl?: string; currentApp?: string; screenshot?: string;
+  pendingAction?: { id: string; type: string; description: string; targetId?: string; url?: string | null; text?: string };
   history?: { action: string; status: string }[];
   canStop?: boolean;
   canResume?: boolean;
 }
-
 interface Props {
   run: LocalRunState;
   dialogRef: RefObject<HTMLDialogElement | null>;
-  actionBusy: boolean;
-  error: string;
-  sourceTitle: string;
-  planTitle: string;
+  actionBusy: boolean; error: string; sourceTitle: string; planTitle: string;
   onControl: (action: "approve" | "resume" | "stop", approved?: boolean) => Promise<void>;
   rehearsal?: { step: number; totalSteps: number; onRestart: () => void };
   onClose?: () => void;
 }
-
 function statusText(status: string): string {
-  return ({ launching: "Opening your browser", running: "Working through the plan", awaiting_approval: "Your decision is needed", needs_input: "Continue in the browser", finished_unverified: "Session ended · outcome unverified", failed: "Browser session failed", stopped: "Session stopped", stopping: "Stopping session", interrupted: "Session interrupted" })[status] || "Check the browser session";
+  return ({ launching: "Starting", running: "Working", awaiting_approval: "Ready for your approval", needs_input: "Your help is needed", finished_unverified: "Finished · check the result", failed: "Needs attention", stopped: "Stopped", stopping: "Stopping", interrupted: "Interrupted" } as Record<string, string>)[status] || "Check this task";
 }
-
 export default function BrowserSession({ run, dialogRef, actionBusy, error, sourceTitle, planTitle, onControl, rehearsal, onClose }: Props) {
   const expandedScreenshot = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const isComputer = run.executor === "computer";
+  const surface = isComputer ? "Mac" : "browser";
   const active = ["launching", "running", "awaiting_approval", "needs_input", "stopping"].includes(run.status);
   const pending = run.status === "awaiting_approval" && run.pendingAction;
-  const screenshot = run.screenshot && (run.screenshot.startsWith("data:image/") || (rehearsal && run.screenshot.startsWith("/rehearsal/"))) ? run.screenshot : null;
-  const visibleStatus = rehearsal && run.status === "finished_unverified" ? "Rehearsal complete · no live task executed" : rehearsal && run.status === "running" ? "Replaying the test example" : statusText(run.status);
-
+  const screenshot = run.screenshot && (/^data:image\/(png|jpeg|webp);base64,/.test(run.screenshot) || (rehearsal && run.screenshot.startsWith("/rehearsal/"))) ? run.screenshot : null;
+  const visibleStatus = rehearsal && run.status === "finished_unverified" ? "Rehearsal complete" : rehearsal && run.status === "running" ? "Playing the example" : statusText(run.status);
   async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await document.documentElement.requestFullscreen();
-    } catch { /* Browser restrictions may prevent fullscreen; the dialog stays usable. */ }
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); }
+    catch { /* The regular dialog remains usable. */ }
   }
-
-  return <dialog ref={dialogRef} onClose={onClose} aria-labelledby="browser-session-title" className="m-auto max-h-[94dvh] w-[1160px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-950 p-0 text-white shadow-2xl backdrop:bg-slate-950/75 backdrop:backdrop-blur-sm">
-    <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950 px-5 py-4 sm:px-6">
-      <div className="flex items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-900 bg-blue-950 text-blue-300"><Monitor size={20} /></span><div><h2 id="browser-session-title" className="text-lg">Browser walkthrough</h2><p className="mt-1 text-sm text-slate-400">{active ? "Watch your task here." : "Here’s what happened."}</p></div></div>
-      <div className="flex flex-wrap items-center gap-2">{rehearsal && <><button type="button" onClick={toggleFullscreen} aria-label="Toggle fullscreen presentation" className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"><Expand size={13} /><span className="hidden sm:inline">Fullscreen</span></button><button type="button" onClick={rehearsal.onRestart} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"><RotateCcw size={13} />Restart</button></>}<button type="button" onClick={() => dialogRef.current?.close()} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"><ArrowLeft size={13} />{onClose ? "Back to chat" : "Back to plan"}</button></div>
+  return <dialog ref={dialogRef} onClose={onClose} aria-labelledby={titleId} className={view.dialog}>
+    <header className={view.header}>
+      <div className={view.title}><Monitor size={21} /><div><h2 id={titleId}>{isComputer ? "Your Mac" : "Browser walkthrough"}</h2><p>{planTitle}</p></div></div>
+      <div className={view.controls}>
+        {rehearsal && <button type="button" onClick={rehearsal.onRestart}><RotateCcw size={15} />Restart</button>}
+        <button type="button" onClick={toggleFullscreen} aria-label="Toggle fullscreen presentation"><Expand size={16} /></button>
+        {run.status !== "stopped" && run.canStop !== false && <button type="button" className={view.stop} disabled={actionBusy || run.status === "stopping"} onClick={() => void onControl("stop")}><Square size={12} />{run.status === "stopping" ? "Stopping…" : active ? "Stop task" : "Close session"}</button>}
+        <button type="button" onClick={() => dialogRef.current?.close()}><ArrowLeft size={15} /><span>{onClose ? "Back to chat" : "Back to plan"}</span></button>
+      </div>
     </header>
-    {rehearsal && <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-900 bg-amber-950/40 px-5 py-2.5 text-xs text-amber-200 sm:px-6"><span><strong className="uppercase tracking-wider">Rehearsal · test example</strong><span className="ml-2 text-amber-200/70">Recorded local fixture. No live AI requests or account actions.</span></span><span className="font-semibold">Step {rehearsal.step} / {rehearsal.totalSteps}</span></div>}
-
-    <div className="grid min-w-0 gap-5 p-4 sm:p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <section className="min-w-0" aria-label={rehearsal ? "Rehearsal browser view" : "Live browser view"}>
-        <div className="overflow-hidden rounded-xl border border-slate-700 bg-slate-900">
-          <div className="flex min-w-0 items-center gap-3 border-b border-slate-700 px-3 py-2.5"><span className="flex shrink-0 gap-1.5" aria-hidden="true"><i className="h-2 w-2 rounded-full bg-slate-600" /><i className="h-2 w-2 rounded-full bg-slate-600" /><i className="h-2 w-2 rounded-full bg-slate-600" /></span><p className="min-w-0 flex-1 truncate font-mono text-xs text-slate-400">{run.currentUrl || "Waiting for the browser…"}</p><span className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-400"><span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-400" : "bg-slate-500"}`} />{rehearsal ? "Recorded fixture" : active ? "Latest capture" : "Last capture"}</span></div>
-          {screenshot ? <button type="button" onClick={() => expandedScreenshot.current?.showModal()} aria-label="Expand current browser screenshot" className="group relative block w-full bg-slate-900"><Image unoptimized src={screenshot} width={1280} height={800} alt="Current local browser view with proposed action targets" className="max-h-[30vh] w-full object-contain sm:max-h-[54vh] object-top" /><span className="absolute bottom-3 right-3 flex items-center gap-1 rounded-lg bg-slate-950/85 px-2 py-1 text-xs text-white opacity-80 group-hover:opacity-100"><Expand size={12} />Expand</span></button> : <div className="flex min-h-[200px] flex-col items-center justify-center gap-3 p-6 text-center sm:min-h-[340px]">{active ? <Loader2 size={25} className="animate-spin text-blue-400" /> : <Monitor size={25} className="text-slate-500" />}<p className="text-sm text-slate-400">{active ? "Waiting for the first browser capture…" : "No browser capture is available for this session."}</p></div>}
-        </div>
-        <div className="mt-3 flex items-start gap-2 text-sm leading-relaxed text-slate-400"><Circle size={12} className="mt-0.5 shrink-0 text-amber-400" /><p>The numbers show where I want to click.</p></div>
+    {rehearsal && <p className={view.rehearsal}>Rehearsal · No live actions<span>Step {rehearsal.step} / {rehearsal.totalSteps}</span></p>}
+    <div className={view.layout}>
+      <section className={view.screen} aria-label={rehearsal ? "Rehearsal browser view" : isComputer ? "Live Mac view" : "Live browser view"}>
+        <div className={view.screenBar}><span>{run.currentApp || run.currentUrl || `Your ${surface}`}</span><small>{rehearsal ? "Recorded example" : active ? "Latest capture" : "Last capture"}</small></div>
+        {screenshot ? <button type="button" className={view.screenshot} onClick={() => expandedScreenshot.current?.showModal()} aria-label={`Expand current ${surface} screenshot`}><Image unoptimized src={screenshot} width={1280} height={800} alt={`Current ${surface} view for this task`} /><span><Expand size={13} />Expand</span></button> : <div className={view.waiting}>{active ? <Loader2 size={24} className={view.spin} /> : <Monitor size={24} />}<p>{active ? `Waiting for the first ${surface} capture…` : "No screen capture was saved."}</p></div>}
       </section>
-
-      <section aria-label="Next browser action" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
-        <div aria-live="polite" className={`rounded-xl border p-4 ${pending ? "border-amber-700/80 bg-amber-950/35" : "border-slate-700 bg-slate-900"}`}>
-          <div className="mb-3 flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${pending ? "bg-amber-400" : run.status === "failed" ? "bg-red-400" : "bg-blue-400"}`} /><p className={`text-xs font-bold ${pending ? "text-amber-200" : "text-blue-200"}`}>{visibleStatus}</p></div>
-          {pending ? <><p className="text-xs font-bold uppercase tracking-wider text-amber-500">{({navigate:"Open a page",click:"Click",fill:"Type",back:"Go back"} as Record<string,string>)[pending.type] || "Next step"}{pending.targetId ? ` · ${pending.targetId}` : ""}</p><p className="mt-3 text-base font-semibold leading-snug text-white">{pending.description}</p>{pending.url && <p className="mt-3 flex items-start gap-1.5 break-all text-xs leading-relaxed text-amber-200"><ArrowUpRight size={13} className="mt-0.5 shrink-0" />{pending.url}</p>}{pending.text && <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950 p-3"><p className="mb-1 text-xs uppercase tracking-wider text-slate-500">Text to enter</p><p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-300">{pending.text}</p></div>}<div className="mt-5 grid grid-cols-2 gap-2"><button disabled={actionBusy} onClick={() => onControl("approve", true)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-500 px-2 py-3 text-xs font-bold text-white hover:bg-blue-400 disabled:opacity-50">{actionBusy ? <Loader2 size={14} className="animate-spin" /> : <Check size={15} />}Approve this action</button><button disabled={actionBusy} onClick={() => onControl("approve", false)} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-600 bg-slate-900 px-3 py-3 text-xs font-semibold text-slate-300 hover:bg-slate-800 disabled:opacity-50"><X size={14} />Reject</button></div><p className="mt-3 text-xs leading-relaxed text-amber-300/70">{rehearsal ? "This changes the recorded example only." : "Approval applies to this action only."}</p></> : <p className="text-sm leading-relaxed text-slate-300">{run.error || run.message || (active ? "Looking at the page…" : "The task has ended. Check the result above.")}</p>}
-          {run.status === "needs_input" && <div className="mt-4"><p className="mb-3 text-xs leading-relaxed text-slate-400">{rehearsal ? "A live run pauses here for private input or a manual decision. Continue this rehearsal to show the final example; no account access is involved." : "Complete the requested login or manual step in the visible browser. Keep passwords and verification codes out of this page."}</p>{run.canResume !== false && <button disabled={actionBusy} onClick={() => onControl("resume")} className="w-full rounded-lg bg-blue-500 px-3 py-3 text-xs font-bold hover:bg-blue-400 disabled:opacity-50">{rehearsal ? "Continue rehearsal" : "I’m done, continue"}</button>}</div>}
-        </div>
-        {error && <p role="alert" className="mt-3 rounded-lg border border-red-900 bg-red-950/40 p-3 text-xs leading-relaxed text-red-200">{error}</p>}
-        {run.status === "failed" && run.canResume && <button disabled={actionBusy} onClick={() => onControl("resume")} className="mt-3 w-full rounded-lg border border-slate-700 px-3 py-3 text-xs">Inspect the page again</button>}
-        {run.status !== "stopped" && run.canStop !== false && <button disabled={actionBusy} onClick={() => onControl("stop")} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-3 text-xs font-semibold text-slate-300 hover:border-red-800 hover:bg-red-950/30 hover:text-red-200 disabled:opacity-50"><Square size={12} />{rehearsal ? "Stop rehearsal" : active ? "Stop browser session" : "Close browser session"}</button>}
-        <p className="mt-4 text-xs leading-relaxed text-slate-500">{rehearsal ? "This rehearsal replays captures from a local test page. Your approvals change the example only. Use Restart to present it again." : "The browser stays open when you go back. Its images and text are sent to your AI provider."}</p>
-      </section>
-      <section className="min-w-0 lg:col-span-2" aria-label="Session details">
-        <div className="mt-5 border-t border-slate-800 pt-4"><p className="text-xs font-bold uppercase tracking-wider text-slate-500">Prepared task</p><p className="mt-1.5 text-sm font-medium text-slate-200">{planTitle}</p><p className="mt-1 text-sm text-slate-500">Source: {sourceTitle}</p></div>
-        {run.history && run.history.length > 0 && <details className="mt-4 rounded-lg border border-slate-800 px-3 py-2.5"><summary className="cursor-pointer text-xs font-medium text-slate-400">Action history ({run.history.length})</summary><ol className="mt-3 space-y-2 border-t border-slate-800 pt-3">{run.history.slice(-20).map((item, i) => <li key={i} className="flex items-start gap-2 text-sm leading-relaxed"><ChevronRight size={12} className="mt-0.5 shrink-0 text-slate-600" /><span><span className="mr-1 font-medium text-slate-300">{item.status}</span><span className="text-slate-500">{item.action}</span></span></li>)}</ol></details>}
-        {run.workspace && <details className="mt-3 text-xs text-slate-500"><summary className="cursor-pointer">Local workspace</summary><p className="mt-2 break-all font-mono">{run.workspace}</p></details>}
+      <section className={view.next} aria-label={isComputer ? "Next Mac action" : "Next browser action"}>
+        <p className={view.state} data-pending={!!pending} role="status">{active && !pending && run.status !== "needs_input" && <Loader2 size={14} className={view.spin} />}{visibleStatus}</p>
+        {pending ? <>
+          <h3>{pending.description}</h3>
+          {pending.url && <p className={view.destination}><ArrowUpRight size={14} />{pending.url}</p>}
+          {pending.text && <div className={view.typedText}><span>Text to enter</span><pre>{pending.text}</pre></div>}
+          <div className={view.decisions}><button type="button" className={view.approve} disabled={actionBusy} onClick={() => void onControl("approve", true)}>{actionBusy ? <Loader2 size={16} className={view.spin} /> : <Check size={16} />}Yes, do this</button><button type="button" disabled={actionBusy} onClick={() => void onControl("approve", false)}><X size={15} />Decline</button></div>
+          <p className={view.hint}>{rehearsal ? "Changes the example only." : "This approves the action shown above."}</p>
+        </> : <p className={view.message}>{run.error || run.message || (active ? `Looking at your ${surface}…` : "Check the result on screen.")}</p>}
+        {run.status === "needs_input" && <div className={view.manual}><p>{rehearsal ? "In a live task, you would handle this private step yourself." : `Complete this step on your ${surface}, then continue here. Keep passwords and codes out of chat.`}</p>{run.canResume !== false && <button type="button" className={view.approve} disabled={actionBusy} onClick={() => void onControl("resume")}>{rehearsal ? "Continue rehearsal" : "I’m done, continue"}</button>}</div>}
+        {error && <p role="alert" className={view.error}>{error}</p>}
+        {run.status === "failed" && run.canResume && <button type="button" disabled={actionBusy} onClick={() => void onControl("resume")}>Look again</button>}
+        <p className={view.privacy}>{rehearsal ? "A recorded example. Nothing runs on your computer." : `Screen images and app text go to your AI provider. ${active ? "Closing this view keeps the task open. Use Stop to end it." : "An ended session is not proof the task succeeded."}`}</p>
       </section>
     </div>
-    {screenshot && <dialog ref={expandedScreenshot} aria-label="Expanded browser screenshot" className="m-auto max-h-[94dvh] w-[95vw] max-w-6xl overflow-auto rounded-xl border border-slate-300 bg-white p-3 text-slate-900 backdrop:bg-slate-950/85"><div className="mb-3 flex items-center justify-between gap-3"><p className="text-sm font-semibold">Current browser view</p><button onClick={() => expandedScreenshot.current?.close()} className="rounded-lg border border-slate-200 px-3 py-2 text-xs">Close screenshot</button></div><Image unoptimized src={screenshot} width={1280} height={800} alt="Expanded local browser screenshot" className="h-auto w-full" /></dialog>}
+    <details className={view.details}><summary>Activity & source{run.history?.length ? ` · ${run.history.length} actions` : ""}</summary><p>{sourceTitle}</p>{run.history && <ol>{run.history.slice(-20).map((item, index) => <li key={index}><ChevronRight size={13} /><span>{item.action}<small>{item.status}</small></span></li>)}</ol>}{run.workspace && <p className={view.workspace}>{run.workspace}</p>}</details>
+    {screenshot && <dialog ref={expandedScreenshot} aria-label={`Expanded ${surface} screenshot`} className={view.expanded}><header><p>Current {surface} view</p><button type="button" onClick={() => expandedScreenshot.current?.close()}>Close screenshot<X size={16} /></button></header><Image unoptimized src={screenshot} width={1280} height={800} alt={`Expanded ${surface} screenshot`} /></dialog>}
   </dialog>;
 }

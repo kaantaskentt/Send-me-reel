@@ -19,7 +19,7 @@ const MODES = [
 ] as const;
 
 type Harness = "codex" | "claude";
-interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; compact?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[]; onRunStarted?: () => void }
+interface Props { analysis: Analysis; initialPlan?: ReplicationPlan; demo?: boolean; compact?: boolean; planningEndpoint?: string; initialExecutor?: "browser" | "terminal" | "computer"; planningNotice?: string; initialPairingToken?: string; initialGoal?: string; initialMode?: ReplicationPlan["mode"]; initialHarness?: Harness; contextSourceIds?: string[]; onRunStarted?: () => void }
 
 function timestamp(seconds: number | null) {
   if (seconds === null) return "No timestamp";
@@ -62,8 +62,10 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const [run, setRun] = useState<(RunState & { harness?: Harness }) | null>(null);
   const [launchBusy, setLaunchBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
-  const [executor, setExecutor] = useState<"terminal" | "browser">(initialExecutor);
+  const [executor, setExecutor] = useState<"terminal" | "browser" | "computer">(initialExecutor);
   const [browserConfigured, setBrowserConfigured] = useState(false);
+  const [computerReady, setComputerReady] = useState(false);
+  const [computerMessage, setComputerMessage] = useState("Set up Mac control from the Mac connection button.");
   const [terminalAuto, setTerminalAuto] = useState(false);
   const [harness, setHarness] = useState<Harness>(initialHarness);
   const [harnesses, setHarnesses] = useState<Record<Harness, boolean>>({ codex: false, claude: false });
@@ -81,7 +83,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   const sourceTitle = analysis.metadata?.title || (analysis.verdict ? parseVerdict(analysis.verdict).title : null) || analysis.caption?.slice(0, 100) || "Saved source";
   const stale = plan && (plan.goal !== goal.trim() || plan.mode !== mode);
   const runActive = !!run && runIsActive(run.status);
-  const sessionOpen = runActive || (!!run && executor === "browser" && run.status !== "stopped");
+  const sessionOpen = runActive || (!!run && executor !== "terminal" && run.status !== "stopped");
   const harnessName = harness === "claude" ? "Claude Code" : "Codex";
   const runHarnessName = (run?.harness ?? harness) === "claude" ? "Claude Code" : "Codex";
   const terminalAvailable = macSupported && harnesses[harness];
@@ -89,7 +91,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
 
   useEffect(() => { setOrigin(window.location.origin); return () => { generationController.current?.abort(); pairingController.current?.abort(); }; }, []);
   useEffect(() => {
-    if (!compact && executor === "browser" && run?.id && browserSessionDialog.current && !browserSessionDialog.current.open) browserSessionDialog.current.showModal();
+    if (!compact && executor !== "terminal" && run?.id && browserSessionDialog.current && !browserSessionDialog.current.open) browserSessionDialog.current.showModal();
   }, [compact, executor, run?.id]);
   useEffect(() => {
     if (!compact || demo || autoPrepared.current) return;
@@ -162,6 +164,8 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
         claude: terminalConfigured && detected?.claude === true,
       });
       setBrowserConfigured(health.capabilities?.browser?.configured === true);
+      setComputerReady(health.capabilities?.computer?.available === true);
+      setComputerMessage(health.capabilities?.computer?.message || "Set up Mac control from the Mac connection button.");
       setTerminalAuto(health.execution === "streaming-terminal");
       setToken(candidate); setPairedToken(candidate); setPaired(true);
     } catch (e) { if (!controller.signal.aborted) setLocalError(e instanceof TypeError ? "Cannot reach the companion. Start it with this app’s exact origin and allow local network access if your browser asks." : e instanceof Error ? e.message : "Connection failed."); }
@@ -177,7 +181,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   }, [compact, demo, initialPairingToken, pair]);
 
   async function launch(approved = false) {
-    if (!plan || stale || (!reviewed && !approved) || demo || sessionOpen || launchBusy || launchInFlight.current || !paired || (executor === "terminal" ? !terminalAvailable : !browserConfigured)) return;
+    if (!plan || stale || (!reviewed && !approved) || demo || sessionOpen || launchBusy || launchInFlight.current || !paired || (executor === "terminal" ? !terminalAvailable : executor === "computer" ? !computerReady : !browserConfigured)) return;
     const fingerprint = JSON.stringify({ plan, executor, ...(executor === "terminal" ? { harness, ...(harness === "codex" && connections.length ? { connectionIds: [...connections].sort() } : {}) } : {}) });
     const previous = launchAttempt.current;
     const deliberateRerun = previous?.runId === run?.id && !!run && !runIsActive(run.status);
@@ -211,7 +215,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
   if (compact) return <section className={styles.compactTask} aria-label="Review your task">
     {busy ? <p className={styles.thinking} role="status"><Loader2 size={20} className={styles.spinner} />Working out the steps…</p> : <>
       {plan && <p className={styles.taskGoal}>{plan.summary}</p>}
-      <p className={styles.taskLocation}>{executor === "terminal" && harness === "codex" && terminalAuto ? <Zap size={18} /> : <Monitor size={18} />}{executor === "browser" ? "In your Chrome on this Mac" : harness === "claude" ? "Claude Code · Review in Terminal" : terminalAuto ? "Auto · Codex · New project folder" : "Codex · Review in Terminal"}</p>
+      <p className={styles.taskLocation}>{executor === "terminal" && harness === "codex" && terminalAuto ? <Zap size={18} /> : <Monitor size={18} />}{executor === "computer" ? "On your Mac · guided app control" : executor === "browser" ? "In your Chrome on this Mac" : harness === "claude" ? "Claude Code · Review in Terminal" : terminalAuto ? "Auto · Codex · New project folder" : "Codex · Review in Terminal"}</p>
       <details className={styles.taskChecks}><summary>See the steps{plan ? ` · ${plan.steps.length}` : ""}</summary>
         <p className={styles.taskGoal}>{goal}</p>
         {plan && <><ol className={styles.taskSteps}>{plan.steps.map(step => <li key={step.id}>{step.instruction}<small>{step.kind === "inferred" ? "Added suggestion · " : "From your content · "}{step.verification}</small></li>)}</ol>
@@ -221,7 +225,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
       </details>
       <details className={styles.taskChecks}><summary>Change the task or app</summary>
         <label className={styles.field}>What you want<textarea aria-label="Your task outcome" className={styles.textarea} value={goal} maxLength={1200} rows={3} onChange={event => { setGoal(event.target.value); setReviewed(false); }} /></label>
-        <label className={styles.field}>Use<select aria-label="Task app" className={styles.select} disabled={sessionOpen || launchBusy} value={executor === "browser" ? "browser" : harness} onChange={event => { const value = event.target.value; setExecutor(value === "browser" ? "browser" : "terminal"); if (value !== "browser") setHarness(value as Harness); setReviewed(false); }}><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="browser">Browser</option></select></label>
+        <label className={styles.field}>Use<select aria-label="Task app" className={styles.select} disabled={sessionOpen || launchBusy} value={executor !== "terminal" ? executor : harness} onChange={event => { const value = event.target.value; setExecutor(value === "browser" || value === "computer" ? value : "terminal"); if (value !== "browser" && value !== "computer") setHarness(value as Harness); setReviewed(false); }}><option value="codex">Codex</option><option value="claude">Claude Code</option><option value="browser">Chrome</option><option value="computer">My Mac apps</option></select></label>
         {executor === "terminal" && harness === "codex" && <fieldset className={styles.connectionOptions}><legend>Use my Codex connections</legend>{(["github", "vercel"] as const).map(id => <label key={id}><input type="checkbox" checked={connections.includes(id)} disabled={sessionOpen || launchBusy} onChange={event => { setConnections(current => event.target.checked ? [...current, id] : current.filter(item => item !== id)); setReviewed(false); }} />{id === "github" ? "GitHub" : "Vercel"}</label>)}</fieldset>}
         <button type="button" className={styles.secondaryButton} disabled={goal.trim().length < 8 || sessionOpen} onClick={() => void prepare()}>Update task</button>
       </details>
@@ -231,9 +235,10 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
     {!paired && <p className={styles.taskConnection}>{pairBusy ? "Connecting to your Mac…" : "Your Mac worker is not connected."}<button type="button" className={styles.textButton} disabled={pairBusy || !token} onClick={() => void pair()}>Reconnect</button></p>}
     {paired && executor === "terminal" && !terminalAvailable && <p role="status" className={styles.evidenceNote}>{harnessName} isn’t available. Choose another app above, or sign in and restart ContextDrop.</p>}
     {paired && executor === "browser" && !browserConfigured && <p role="status" className={styles.evidenceNote}>Add your OpenAI key to use the browser.</p>}
-    <p className={styles.taskPermission}>{executor === "browser" ? "You’ll see the browser here. It asks before clicks and typing. You handle logins and payments." : harness === "claude" ? "Approve the plan in Terminal before Claude changes files." : terminalAuto ? "Local steps run for you without repeated prompts. You can stop anytime. Extra access may be blocked." : "Review permissions in the Terminal window on your Mac."}</p>
+    {paired && executor === "computer" && !computerReady && <p role="status" className={styles.evidenceNote}>{computerMessage}<button type="button" className={styles.textButton} onClick={() => void pair()}>Check again</button></p>}
+    <p className={styles.taskPermission}>{executor === "computer" ? "Your screen and app text go to your AI provider. Review each action here. Stop at any time." : executor === "browser" ? "You’ll see the browser here. It asks before clicks and typing. You handle logins and payments." : harness === "claude" ? "Approve the plan in Terminal before Claude changes files." : terminalAuto ? "Local steps run for you without repeated prompts. You can stop anytime. Extra access may be blocked." : "Review permissions in the Terminal window on your Mac."}</p>
     {executor === "terminal" && harness === "codex" && connections.length > 0 && <p className={styles.taskPermission}>Uses your {connections.map(id => id === "github" ? "GitHub" : "Vercel").join(" and ")} connections if available. Publishing needs your approval.</p>}
-    <button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={18} className={styles.spinner} /> : <ArrowRight size={18} />}{launchBusy ? "Starting…" : sessionOpen ? "Task is running" : "Yes, start"}</button>
+    <button type="button" className={styles.primaryButton} disabled={!plan || !!stale || busy || !paired || launchBusy || sessionOpen || (executor === "browser" ? !browserConfigured : executor === "computer" ? !computerReady : !terminalAvailable)} onClick={() => void launch(true)}>{launchBusy ? <Loader2 size={18} className={styles.spinner} /> : <ArrowRight size={18} />}{launchBusy ? "Starting…" : sessionOpen ? "Task is running" : "Yes, start"}</button>
     {localError && <p role="alert" className={styles.error}>{localError}</p>}
     {run && <button type="button" className={styles.secondaryButton} onClick={() => window.dispatchEvent(new CustomEvent("contextdrop:run", { detail: run }))}><Monitor size={18} />Watch task</button>}
   </section>;
@@ -296,7 +301,7 @@ export default function ReplicationPanel({ analysis, initialPlan, demo = false, 
           {plan && <section className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="text-sm">Take the plan with you</h2><p className="mb-4 mt-2 text-xs leading-relaxed text-slate-500">A portable handoff with evidence and acceptance checks. Exporting does not execute it.</p><div className="flex gap-2"><button disabled={!!stale} onClick={() => download(JSON.stringify(plan, null, 2), `contextdrop-${analysis.id}.json`, "application/json")} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium hover:bg-slate-50 disabled:opacity-40"><Download size={13} />JSON</button><button disabled={!!stale} onClick={() => download(replicationPlanMarkdown(plan), `contextdrop-${analysis.id}.md`, "text/markdown")} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium hover:bg-slate-50 disabled:opacity-40"><Download size={13} />Markdown</button></div></section>}
         </aside>
       </div>
-      {run && executor === "browser" && <BrowserSession run={run} dialogRef={browserSessionDialog} actionBusy={actionBusy} error={localError} sourceTitle={String(sourceTitle)} planTitle={plan?.title ?? "Prepared task"} onControl={controlRun} />}
+      {run && executor !== "terminal" && <BrowserSession run={run} dialogRef={browserSessionDialog} actionBusy={actionBusy} error={localError} sourceTitle={String(sourceTitle)} planTitle={plan?.title ?? "Prepared task"} onControl={controlRun} />}
     </div>
   );
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { ArrowRight, ArrowUp, ArrowUpRight, Bookmark, Check, Clock3, FileText, Film, Lightbulb, Loader2, MessageCircle, Search, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bookmark, Check, ChevronRight, Clock3, Code2, FileText, Film, Globe, Lightbulb, Loader2, Plus, Search, Send, Sparkles, User } from "lucide-react";
 import ContentAnswer from "./ContentAnswer";
 import type { Analysis } from "@/lib/types";
 import { publicLink, type ContentAction, type ContentConversation, type ContentMessage } from "@/lib/content-conversation";
@@ -21,7 +21,7 @@ function time(seconds: number) { return `${Math.floor(seconds / 60)}:${Math.floo
 function sourceMoment(source: string, seconds: number): string | null { const link = publicLink(source); if (!link) return null; const url = new URL(link); if (/(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(url.hostname)) url.searchParams.set("t", `${Math.floor(seconds)}s`); return url.href; }
 function scrollBehavior(): ScrollBehavior { return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"; }
 
-export default function ContentStudio({ analysis, pairingToken, savedPlan }: { analysis: Analysis; pairingToken?: string; savedPlan?: ReplicationPlan }) {
+export default function ContentStudio({ analysis, pairingToken, savedPlan, captureControl }: { analysis: Analysis; pairingToken?: string; savedPlan?: ReplicationPlan; captureControl?: ReactNode }) {
   const [conversation, setConversation] = useState<ContentConversation>({ version: 1, analysisId: analysis.id, messages: [] });
   const [input, setInput] = useState("");
   const [draftReady, setDraftReady] = useState(false);
@@ -31,11 +31,15 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   const [action, setAction] = useState<SelectedAction | null>(null);
   const [frame, setFrame] = useState<number | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [workflowNotice, setWorkflowNotice] = useState("");
+  const [newContentOpen, setNewContentOpen] = useState(false);
+  const newContent = useRef<HTMLDetailsElement>(null);
+  const conversationEnd = useRef<HTMLDivElement>(null);
+  const followReply = useRef(false);
   const chat = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const started = useRef(false);
@@ -49,6 +53,8 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   const sourceUrl = publicLink(analysis.source_url);
   const selectedObservation = frame !== null ? observations[frame] : null;
   const originalMoment = selectedObservation ? sourceMoment(analysis.source_url, selectedObservation.timestampSec ?? 0) : null;
+  const firstEvidence = guide?.evidence[0];
+  const sourceIsRepo = sourceUrl ? new URL(sourceUrl).hostname === "github.com" : false;
 
   function acceptConversation(data: ContentConversation) {
     if (data.analysisId !== analysis.id || !Array.isArray(data.messages)) throw new Error("This link changed. Refresh the page.");
@@ -69,8 +75,8 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   }
   async function send(message: string) {
     if (!message.trim() || busy) return;
+    followReply.current = true;
     setBusy(true); setError(""); setPending(message); setChatOpen(true); setHistoryOpen(false);
-    requestAnimationFrame(() => chat.current?.scrollIntoView({ block: "start", behavior: scrollBehavior() }));
     try {
       const response = await fetch("/api/local/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ analysisId: analysis.id, message }) });
       const data = await response.json();
@@ -85,6 +91,19 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
     if (choice.kind === "ask") { void send(choice.request); return; }
     setAction({ id: choice.id, kind: "prepare_task", label: choice.label, detail: choice.detail, goal: choice.request, url: null, mode: choice.mode, executor: choice.executor, harness: "codex" });
   }
+  useEffect(() => {
+    if (!followReply.current) return;
+    conversationEnd.current?.scrollIntoView({ block: "end", behavior: scrollBehavior() });
+    if (!busy) followReply.current = false;
+  }, [conversation.messages.length, pending, busy]);
+  useEffect(() => {
+    const revealCapture = () => {
+      setNewContentOpen(true);
+      requestAnimationFrame(() => newContent.current?.querySelector<HTMLInputElement>('input[type="url"]')?.focus());
+    };
+    window.addEventListener("contextdrop:inbox-link", revealCapture);
+    return () => window.removeEventListener("contextdrop:inbox-link", revealCapture);
+  }, []);
   useEffect(() => {
     try { setInput((sessionStorage.getItem(`contextdrop:draft:${analysis.id}`) ?? "").slice(0, 4000)); } catch { /* Live editing works without storage. */ }
     setDraftReady(true);
@@ -128,9 +147,17 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
   }
   function renderMessage(message: ContentMessage) {
     return <article key={message.id} className={message.role === "user" ? guided.question : guided.answer}>
+      <span className={message.role === "user" ? guided.userAvatar : guided.agentAvatar} aria-hidden="true">{message.role === "user" ? <User size={18} /> : <Check size={19} strokeWidth={2.5} />}</span>
+      <div className={guided.messageBody}>
       <p className={guided.speaker}>{message.role === "user" ? "You" : "ContextDrop"}</p>
       <ContentAnswer allowedUrls={message.reply?.allowedUrls ?? []} text={message.text} />
-      {!!message.reply?.actions.length && <div className={guided.replyActions}>{message.reply.actions.filter(item => item.kind !== "open_url" || (publicLink(item.url) && message.reply?.allowedUrls?.includes(item.url!))).map(item => <button type="button" key={item.id} onClick={() => setAction({ ...item, contextSourceIds: message.reply?.sourceReferences?.map(reference => reference.analysisId).slice(0, 3) })} className={styles.primaryButton}>{item.label}<ArrowUpRight size={17} /></button>)}</div>}
+      {!!message.reply?.actions.length && <div className={guided.replyActions}>{message.reply.actions.filter(item => item.kind !== "open_url" || (publicLink(item.url) && message.reply?.allowedUrls?.includes(item.url!))).map(item => {
+        const actionUrl = publicLink(item.url);
+        const parsedUrl = actionUrl ? new URL(actionUrl) : null;
+        const repo = parsedUrl?.hostname === "github.com";
+        const Icon = repo ? Code2 : item.kind === "open_url" ? Globe : Sparkles;
+        return <button type="button" key={item.id} onClick={() => setAction({ ...item, contextSourceIds: message.reply?.sourceReferences?.map(reference => reference.analysisId).slice(0, 3) })} className={guided.resultAction}><Icon size={23} /><span><strong>{item.label}</strong>{parsedUrl && <small>{parsedUrl.hostname}{repo ? parsedUrl.pathname : ""}</small>}</span><span className={guided.actionGo}>{item.kind === "open_url" ? "Open" : "Review"}<ArrowUpRight size={16} /></span></button>;
+      })}</div>}
       {message.role === "assistant" && <details className={guided.replyDetails}><summary>Sources & saved steps</summary>
         {!!message.activity?.length && <p>{message.activity.join(" · ")}</p>}
         <div className={styles.sourceMoments}>{message.reply?.evidence.map(index => <button type="button" key={index} onClick={() => setFrame(index)} className={styles.evidenceButton}><Clock3 size={13} />{time(observations[index]?.timestampSec ?? 0)}</button>)}</div>
@@ -138,24 +165,37 @@ export default function ContentStudio({ analysis, pairingToken, savedPlan }: { a
         {message.reply?.inspections?.map(inspection => <details key={inspection.id} className={styles.inspection}><summary>Closer look · {time(inspection.startSec)}–{time(inspection.endSec)}</summary><p>{inspection.summary}</p>{inspection.observations.map((observation, index) => <p key={index}><strong>{time(observation.timestampSec)}</strong> {observation.description}{observation.uncertain ? " (uncertain)" : ""}{observation.onScreenText.length ? ` · On screen: ${observation.onScreenText.join(" · ")}` : ""}{observation.speech ? ` · Speech summary: ${observation.speech}` : ""}</p>)}<p>{inspection.coverage}</p></details>)}
         <button type="button" className={styles.textButton} disabled={saving !== null || saved.has(message.id)} onClick={() => void saveWorkflow(message.id)}>{saving === message.id ? <Loader2 size={15} className={styles.spinner} /> : saved.has(message.id) ? <Check size={15} /> : <Bookmark size={15} />}{saved.has(message.id) ? "Saved" : "Save these steps"}</button>
       </details>}
+      </div>
     </article>;
   }
   return <section className={guided.content}>
-    <div className={guided.sourceChip}>{duration > 0 ? <Film size={17} /> : <FileText size={17} />}<span>{analysis.source_url.startsWith("contextdrop:") ? "Uploaded file" : analysis.platform}</span>{duration > 0 && <span>· {time(duration)}</span>}<button type="button" onClick={() => setSourceOpen(true)}>What I read<ArrowUpRight size={14} /></button></div>
+    <aside className={guided.sourcePanel} aria-label="Your source">
+      <div className={guided.sourceCaption}><span>Your source</span><button type="button" onClick={() => setSourceOpen(true)} aria-label="What I read">Details<ArrowUpRight size={13} /></button></div>
+      {previewIndex >= 0 ? <button type="button" className={guided.sourceVisual} onClick={() => setFrame(previewIndex)} aria-label="View captured source frame"><Image unoptimized src={imageUrl(previewIndex)} width={720} height={960} alt="A captured frame from your content" /><span><Film size={14} />Captured at {time(observations[previewIndex]?.timestampSec ?? 0)}</span></button> : <div className={guided.sourceDocument}>{sourceIsRepo ? <Code2 size={42} strokeWidth={1.3} /> : <FileText size={42} strokeWidth={1.3} />}<p>{sourceIsRepo ? "GitHub repository" : "Saved page"}</p><span>{sourceUrl ? new URL(sourceUrl).hostname : "Uploaded content"}</span></div>}
+      <h2 className={guided.sourceTitle}>{title}</h2>
+      <p className={guided.sourceMetadata}>{analysis.source_url.startsWith("contextdrop:") ? "Uploaded file" : analysis.platform}{duration > 0 && <span><Clock3 size={12} />{time(duration)}</span>}</p>
+      {sourceUrl && <a className={guided.originalLink} href={sourceUrl} target="_blank" rel="noreferrer">Open original<ArrowUpRight size={15} /></a>}
+      {captureControl && <details ref={newContent} open={newContentOpen} onToggle={event => setNewContentOpen(event.currentTarget.open)} className={guided.newContent}><summary><Plus size={17} />Add another link</summary>{captureControl}</details>}
+    </aside>
+    <div className={guided.conversationColumn}>
+    <div className={guided.conversationFlow} ref={chat}>
     {guide ? <>
-      <div className={guided.heading}><h1>{guide.title}</h1><p>What would you like to do?</p></div>
-      <div className={guided.choices} aria-label="Things you can do">{guide.choices.map((choice, index) => { const Icon = index === 0 ? Search : index === 1 ? Lightbulb : Sparkles; return <button type="button" key={choice.id} className={guided.choice} disabled={busy} onClick={() => choose(choice)}><span className={guided.choiceIcon}><Icon size={24} strokeWidth={1.7} /></span><span className={guided.choiceLabel}>{choice.label}<ArrowRight size={20} /></span><span className={guided.choiceDetail}>{choice.detail}</span></button>; })}</div>
+      <div className={guided.introduction}><span className={guided.agentAvatar} aria-hidden="true"><Check size={20} strokeWidth={2.5} /></span><div><p className={guided.speaker}>ContextDrop</p><h1>{guide.title}</h1><p className={guided.introSummary}>{guide.summary}</p>{firstEvidence !== undefined && <button type="button" className={guided.seenAt} onClick={() => setFrame(firstEvidence)}><Clock3 size={14} />Seen at {time(observations[firstEvidence]?.timestampSec ?? 0)}<ChevronRight size={13} /></button>}
+      <div className={guided.choices} aria-label="Things you can do">{guide.choices.map((choice, index) => { const Icon = index === 0 ? Search : index === 1 ? Lightbulb : Sparkles; return <button type="button" key={choice.id} className={guided.choice} disabled={busy} onClick={() => choose(choice)} title={choice.detail}><Icon size={20} strokeWidth={1.7} /><span><strong>{choice.label}</strong><small>{choice.detail}</small></span><ChevronRight size={18} /></button>; })}</div></div></div>
     </> : <div className={guided.guideLoading} aria-live="polite">{busy ? <><Loader2 size={25} className={styles.spinner} /><h1>Finding your next move…</h1><p>I’m looking at what you saved.</p></> : <><h1>Your content is saved.</h1><button type="button" className={styles.secondaryButton} onClick={() => void loadGuide()}>Find three things to try<ArrowRight size={17} /></button></>}</div>}
-    <div ref={chat} className={guided.chatSection} role="region" aria-label="Chat with your content">
-      <div className={guided.chatToolbar}><span><MessageCircle size={17} /> Ask anything</span>{conversation.messages.length > 0 && <button type="button" className={styles.textButton} aria-expanded={chatOpen && historyOpen} onClick={() => { const show = !(chatOpen && historyOpen); setChatOpen(show); setHistoryOpen(show); }}>{chatOpen && historyOpen ? "Hide chat" : "Previous chat"}</button>}</div>
-      {chatOpen && <div className={guided.chatMessages} aria-live="polite" aria-busy={busy}>{(pending && !historyOpen ? [] : historyOpen ? conversation.messages : conversation.messages.slice(-2)).map(renderMessage)}{pending && <article className={guided.question}><p className={guided.speaker}>You</p><p>{pending}</p></article>}{busy && pending && <p className={guided.thinking} role="status"><Loader2 size={18} className={styles.spinner} />Looking into it…</p>}</div>}
+    <div className={guided.chatSection} role="region" aria-label="Chat with your content">
+      {conversation.messages.length > 2 && <div className={guided.chatToolbar}><button type="button" className={styles.textButton} aria-expanded={historyOpen} onClick={() => { setChatOpen(true); setHistoryOpen(value => !value); }}>{historyOpen ? "Show recent chat" : "Previous chat"}</button></div>}
+      {chatOpen && <div className={guided.chatMessages} aria-live="polite" aria-busy={busy}>{(historyOpen ? conversation.messages : conversation.messages.slice(-2)).map(renderMessage)}{pending && <article className={guided.question}><span className={guided.userAvatar} aria-hidden="true"><User size={18} /></span><div className={guided.messageBody}><p className={guided.speaker}>You</p><p>{pending}</p></div></article>}{busy && pending && <p className={guided.thinking} role="status"><Loader2 size={18} className={styles.spinner} />Looking into it…</p>}</div>}
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {workflowNotice && <p role="status" className={styles.evidenceNote}>{workflowNotice}</p>}
-      <form onSubmit={event => { event.preventDefault(); void send(input.trim()); }} className={guided.composer}>
-        <textarea ref={composer} aria-label="Ask about your content" rows={1} maxLength={4000} value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(input.trim()); } }} placeholder="Or ask a question…" />
-        <button aria-label="Send message" disabled={busy || !input.trim()} className={guided.send}><ArrowUp size={22} /></button>
+      <div ref={conversationEnd} className={guided.conversationEnd} />
+    </div>
+    </div>
+      <div className={guided.composerDock}><form onSubmit={event => { event.preventDefault(); void send(input.trim()); }} className={guided.composer}>
+        <textarea ref={composer} aria-label="Ask about your content" rows={1} maxLength={4000} value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void send(input.trim()); } }} placeholder="Ask about this. Or tell me what to do…" />
+        <button aria-label="Send message" disabled={busy || !input.trim()} className={guided.send}><Send size={20} /></button>
       </form>
-      <p className={guided.promise}>You choose. I ask before I act.</p>
+      <p className={guided.promise}>Ask freely. Review before anything runs.</p></div>
     </div>
     {action && <StudioDialog title={action.kind === "open_url" ? "Open this page?" : action.label} onClose={() => setAction(null)}>
       {action.kind === "open_url" && publicLink(action.url) ? <div className={guided.confirm}><p>I’ll open this page in a new tab.</p><a href={action.url!} className={guided.destination} target="_blank" rel="noreferrer">{new URL(action.url!).hostname}<span>{new URL(action.url!).pathname}</span></a><div className={guided.confirmButtons}><button type="button" className={styles.secondaryButton} onClick={() => setAction(null)}>Go back</button><a href={action.url!} target="_blank" rel="noreferrer" className={styles.primaryButton} onClick={() => setAction(null)}>Yes, open it<ArrowUpRight size={18} /></a></div></div> : <ReplicationPanel compact onRunStarted={() => setAction(null)} key={action.id} analysis={analysis} contextSourceIds={action.contextSourceIds} initialPlan={!action.contextSourceIds?.length && !savedPlan?.evidence.some(item => item.id.startsWith("source2-")) && savedPlan?.goal === action.goal && savedPlan?.mode === action.mode ? savedPlan : undefined} initialGoal={action.goal ?? ""} initialMode={action.mode} initialHarness={action.harness ?? "codex"} planningEndpoint="/api/local/replicate" initialExecutor={action.executor ?? (action.mode === "research" ? "browser" : "terminal")} initialPairingToken={pairingToken} />}

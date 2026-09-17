@@ -5,6 +5,30 @@ import { captureIsActive, selectCaptureReader } from '../src/lib/capture-routing
 import type { Analysis } from '../src/lib/types';
 
 const reply = (overrides = {}) => JSON.stringify({ answer: 'Useful content.', actions: [], suggestions: ['Find the tools'], evidence: [], ...overrides });
+test('native Mac recommendations survive parsing and an explicit coding-app request still wins', () => {
+  const original = parseContentReply(reply({ actions: [{ kind: 'prepare_task', label: 'Try it on my Mac', detail: 'Try this in a Mac app.', goal: 'Create a short draft in TextEdit from this idea.', mode: 'create', executor: 'computer', harness: 'codex' }] }), 0, new Set());
+  assert.equal(original.actions.length, 1);
+  assert.equal(original.actions[0].executor, 'computer');
+  assert.equal(original.actions[0].goal, 'Create a short draft in TextEdit from this idea.');
+  assert.equal('approved' in original.actions[0], false);
+  for (const [request, harness] of [['Use Codex.', 'codex'], ['Please use Claude Code.', 'claude']] as const) {
+    const result = applyRequestedHarness(original, request);
+    assert.equal(result.actions[0].executor, 'terminal');
+    assert.equal(result.actions[0].harness, harness);
+    assert.equal(result.actions[0].goal, original.actions[0].goal);
+  }
+  assert.equal(original.actions[0].executor, 'computer');
+  assert.equal(applyRequestedHarness(original, 'The creator says "Use Codex".'), original);
+});
+
+test('an explicitly named coding harness in a task goal overrides a native executor suggestion', () => {
+  for (const [name, harness] of [['Codex', 'codex'], ['Claude Code', 'claude']] as const) {
+    const parsed = parseContentReply(reply({ actions: [{ kind: 'prepare_task', label: 'Build a demo', detail: 'Make a small working demo.', goal: `Build the example in ${name}.`, mode: 'build', executor: 'computer', harness }] }), 0, new Set());
+    assert.equal(parsed.actions[0].executor, 'terminal');
+    assert.equal(parsed.actions[0].harness, harness);
+  }
+});
+
 test('explicit current-user coding app wins over a contradictory model action', () => {
   const original = parseContentReply(reply({ actions: [{ kind: 'prepare_task', label: 'Build', detail: 'Local build', goal: 'Build a local checklist', mode: 'build', executor: 'browser', harness: 'claude' }] }), 0, new Set());
   const fixed = applyRequestedHarness(original, 'Build a local checklist. Use Codex. Check its controls.');

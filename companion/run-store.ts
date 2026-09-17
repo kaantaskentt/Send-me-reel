@@ -102,13 +102,14 @@ export function taskProgress(snapshot: TextSnapshot): TaskProgress {
 }
 
 export async function readRunOutput(root: string, state: { id: string; workspace: string; executor?: string; terminalMode?: string }) {
-  const browser = state.executor === 'browser';
+  const browser = state.executor === 'browser' || state.executor === 'computer';
+  const resultName = state.executor === 'computer' ? 'COMPUTER-RESULT.json' : browser ? 'BROWSER-RESULT.json' : 'CONTEXTDROP-RESULT.md';
   const [events, stderr, report, lastMessage, browserHistory] = await Promise.all([
     readRunFile(root, state.id, 'control', 'codex-events.jsonl', 64 * 1024, true),
     readRunFile(root, state.id, 'control', 'codex-stderr.log', 8 * 1024, true),
-    readRunFile(root, state.id, 'project', browser ? 'BROWSER-RESULT.json' : 'CONTEXTDROP-RESULT.md', 32 * 1024),
+    readRunFile(root, state.id, 'project', resultName, 32 * 1024),
     browser ? null : readRunFile(root, state.id, 'control', 'last-message.md', 32 * 1024),
-    browser ? readRunFile(root, state.id, 'control', 'browser-state.json', 64 * 1024) : null,
+    browser ? readRunFile(root, state.id, 'control', `${state.executor}-state.json`, 64 * 1024) : null,
   ]);
   const progress = taskProgress(events || emptySnapshot());
   let log = readableEvents(events || emptySnapshot());
@@ -126,12 +127,12 @@ export async function readRunOutput(root: string, state: { id: string; workspace
   const result = report || lastMessage;
   return {
     id: state.id,
-    mode: browser ? 'browser' : state.terminalMode === 'exec' ? 'streaming' : 'interactive',
+    mode: browser ? state.executor : state.terminalMode === 'exec' ? 'streaming' : 'interactive',
     progress,
     log,
     result: {
       text: result ? plainText(result.text) : '',
-      path: report ? path.join(state.workspace, browser ? 'BROWSER-RESULT.json' : 'CONTEXTDROP-RESULT.md') : lastMessage ? path.join(root, state.id, 'control', 'last-message.md') : null,
+      path: report ? path.join(state.workspace, resultName) : lastMessage ? path.join(root, state.id, 'control', 'last-message.md') : null,
       source: report ? 'report' : lastMessage ? 'last_message' : null,
       verification: 'unverified',
       truncated: result?.truncated || false,

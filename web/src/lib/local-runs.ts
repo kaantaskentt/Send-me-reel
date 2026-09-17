@@ -1,7 +1,7 @@
 import type { LocalRunState } from "@/components/dashboard/BrowserSession";
 
 export interface PersonalRun extends LocalRunState {
-  executor: "browser" | "terminal";
+  executor: "browser" | "terminal" | "computer";
   analysisId: string;
   sourceUrl: string;
   title: string;

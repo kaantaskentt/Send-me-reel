@@ -1,7 +1,7 @@
 import type { Analysis } from "./types";
 import type { ContentGuide } from "./content-guide";
 
-export interface ContentAction { id: string; kind: "open_url" | "prepare_task"; label: string; detail: string; url: string | null; goal: string | null; mode: "research" | "build" | "automate" | "create"; executor?: "browser" | "terminal"; harness?: "claude" | "codex" }
+export interface ContentAction { id: string; kind: "open_url" | "prepare_task"; label: string; detail: string; url: string | null; goal: string | null; mode: "research" | "build" | "automate" | "create"; executor?: "browser" | "terminal" | "computer"; harness?: "claude" | "codex" }
 export interface ContentSourceReference { analysisId: string; title: string; sourceUrl: string; evidence: number[] }
 export interface ContentInspection {
   id: string; sourceUrl: string; question: string; startSec: number; endSec: number; summary: string; coverage: string;
@@ -96,7 +96,7 @@ export const contentReplySchema = {
     actions: { type: "array", items: { type: "object", additionalProperties: false, required: ["id", "kind", "label", "detail", "url", "goal", "mode", "executor", "harness"], properties: {
       id: { type: "string" }, kind: { type: "string", enum: ["open_url", "prepare_task"] }, label: { type: "string" }, detail: { type: "string" },
       url: { type: ["string", "null"] }, goal: { type: ["string", "null"] }, mode: { type: "string", enum: ["research", "build", "automate", "create"] },
-      executor: { type: "string", enum: ["browser", "terminal"] }, harness: { type: "string", enum: ["claude", "codex"] },
+      executor: { type: "string", enum: ["browser", "terminal", "computer"] }, harness: { type: "string", enum: ["claude", "codex"] },
     } } },
   },
 };
@@ -115,7 +115,7 @@ export function parseContentReply(raw: string, frameCount: number, allowedUrls: 
     if (action.kind === "prepare_task" && (typeof action.goal !== "string" || action.goal.trim().length < 8 || action.goal.length > 1200)) return [];
     if (!["research", "build", "automate", "create"].includes(action.mode)) return [];
     const explicitHarness = /\b(claude code|codex)\b/i.test(action.goal ?? "");
-    const executor = explicitHarness ? "terminal" : action.executor === "browser" || action.executor === "terminal" ? action.executor : action.mode === "research" ? "browser" : "terminal";
+    const executor = explicitHarness ? "terminal" : action.executor === "browser" || action.executor === "terminal" || action.executor === "computer" ? action.executor : action.mode === "research" ? "browser" : "terminal";
     return [{ id: crypto.randomUUID(), kind: action.kind, label: action.label.slice(0, 100), detail: action.detail.slice(0, 500), url, goal: action.kind === "prepare_task" ? action.goal : null, mode: action.mode, executor, harness: action.harness === "claude" ? "claude" : "codex" }];
   });
   const seen = new Set<string>();

@@ -7,7 +7,7 @@ export type ContentChoice = {
   kind: "ask" | "prepare_task";
   request: string;
   mode: "research" | "build" | "automate" | "create";
-  executor: "browser" | "terminal";
+  executor: "browser" | "terminal" | "computer";
 };
 export type ContentGuide = {
   version: 4;
@@ -30,7 +30,7 @@ export const contentGuideSchema = {
         label: { type: "string" }, detail: { type: "string" },
         kind: { type: "string", enum: ["ask", "prepare_task"] }, request: { type: "string" },
         mode: { type: "string", enum: ["research", "build", "automate", "create"] },
-        executor: { type: "string", enum: ["browser", "terminal"] },
+        executor: { type: "string", enum: ["browser", "terminal", "computer"] },
       },
     } },
     evidence: { type: "array", items: { type: "integer" }, maxItems: 3 },
@@ -55,7 +55,7 @@ export function parseContentGuide(value: unknown, analysis: Pick<Analysis, "id" 
     const label = line(item.label, 48);
     if (labels.has(label.toLowerCase())) throw new Error("Repeated choice");
     labels.add(label.toLowerCase());
-    if (!["ask", "prepare_task"].includes(item.kind) || !["research", "build", "automate", "create"].includes(item.mode) || !["browser", "terminal"].includes(item.executor)) throw new Error("Unsupported choice");
+    if (!["ask", "prepare_task"].includes(item.kind) || !["research", "build", "automate", "create"].includes(item.mode) || !["browser", "terminal", "computer"].includes(item.executor)) throw new Error("Unsupported choice");
     const request = line(item.request, 900);
     if (request.length < 8) throw new Error("Missing choice intent");
     return { id: `choice-${index + 1}`, label, detail: line(item.detail, 100), kind: item.kind, request, mode: item.mode, executor: item.executor };

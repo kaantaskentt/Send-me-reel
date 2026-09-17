@@ -1,0 +1,101 @@
+/* Task dialogs stay scoped to their own content; other StudioDialog users are unchanged. */
+:global(dialog):has(.surface) {
+  --surface: #0b0b0c;
+  --surface-secondary: #171719;
+  --ink: #f4f4f5;
+  --muted: #aaabb5;
+  --line: #28282c;
+  --accent: #ff7518;
+  --accent-solid: #ff7518;
+  color-scheme: dark;
+  width: min(39rem, calc(100% - 2rem));
+  max-height: min(88dvh, 58rem);
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 24px 100px #0008;
+}
+
+:global(dialog):has(.surface)::backdrop { background: #0009; }
+:global(dialog):has(.surface) > header { background: #0b0b0cf5; border-color: var(--line); padding: 17px 24px; }
+:global(dialog):has(.surface) > header h2 { font-size: 15px; font-weight: 550; color: var(--muted); }
+:global(dialog):has(.surface) > header button:hover { background: #222225; color: var(--ink); }
+:global(dialog):has(.surface) > div { padding: 24px; }
+:global(dialog):has(.surface) :is(button, a, summary, pre):focus-visible { outline: 2px solid #ff944f; outline-offset: 4px; }
+
+.surface { min-width: 0; color: #f4f4f5; }
+.panel { display: grid; gap: 21px; }
+.meta, .time, .harness, .state, .eyebrow, .controls, .footer, .textButton { display: flex; align-items: center; }
+.meta { justify-content: space-between; gap: 12px; }
+.harness { gap: 6px; font-size: 12px; font-weight: 550; color: #ff944f; background: #ff751814; border: 1px solid #ff751825; border-radius: 7px; padding: 5px 8px; }
+.time { gap: 5px; color: #aaabb5; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.heading { display: grid; gap: 11px; }
+.title { color: #f4f4f5; font-size: clamp(21px, 3.5vw, 25px); font-weight: 580; line-height: 1.3; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.state { gap: 8px; color: #aaabb5; font-size: 13px; line-height: 1.5; }
+.state[data-active="true"] { color: #ff944f; }
+.statusDot { display: inline-block; flex: 0 0 auto; width: 6px; height: 6px; border-radius: 50%; background: #8d8e98; }
+.statusDot[data-active="true"] { background: #ff7518; }
+.result { padding: 19px 20px; border: 1px solid #28282c; border-radius: 14px; background: #171719; font-size: 15px; line-height: 1.65; overflow-wrap: anywhere; min-width: 0; }
+.eyebrow { gap: 7px; margin-bottom: 12px; color: #aaabb5; font-size: 12px; font-weight: 550; }
+.result > .footnote { margin-top: 12px; }
+.result :global(.cd-markdown) > :last-child { margin-bottom: 0 !important; }
+.result :global(.cd-markdown) code { background: #252528 !important; color: #f4f4f5 !important; }
+.result :global(.cd-markdown) pre { min-width: 0; max-width: 100%; overflow: auto; }
+.progress { background: #171719; border: 1px solid #28282c; border-radius: 12px; padding: 17px 18px; color: #c4c4cd; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; }
+.loading { display: flex; align-items: center; gap: 9px; min-height: 25px; color: #aaabb5; font-size: 14px; line-height: 1.6; }
+.controls { gap: 9px; flex-wrap: wrap; }
+.primaryButton, .secondaryButton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 43px; padding: 10px 16px; border: 1px solid transparent; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; transition: background .15s ease, border-color .15s ease; }
+.primaryButton { background: #ff7518; color: #16100b; }
+.primaryButton:hover:not(:disabled) { background: #ff8a3b; }
+.secondaryButton { background: #171719; border-color: #333338; color: #e4e4e9; }
+.secondaryButton:hover:not(:disabled) { background: #242427; border-color: #46464f; }
+.primaryButton:disabled, .secondaryButton:disabled { opacity: .5; cursor: default; }
+.detailsGroup { min-width: 0; border-top: 1px solid #28282c; }
+.details { min-width: 0; border-bottom: 1px solid #28282c; }
+.details > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 47px; cursor: pointer; list-style: none; color: #aaabb5; font-size: 13px; }
+.details > summary::-webkit-details-marker { display: none; }
+.details > summary:hover { color: #f4f4f5; }
+.details[open] > summary > svg { transform: rotate(90deg); }
+.details[open] { padding-bottom: 15px; }
+.log { margin-top: 10px; padding: 14px 15px; background: #111113; border: 1px solid #28282c; border-radius: 10px; color: #c8c8d0; font: 12px/1.75 ui-monospace, SFMono-Regular, monospace; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 34dvh; overflow: auto; overscroll-behavior: contain; }
+.goal { color: #c4c4cd; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.source { display: inline-flex; align-items: center; gap: 5px; color: #ff944f; font-size: 12px; margin-top: 10px; text-underline-offset: 3px; }
+.source:hover { text-decoration: underline; }
+.footnote { color: #aaabb5; font-size: 12px; line-height: 1.6; }
+.footer { justify-content: space-between; gap: 14px; color: #8e8f99; font-size: 11px; line-height: 1.5; }
+.footer p { text-align: right; }
+.textButton { gap: 6px; flex-shrink: 0; padding: 5px 0; font-size: 12px; font-weight: 500; color: #c9c9d1; }
+.textButton:hover { color: #ff944f; }
+.error, .notice { padding: 13px 15px; border: 1px solid #55402f; border-radius: 11px; background: #ff75180c; color: #e9b99a; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.error .textButton, .notice .textButton { margin-top: 5px; }
+.list { display: grid; gap: 7px; }
+.notice + .list, .loading + .list { margin-top: 15px; }
+.listItem { display: flex; align-items: center; gap: 13px; width: 100%; min-width: 0; padding: 15px; border: 1px solid #28282c; border-radius: 12px; text-align: left; background: #141416; transition: background .15s ease, border-color .15s ease; }
+.listItem:hover { background: #1d1d20; border-color: #414147; }
+.taskIcon { display: grid; place-items: center; width: 35px; height: 35px; flex: 0 0 auto; border: 1px solid #303035; border-radius: 9px; background: #1d1d20; color: #bfbfc8; }
+.listCopy { display: grid; flex: 1; gap: 6px; min-width: 0; }
+.listCopy > strong { font-size: 14px; line-height: 1.5; font-weight: 550; color: #f4f4f5; overflow-wrap: anywhere; }
+.listCopy > span { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #aaabb5; line-height: 1.5; }
+.chevron { flex: 0 0 auto; color: #8e8f99; }
+.empty { display: grid; justify-items: center; gap: 12px; padding: 24px 12px 32px; text-align: center; }
+.emptyIcon { display: grid; place-items: center; width: 54px; height: 54px; background: #171719; border: 1px solid #28282c; border-radius: 15px; color: #aaabb5; margin-bottom: 4px; }
+.empty h3 { font-size: 18px; font-weight: 550; letter-spacing: -.025em; }
+.empty p { font-size: 13px; line-height: 1.6; color: #aaabb5; }
+.spinner { flex-shrink: 0; animation: spin .85s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 520px) {
+  :global(dialog):has(.surface) { width: calc(100% - 20px); border-radius: 18px; max-height: 91dvh; }
+  :global(dialog):has(.surface) > header { padding: 14px 18px; }
+  :global(dialog):has(.surface) > div { padding: 19px 18px; }
+  .panel { gap: 18px; }
+  .result { padding: 16px; font-size: 14px; }
+  .controls > button { flex: 1; }
+  .listItem { gap: 10px; padding: 13px; }
+  .listCopy > strong { font-size: 13px; }
+  .footer { gap: 12px; align-items: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) { .surface *, .spinner { animation: none !important; transition: none !important; } }
+@media (prefers-contrast: more) { .surface { --line: #62626c; } .result, .progress, .listItem, .detailsGroup, .details { border-color: #62626c; } }

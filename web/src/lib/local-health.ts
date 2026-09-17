@@ -1,4 +1,5 @@
 import { isLocalStudioRequest, readLocalCompanionToken } from "./local-studio";
+import { parseLocalComputerSetup, type LocalComputerSetup } from './local-computer';
 
 export interface LocalHealth {
   version: 1;
@@ -12,6 +13,7 @@ export interface LocalHealth {
     browserConnection: 'not_connected' | 'awaiting_selection' | 'selected';
     harnesses: { codex: boolean; claude: boolean };
     execution: "streaming-terminal" | "interactive-terminal" | null;
+    computer?: LocalComputerSetup;
   };
   issues: string[];
 }
@@ -60,6 +62,8 @@ export async function readLocalHealth(headers: Pick<Headers, "get">, dependencie
         const caps = result?.capabilities;
         if ((result?.status === "ready" || (result?.status === "unavailable" && result?.companion === "reachable")) && result?.version === 1 && result?.platform === "darwin" && typeof caps?.terminal === "boolean" && typeof caps?.browser?.configured === "boolean" && typeof caps?.harnesses?.codex === "boolean" && typeof caps?.harnesses?.claude === "boolean" && ["streaming-terminal", "interactive-terminal", null].includes(result.execution)) {
           health.companion = { connected: true, terminal: caps.terminal, browser: caps.browser.configured, browserConnection: caps.browser.mode === 'existing-chrome' && ['awaiting_selection', 'selected'].includes(caps.browser.connection) ? caps.browser.connection : 'not_connected', harnesses: { codex: caps.harnesses.codex, claude: caps.harnesses.claude }, execution: result.execution };
+          const computer = parseLocalComputerSetup(caps.computer);
+          if (computer) health.companion.computer = computer;
         }
       } else await response.body?.cancel().catch(() => {});
     }

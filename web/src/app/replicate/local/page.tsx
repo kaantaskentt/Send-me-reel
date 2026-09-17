@@ -28,19 +28,20 @@ export default async function LocalStudioPage({ searchParams }: { searchParams: 
   const captureMatchesRequest = !requestedUrl || sameContentLink(requestedUrl, capture?.source_url);
   const analysis = captureMatchesRequest && capture?.status === "done" ? capture : null;
   const savedPlan = analysis ? await readLocalPlan(analysis) : undefined;
-  return <main className={`${styles.studio} ${guided.app}`}>
+  const captureControl = <LocalCapture key={`capture-${handoff?.id ?? requestedUrl ?? capture?.id ?? "empty"}`} requestedUrl={requestedUrl ?? undefined} handoff={handoff ?? undefined} initialUrl={requestedUrl ?? capture?.source_url} initialStatus={captureMatchesRequest ? capture?.status : "empty"} initialError={captureMatchesRequest ? getCaptureFailure(capture)?.message : undefined} compact={!!analysis} geminiAvailable={!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)} />;
+  return <main className={`${styles.studio} ${guided.app}`} data-theme="dark">
     <header className={guided.nav}>
-      <Link href="/replicate/local" className={styles.brand}><span className={styles.brandMark}><Check size={21} strokeWidth={2.5} /></span>ContextDrop</Link>
+      <Link href="/" className={styles.brand}><span className={styles.brandMark}><Check size={21} strokeWidth={2.5} /></span>ContextDrop</Link>
       <nav aria-label="Workspace" className={guided.navActions}>
-        <LocalLibrary currentId={capture?.id} /><PhoneInbox /><LocalTasks token={pairingToken} />
+        <LocalLibrary currentId={capture?.id} /><LocalTasks token={pairingToken} />
         <span className={guided.connection}><LocalRuntimeStatus /></span>
-        <details className={guided.more}><summary aria-label="More options"><MoreHorizontal size={20} /></summary><div><WorkspaceTools canUseWorkflow={!!analysis} /></div></details>
+        <details className={guided.more}><summary aria-label="More options"><MoreHorizontal size={20} /></summary><div><PhoneInbox /><WorkspaceTools canUseWorkflow={!!analysis} /></div></details>
       </nav>
     </header>
-    <div className={guided.main}>
+    <div className={guided.main} data-has-content={!!analysis}>
       {!analysis && <div className={guided.emptyHero}><h1>Saved it? Try it.</h1><p>Drop a link. Find out what you can do with it.</p></div>}
-      <LocalCapture key={`capture-${handoff?.id ?? requestedUrl ?? capture?.id ?? "empty"}`} requestedUrl={requestedUrl ?? undefined} handoff={handoff ?? undefined} initialUrl={requestedUrl ?? capture?.source_url} initialStatus={captureMatchesRequest ? capture?.status : "empty"} initialError={captureMatchesRequest ? getCaptureFailure(capture)?.message : undefined} compact={!!analysis} geminiAvailable={!!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)} />
-      {analysis ? <ContentStudio key={`content-${analysis.id}`} analysis={analysis} pairingToken={pairingToken} savedPlan={savedPlan} /> : <div className={guided.emptyExamples}>{[{ title: "Find the tool", detail: "Even when it only appears on screen.", icon: ScanSearch }, { title: "Get the idea", detail: "Ask anything about what you saved.", icon: Lightbulb }, { title: "Try it yourself", detail: "Choose a task. Watch it happen.", icon: WandSparkles }].map(({ title, detail, icon: Icon }) => <div key={title}><Icon size={23} strokeWidth={1.6} /><h2>{title}</h2><p>{detail}</p></div>)}</div>}
+      {!analysis && captureControl}
+      {analysis ? <ContentStudio key={`content-${analysis.id}`} analysis={analysis} pairingToken={pairingToken} savedPlan={savedPlan} captureControl={captureControl} /> : <div className={guided.emptyExamples}>{[{ title: "Find the tool", detail: "Find what caught your eye.", icon: ScanSearch }, { title: "Get the idea", detail: "Ask about what you saved.", icon: Lightbulb }, { title: "Try it yourself", detail: "Choose a task. Watch it happen.", icon: WandSparkles }].map(({ title, detail, icon: Icon }) => <div key={title}><Icon size={23} strokeWidth={1.6} /><h2>{title}</h2><p>{detail}</p></div>)}</div>}
     </div>
   </main>;
 }

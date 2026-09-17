@@ -22,6 +22,18 @@ test('three source-bound choices describe intent without granting execution perm
   assert.deepEqual(parseContentGuide(guide, analysis), guide);
 });
 
+test('native Mac choices survive initial parsing and saved-guide reload without granting control', () => {
+  const value = payload();
+  value.choices[2] = { label: 'Try it in TextEdit', detail: 'Make a short draft on your Mac.', kind: 'prepare_task', request: 'Write a short draft in TextEdit based on this idea.', mode: 'create', executor: 'computer' };
+  const guide = parseContentGuide(value, analysis);
+  assert.equal(guide.choices[2].executor, 'computer');
+  assert.equal(guide.choices[2].request, value.choices[2].request);
+  assert.equal('approved' in guide.choices[2], false);
+  assert.deepEqual(parseContentGuide(JSON.parse(JSON.stringify(guide)), analysis), guide);
+  value.choices[2].executor = 'computer_use';
+  assert.throws(() => parseContentGuide(value, analysis), /Unsupported choice/);
+});
+
 test('missing, duplicate, misleading destinations and source-swapped choices fail closed', () => {
   assert.throws(() => parseContentGuide({...payload(), analysisId:'other-source'}, analysis));
   assert.throws(() => parseContentGuide({...payload(), version:1}, analysis));

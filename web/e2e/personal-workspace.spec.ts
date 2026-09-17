@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import type { PersonalRun, RunOutput } from "../src/lib/local-runs";
+import type { LocalComputerSetup } from "../src/lib/local-computer";
 
 let analysisId: string;
 test.beforeAll(async ({ request }) => {
@@ -29,6 +30,9 @@ async function fixtures(page: Page, initialStatus = "running") {
   };
   const state = {
     run, output, listReads: 0, outputReads: 0, libraryReads: 0, stops: 0, reveals: 0, phonePairs: 0, phoneSyncs: 0, inboxDismisses: 0, captureAttempts: 0,
+    listGate: null as Promise<void> | null, listResponse: "ready" as "ready" | "offline" | "empty", outputUnavailable: false,
+    computerReads: 0, helperBodies: [] as unknown[], computerCheckFails: false, computerHelperFails: false,
+    computer: { configured: true, available: false, status: "needs_permissions", message: "Allow Screen Recording and Accessibility for Peekaboo, then check again.", version: "3.0.0", permissions: { screenRecording: false, accessibility: false, eventSynthesizing: false }, setupSteps: [] } as LocalComputerSetup,
     forbidden: [] as string[], errors: [] as string[], token: "",
     share: { available: true, shortcutAvailable: true, items: [] as { id: string; url: string; receivedAt: string; source: "iphone" }[], lastSyncedAt: "2026-09-13T10:02:00Z" },
     allowRejectedCapture: false,
@@ -47,9 +51,16 @@ async function fixtures(page: Page, initialStatus = "running") {
       expect(/^Bearer .{32,}$/.test(authorization ?? "")).toBe(true);
       state.token = authorization.slice(7);
       if (url.pathname === "/health" && request.method() === "GET") return route.fulfill({ headers, json: { status: "ready", platform: "darwin", version: 1, execution: "streaming-terminal", capabilities: { terminal: true, harnesses: { codex: true, claude: true }, browser: { configured: true } } } });
-      if (url.pathname === "/runs" && request.method() === "GET") { state.listReads++; return route.fulfill({ headers, json: { runs: [state.run] } }); }
+      if (url.pathname === "/runs" && request.method() === "GET") {
+        state.listReads++; await state.listGate;
+        if (state.listResponse === "offline") return route.fulfill({ headers, status: 503, json: { error: "Fixture companion disconnected" } });
+        return route.fulfill({ headers, json: { runs: state.listResponse === "empty" ? [] : [state.run] } });
+      }
       if (url.pathname === `/runs/${runId}` && request.method() === "GET") return route.fulfill({ headers, json: state.run });
-      if (url.pathname === `/runs/${runId}/output` && request.method() === "GET") { state.outputReads++; return route.fulfill({ headers, json: output }); }
+      if (url.pathname === `/runs/${runId}/output` && request.method() === "GET") {
+        state.outputReads++;
+        return state.outputUnavailable ? route.fulfill({ headers, status: 503, json: { error: "Couldn’t load this task’s result." } }) : route.fulfill({ headers, json: output });
+      }
       if (url.pathname === `/runs/${runId}/stop` && request.method() === "POST") {
         expect(request.postDataJSON()).toEqual({}); state.stops++; state.run.status = "stopping";
         return route.fulfill({ headers, status: 202, json: state.run });
@@ -60,6 +71,23 @@ async function fixtures(page: Page, initialStatus = "running") {
       }
       state.forbidden.push(`${request.method()} ${url.pathname}`);
       return route.fulfill({ headers, status: 409, json: { error: "Unreviewed fixture operation" } });
+    }
+    if (url.pathname === "/api/local/health" && request.method() === "GET") {
+      return route.fulfill({ json: { status: "ready", readers: { gemini: true, frames: true, pages: true }, chat: { configured: true }, companion: { connected: true, terminal: true, browser: true, browserConnection: "not_connected", execution: "streaming-terminal" }, issues: [] } });
+    }
+    if (url.pathname === "/api/local/computer/setup") {
+      if (request.method() === "GET") {
+        state.computerReads++;
+        return state.computerCheckFails ? route.fulfill({ status: 503, json: { error: "Mac permissions could not be checked. Try again." } }) : route.fulfill({ json: state.computer });
+      }
+      if (request.method() === "POST") {
+        const body = request.postDataJSON(); state.helperBodies.push(body);
+        expect(request.headers()["content-type"]).toBe("application/json");
+        expect(body).toEqual({ action: "open_helper" });
+        return state.computerHelperFails ? route.fulfill({ status: 503, json: { error: "Could not open the Mac helper. Try again." } }) : route.fulfill({ json: { status: "opened", message: "Peekaboo is open. Allow its permissions in macOS, then check again." } });
+      }
+      state.forbidden.push(`${request.method()} ${url.pathname}`);
+      return route.fulfill({ status: 409, json: { error: "No other setup actions are allowed in this fixture." } });
     }
     if (url.pathname === "/api/local/chat") {
       if (request.method() !== "GET") { state.forbidden.push("unexpected chat generation"); return route.fulfill({ status: 409, json: { error: "No live analysis in this fixture" } }); }
@@ -117,6 +145,7 @@ test("Tasks recovers previous work after reload and keeps original source, actua
   await expect(workroom.locator("details[open]")).toHaveCount(0);
   await expect(workroom.getByText("2m 46s", { exact: true })).toBeVisible();
   await expect(workroom.getByText("$ node check-example.mjs", { exact: false })).not.toBeVisible();
+  await workroom.screenshot({ path: test.info().outputPath("task-result-desktop.png") });
   await workroom.getByText("Activity & details", { exact: true }).click();
   await expect(workroom.getByRole("link", { name: "Original source" })).toHaveAttribute("href", originalSource);
   await expect(workroom.getByRole("region", { name: "Terminal task output" })).toContainText("$ node check-example.mjs");
@@ -162,6 +191,154 @@ test("Tasks stops only the selected run, acknowledges stopping, and keeps source
   expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
 });
 
+test("Tasks distinguishes loading from a disconnected Mac and can reconnect without closing", async ({ page }) => {
+  const state = await fixtures(page, "finished_unverified");
+  let releaseList!: () => void;
+  state.listGate = new Promise<void>(resolve => { releaseList = resolve; });
+  state.listResponse = "offline";
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Tasks", exact: true }).click();
+  const tasks = page.getByRole("dialog", { name: "Your tasks", exact: true });
+  await expect(tasks.getByRole("status")).toHaveText("Loading your tasks…");
+  await expect(tasks.getByText("No tasks yet", { exact: true })).not.toBeVisible();
+  releaseList();
+  await expect(tasks.getByRole("status")).toContainText("Can’t reach your Mac.");
+  state.listResponse = "ready";
+  await tasks.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(tasks.getByRole("button", { name: new RegExp(title) })).toBeVisible();
+  await expect(tasks.getByText("Can’t reach your Mac.", { exact: false })).not.toBeVisible();
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("Tasks shows a clear empty state when the connected Mac has no work", async ({ page }) => {
+  const state = await fixtures(page, "finished_unverified");
+  state.listResponse = "empty";
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Tasks", exact: true }).click();
+  const tasks = page.getByRole("dialog", { name: "Your tasks", exact: true });
+  await expect(tasks.getByRole("heading", { name: "No tasks yet", exact: true })).toBeVisible();
+  await expect(tasks.getByText("Pick something to do with a saved link.", { exact: true })).toBeVisible();
+  await expect(tasks.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("A failed task with no saved report stays honest and keeps files accessible", async ({ page }) => {
+  const state = await fixtures(page, "failed");
+  state.output.result.text = "";
+  state.output.result.path = null;
+  state.output.result.source = null;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Tasks", exact: true }).click();
+  await page.getByRole("dialog", { name: "Your tasks", exact: true }).getByRole("button", { name: new RegExp(title) }).click();
+  const task = page.getByRole("dialog", { name: "Your task", exact: true });
+  await expect(task.getByRole("status")).toHaveText("Needs attention");
+  await expect(task.getByText("No report was saved. Open the files to check the result.", { exact: true })).toBeVisible();
+  await expect(task.getByText("Your result will appear here.", { exact: true })).not.toBeVisible();
+  await expect(task.getByRole("region", { name: "Task result", exact: true })).toHaveCount(0);
+  await expect(task.getByRole("button", { name: "Stop task", exact: true })).toHaveCount(0);
+  await expect(task.locator("details[open]")).toHaveCount(0);
+  await task.screenshot({ path: test.info().outputPath("task-no-result-mobile.png") });
+  await task.getByRole("button", { name: "Open files", exact: true }).click();
+  expect(state.reveals).toBe(1);
+  expect(await task.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await task.getByRole("button", { name: "All tasks", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Your tasks", exact: true })).toBeVisible();
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("An unavailable task report is not mislabeled as missing and can be refreshed", async ({ page }) => {
+  const state = await fixtures(page, "finished_unverified");
+  state.outputUnavailable = true;
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Tasks", exact: true }).click();
+  await page.getByRole("dialog", { name: "Your tasks", exact: true }).getByRole("button", { name: new RegExp(title) }).click();
+  const task = page.getByRole("dialog", { name: "Your task", exact: true });
+  await expect(task.getByRole("alert")).toHaveText("Couldn’t load this task’s result.");
+  await expect(task.getByText("No report was saved.", { exact: false })).not.toBeVisible();
+  state.outputUnavailable = false;
+  await task.getByRole("button", { name: "Refresh status", exact: true }).click();
+  await expect(task.getByRole("region", { name: "Task result", exact: true })).toContainText("Created example.html");
+  await expect(task.getByRole("alert")).toHaveCount(0);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("Computer tasks open a watch session instead of an empty terminal view", async ({ page }) => {
+  const state = await fixtures(page, "needs_input");
+  state.run.executor = "computer";
+  state.run.message = "Choose the app window on your Mac.";
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: /^Tasks/ }).click();
+  const tasks = page.getByRole("dialog", { name: "Your tasks", exact: true });
+  await expect(tasks.getByText("Computer · Needs your input", { exact: true })).toBeVisible();
+  await tasks.getByRole("button", { name: new RegExp(title) }).click();
+  const session = page.getByRole("dialog").filter({ hasText: title });
+  await expect(session).toBeVisible();
+  await expect(session.getByText("Choose the app window on your Mac.", { exact: true })).toBeVisible();
+  await expect(session.getByRole("region", { name: "Terminal task output", exact: true })).toHaveCount(0);
+  expect(state.outputReads).toBe(0);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("Mac setup waits for permissions, opens only the helper, and reports ready only after checking", async ({ page }) => {
+  const state = await fixtures(page, "finished_unverified");
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Mac connected", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Your Mac connection", exact: true });
+  const control = dialog.getByRole("region", { name: "Mac app control", exact: true });
+  await expect(control.getByText("Needed", { exact: true })).toHaveCount(2);
+  await expect(control.getByText("Ready", { exact: true })).toHaveCount(0);
+  await expect(control.getByText(state.computer.message, { exact: true })).toBeVisible();
+  expect(state.helperBodies).toEqual([]);
+  await control.getByRole("button", { name: "Open Mac helper", exact: true }).click();
+  await expect(control.getByRole("status")).toContainText("Helper opened.");
+  expect(state.helperBodies).toEqual([{ action: "open_helper" }]);
+  await expect(control.getByText("Ready", { exact: true })).toHaveCount(0);
+  await expect(control.getByText("Needed", { exact: true })).toHaveCount(2);
+  state.computer = { ...state.computer, available: true, status: "ready", message: "Mac app control is ready.", permissions: { screenRecording: true, accessibility: true, eventSynthesizing: true } };
+  await dialog.getByRole("button", { name: "Check again", exact: true }).click();
+  await expect(control.getByText("Ready", { exact: true })).toBeVisible();
+  await expect(control.getByText("Allowed", { exact: true })).toHaveCount(2);
+  await expect(control.getByRole("button", { name: "Open Mac helper", exact: true })).toHaveCount(0);
+  expect(state.computerReads).toBe(2);
+  expect(state.helperBodies).toEqual([{ action: "open_helper" }]);
+  expect(state.stops).toBe(0); expect(state.reveals).toBe(0); expect(state.captureAttempts).toBe(0);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("Mac setup check failure shows an error and never claims ready", async ({ page }) => {
+  const state = await fixtures(page, "finished_unverified");
+  state.computerCheckFails = true;
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Mac connected", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Your Mac connection", exact: true });
+  const control = dialog.getByRole("region", { name: "Mac app control", exact: true });
+  await expect(control.getByRole("alert")).toHaveText("Mac permissions could not be checked. Try again.");
+  await expect(control.getByText("Ready", { exact: true })).toHaveCount(0);
+  await expect(control.getByText("Allowed", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Check again", exact: true })).toBeEnabled();
+  expect(state.helperBodies).toEqual([]);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
+test("Mac setup helper failure is visible without starting a computer task", async ({ page }) => {
+  const state = await fixtures(page, "finished_unverified");
+  state.computerHelperFails = true;
+  await page.goto("/replicate/local");
+  await page.getByRole("button", { name: "Mac connected", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Your Mac connection", exact: true });
+  const control = dialog.getByRole("region", { name: "Mac app control", exact: true });
+  await control.getByRole("button", { name: "Open Mac helper", exact: true }).click();
+  await expect(control.getByRole("alert")).toHaveText("Could not open the Mac helper. Try again.");
+  await expect(control.getByText("Ready", { exact: true })).toHaveCount(0);
+  await expect(control.getByRole("status")).toHaveCount(0);
+  await expect(control.getByRole("button", { name: "Open Mac helper", exact: true })).toBeEnabled();
+  expect(state.helperBodies).toEqual([{ action: "open_helper" }]);
+  expect(state.computerReads).toBe(1);
+  expect(state.stops).toBe(0); expect(state.reveals).toBe(0); expect(state.captureAttempts).toBe(0);
+  expect(state.errors).toEqual([]); expect(state.forbidden).toEqual([]);
+});
+
 test("Tasks shows live progress and reveals a report without making the user switch tabs", async ({ page }) => {
   const state = await fixtures(page);
   state.output.result.text = "";
@@ -190,6 +367,7 @@ test("Phone inbox pairs explicitly and refreshes the library after import withou
   const originalHeading = await currentSource.textContent();
   const composer = page.getByLabel("Ask about your content");
   await composer.fill("Keep this unsent question with my current source.");
+  await page.getByLabel("More options", { exact: true }).click();
   await page.getByRole("button", { name: "Phone inbox", exact: true }).click();
   const inbox = page.getByRole("dialog", { name: "Send from your iPhone", exact: true });
   await inbox.getByText("Setup help and Telegram", { exact: true }).click();
@@ -227,10 +405,15 @@ test("An iPhone share prefills the exact link, keeps the current chat and pendin
   const sourceHeading = await source.textContent();
   const composer = page.getByLabel("Ask about your content");
   await composer.fill("Keep this draft with my original source.");
+  const addLink = page.locator("summary").filter({ hasText: "Add another link" });
+  await addLink.click();
   await page.getByLabel("Content link",{exact:true}).fill("https://www.youtube.com/watch?v=fixture");
   await page.getByText("Reading options", { exact: true }).click();
   await page.getByLabel("Content reader", { exact: true }).selectOption("gemini");
   await page.getByLabel("Look for something specific").fill("An earlier YouTube-only question.");
+  await addLink.click();
+  await expect(page.getByLabel("Content link", { exact: true })).not.toBeVisible();
+  await page.getByLabel("More options", { exact: true }).click();
   const phoneButton = page.getByRole("button", { name: /^Phone inbox/ });
   await expect(phoneButton).toContainText("1");
   await phoneButton.click();
@@ -253,6 +436,7 @@ test("An iPhone share prefills the exact link, keeps the current chat and pendin
   await expect(page.getByRole("region", { name: "Add content", exact: true }).getByRole("alert")).toContainText("Fixture reader unavailable");
   expect(state.captureAttempts).toBe(1); expect(state.inboxDismisses).toBe(0);
   expect(state.share.items).toHaveLength(1);
+  if (!await phoneButton.isVisible()) await page.getByLabel("More options", { exact: true }).click();
   await phoneButton.click();
   await expect(inbox.getByRole("button", { name: `Dismiss ${url}`, exact: true })).toBeVisible();
   await inbox.getByRole("button", { name: `Dismiss ${url}`, exact: true }).click();

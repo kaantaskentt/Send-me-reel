@@ -3,7 +3,7 @@
 /*
  * HeroSection — Manus "Dark Signal" port (Apr 26)
  * Dark #0a0a0a + dot grid + orange radial glow.
- * Rotating word headline, paste-link input, demo animation.
+ * Fixed headline, paste-link input, demo animation.
  */
 
 import { useEffect, useState, useRef } from "react";
@@ -11,8 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import HeroDemoAnimation from "./HeroDemoAnimation";
 import { useRouter } from "next/navigation";
 import { contentLink, linkLoginDestination, localLinkDestination } from "@/lib/link-handoff";
-
-const ROTATING_WORDS = ["summarized.", "understood.", "clarified.", "actioned.", "finally useful."];
 
 const PLATFORMS = [
   { name: "Instagram", color: "#E1306C" },
@@ -190,15 +188,6 @@ function HeroAnalysePanel({ localStudio }: { localStudio: boolean }) {
 }
 
 export default function HeroSection({ localStudio = false }: { localStudio?: boolean }) {
-  const [wordIndex, setWordIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setWordIndex((i) => (i + 1) % ROTATING_WORDS.length);
-    }, 2200);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <section
       className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden pt-24 pb-16"
@@ -250,19 +239,7 @@ export default function HeroSection({ localStudio = false }: { localStudio?: boo
           >
             <span className="block text-white">Your feed</span>
             <span className="block" style={{ minHeight: "1.1em", overflow: "hidden" }}>
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={wordIndex}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className="inline-block"
-                  style={{ color: "#F97316" }}
-                >
-                  {ROTATING_WORDS[wordIndex]}
-                </motion.span>
-              </AnimatePresence>
+              <span className="inline-block" style={{ color: "#F97316" }}>finally useful.</span>
             </span>
           </h1>
         </motion.div>

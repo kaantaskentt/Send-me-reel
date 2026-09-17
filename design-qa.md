@@ -1,60 +1,47 @@
-# ContextDrop personal workspace design QA
+# ContextDrop design QA — 17 September 2026
 
-final result: passed
+## Decision and scope
 
-Reviewed 14 September 2026. Scope: the working local workspace at `http://127.0.0.1:3127/replicate/local`, including source intake, three choices, chat, confirmation, evidence, tasks and phone layout. This is a local implementation; it has not been deployed in this change.
+Keep the supplied black/orange landing hero, including “Your feed finally useful.” The chosen dashboard reference drives the source-left, conversation-right layout. This change is local and has not been pushed or deployed.
 
-## Visual evidence
+## Visual comparison
 
-- Source visual truth: `/Users/kaantaskent/.codex/generated_images/01a076ce-3f5c-76c1-8fe3-fbf25ff52602/exec-ea5a4389-dc3a-4d4f-ac18-2860e754d67e.png` (1487 × 1058). Selected Clear Next Step direction from three generated alternatives, following the user's delegated design request.
-- Implementation: `.contextdrop/qa/ui-redesign/final-desktop.png` (1600 × 900, browser-rendered final desktop). Images stay private because they contain the owner's real sources.
-- Matched reference capture: `22-polish-reference.png`, in the same private directory. CSS viewport 1487 × 1057, reported DPR 0.8000000119, returned PNG 1859 × 1321. The in-app capture includes extra white canvas and renders the page in its upper-left 930 × 661 region. That region was cropped and normalized to 1487 × 1058 as `23-polish-normalized.png`; one-pixel rounding and upsampling softness are capture limitations, not CSS defects.
-- Full-view comparison: source and normalized implementation placed together in `24-polish-comparison.png` (2974 × 1058) and visually inspected together.
-- Focused card comparison: `25-polish-cards.png` (1255 × 600), source above implementation; labels, body text, icons, spacing and borders were reviewed together at readable scale.
-- Phone: `16-final-phone.png`, CSS 390 × 844, reported DPR 0.8000000119, PNG 488 × 1054. The page region (244 × 528) was normalized to 390 × 844 as `21-phone-normalized.png`. Actual scroll width was 390. Desktop had no horizontal overflow either. Viewport override was reset afterwards.
-- State: light theme, local paired workspace, captured source ready, exactly three choices, old chat collapsed. The concept used the Instagram design-tools reel; the active source changed during QA to the owner's X clip. Current title, source chip and choices reflect that real source. The different content, cleared paste field, upload control, previous-chat control and More menu are intentional working-product differences, not fabricated concept data.
+The supplied dashboard reference and the rendered 1486×1058 implementation were inspected together. Additional inspection used a real Chrome window and a 390×844 mobile viewport.
 
-## Findings and comparison history
-
-1. **P1, resolved: the starting screen buried the next action.** `01-before.png` and `02-link-form-before.png` show a permanent sidebar, source pane, dense chat, duplicated actions and hidden intake. The new centered paste field, three outcome cards and collapsed history/evidence remove that conflict. Initial build: `04-first-build.png`; final comparisons: `24-polish-comparison.png` and `25-polish-cards.png`.
-2. **P2, resolved: narrow header overflow with an active-task badge.** The personal-workspace phone test found persistent controls wider than the viewport. The connection label now collapses to its named icon on small screens. The same 390 px task/stop scenario passed after the fix. Final phone visual: `21-phone-normalized.png`; final regression: four personal-workspace tests passed.
-3. **P2, resolved: heading font leaked from the marketing page and desktop cards were too small.** The first comparison showed weaker card typography than the selected direction. Local headings now explicitly use the Mac system font; wide-screen card labels are 25 px and descriptions 18 px, with a 22 px wordmark. Pre-fix: `19-final-comparison.png` / `20-card-comparison.png`; post-fix, same viewport and source: `24-polish-comparison.png` / `25-polish-cards.png`. Computed font was checked in the browser.
-4. **P2, resolved: confirmation remained open behind the task viewer.** On successful launch the compact review closes before the task view opens. Nested evidence focus restoration and the latest-source recovery action also pass rendered UI regression checks.
-5. **P1, resolved execution defect discovered in this flow:** a background Codex task could remain on Starting because Terminal never ran its command file. The noninteractive runner now starts directly with a status handshake. The actual app then streamed a real Codex task and displayed its result. A separate process test covers startup without Terminal, service restart, idempotency, output and cooperative stop.
-6. **P2, resolved supplemental result state:** the completed-task DOM exposed the entire technical report as the default result. Finished tasks now open on a readable result paragraph; Full report & checks retains all evidence and diagnostics. A real completed task was inspected in `26-simple-result.png`. The concept did not specify this state; it follows the same typography and blue controls on the existing dark task surface. The regression covers reports with no blank line after a heading and checks that embedded script text remains inert.
-
-No actionable P0/P1/P2 design finding remains in the tested scope. This does not certify every platform integration or every native Mac application.
-
-## Five fidelity surfaces
-
-| Surface | Result and accepted differences |
+| Area | Result |
 | --- | --- |
-| Fonts and typography | Mac system headings and controls, clear 52 px desktop heading, 25/18 px desktop card hierarchy, 18/14 px phone cards. No cropped or overlapping labels at checked widths. Compared by full view and readable card crops. The generated reference has no font metadata; a system sans is the selected implementation rather than a claimed exact font identification. |
-| Spacing and layout rhythm | Centered intake, source chip, heading, three equal cards and one composer match the composition. 20 px card radii, consistent gaps and restrained borders. Phone uses full-width rows. Extra chat-history access and upload are functional additions. |
-| Colors and tokens | Near-white background, dark text, muted slate secondary text, blue controls, pale-blue first choice. Focus treatment remains visible. No unexplained orange hover state in the changed primary controls. The softer selected-card border is an accepted minor difference. |
-| Image quality and assets | This direction has no decorative artwork. Existing checkmark brand and standard Lucide interface icons remain vector-sharp; the source screenshot is revealed on demand with its real capture and timestamp. No stock or generated image stands in for source evidence. Normalized comparison images are softer than the native final desktop capture due to the tool density behavior described above. |
-| Copy and app content | One link field, three brief outcomes and one question field. Versioned, cached guide uses the actual source. Task changes require a short review with a concrete destination and Yes, start. Full details, warnings and evidence remain available on demand. Mac connected reports a responding worker, not unrestricted OS access. |
+| Layout | Source stays beside the conversation on desktop; compact source and reachable composer on mobile. Three compact action rows replace large cards. |
+| Typography | Short headings, restrained weights, readable line lengths, distinct secondary text. Long URLs, code and tables stay within their column. |
+| Color | Black canvas, subtle borders, orange actions. White button text uses a darker orange for contrast. |
+| Source imagery | Real captured frames use contain, with a visible capture timestamp. No fabricated playback controls or fake repository match. |
+| Conversation | Recent messages remain visible; older messages and evidence are disclosures. New replies scroll above the mobile composer without clearing drafts. |
+| Tasks | Current status and result come first; logs and detailed report are collapsed. Open files and Stop stay explicit. |
+| Computer view | Latest screenshot beside the proposed action; clear Yes, do this / Decline controls, Stop and working fullscreen. Rehearsal is labeled as recorded, with no live action. |
+| Setup | Browser, coding and native app access are separate. Missing native permissions never shows Ready. |
 
-## Functional evidence
+Local QA images: `/private/tmp/contextdrop-content-qa/dark-dashboard-desktop.png`, `/private/tmp/contextdrop-content-qa/dark-dashboard-mobile-reply-viewport.png`, and `/private/tmp/contextdrop-replication-qa/rehearsal-desktop-start.png`. Fixture screenshots combine a real saved frame with mocked chat; they are UI evidence, not proof of live AI execution. These private/local artifacts are not deployment assets.
 
-- Eight content-workspace UI regression tests passed: cached choices, task confirmation, evidence focus, safe links, drafts across reload and failure, upload rejection, source-change recovery, and widths 390/565/651/1440.
-- Four personal-workspace UI regression tests passed: task history/recovery/output, stopping, phone pairing/import flow and pending iPhone share recovery. Providers, phone delivery and computer mutations are mocked in these suites.
-- Three existing replication UI regression tests passed earlier in this change.
-- Final code checks: 236 tests passed, none skipped; root build, companion type check and web lint/type check passed. The staged clean web-only production build passed all 73 deployment traces and unauthenticated smoke checks, including denial of 23 local route/method combinations across three header cases. This was a build check, not a production deployment.
-- Real browser run `a1c4f841-fd3c-41a7-8f4a-ad0adea8ed15`: approved read-only navigation, inspected the actual GitHub showcase page and visible result, then stopped. Screenshot `06-browser-task-complete.png`.
-- Real Codex run `d61f9782-bff2-4deb-abb7-88f9a5180f85`: confirmed in UI, background activity appeared, created a single offline HTML checklist. Independent browser check toggled a box by mouse, another by keyboard, verified counts 0 → 1 → 2, and verified reload reset. Screenshot `13-codex-result-tested.png`; its result report includes the independent check.
-- No console errors recorded on the final dashboard or generated-page check. Earlier provider/launch failures were retained as failures and fixed or given explicit recovery; they were not relabeled as successful tests.
+## Fixes from the review
 
-## Remaining boundaries
+- Phone-shared links now open and focus Add another link instead of landing inside a closed panel.
+- Mobile replies and their result buttons scroll into view; initial saved history does not force a jump.
+- Scoped document background removes the white strip during mobile scrolling; navigation home restores the normal landing canvas.
+- Invalid saved action URLs cannot crash the result card.
+- Fullscreen targets the document; a modal dialog cannot itself enter fullscreen reliably.
+- The Mac helper signature check uses the actual codesign requirement syntax, verified against the installed signed app.
 
-The app's browser and background coding runner work independently of Codex's Computer plugin. The plugin allowed browser use and Finder inspection but refused Terminal control; no bypass or blanket OS permission grant was attempted. Unrestricted native Mac-app control is not connected. Login/account checkpoints may require the owner. iPhone installation and real delivery from the owner's device still require an actual phone acceptance test. Video capture can miss brief or unclear details.
+## Verification
 
-## Implementation checklist
+- 349 automated unit/integration tests passed; no skips or failures.
+- Root build, companion TypeScript, web TypeScript and web ESLint passed.
+- Clean hosted build passed: 75 deployment traces / 8,685 references inspected; homepage, login and auth redirects passed; 26 local route/method combinations returned 404 under three header cases even with local opt-in enabled. This is a local release check, not a deployment.
+- 10 content browser cases, 13 task/setup browser cases and 3 replication/rehearsal cases passed across focused runs. Provider and action responses were mocked.
+- Real Chrome: saved Instagram source and real saved conversation render in the new dashboard.
+- Real local health: Gemini and chat configured, Codex/Claude available, worker connected. Chrome still needs selection in the setup panel after restart.
+- Signed/notarized Peekaboo 4.4.0 installed; the real Bridge permission response is parsed correctly as needs_permissions. Screen Recording and Accessibility were not granted by the agent.
 
-- [x] Capture and audit the original app, select a visual direction, implement the real route.
-- [x] Compare source and rendered implementation together, repair P1/P2 findings, compare again.
-- [x] Validate plain-language choices, preserved chats and explicit task confirmation.
-- [x] Check responsive layouts, focus, error recovery and actual browser/coding runs.
-- [x] Restore normal viewport and retain private QA evidence without committing source data.
+## Remaining product boundaries
 
-Optional P3 follow-up: further tune first-choice border strength against the concept if the owner prefers stronger emphasis. No additional decoration is required for this flow.
+Native Mac execution is built but a live end-to-end control task is still blocked by user permission grants. This version targets Accessibility controls and reviews each action. Pixel-only interfaces and unrestricted desktop autonomy are not supported. Coding continues through Codex/Claude. Task results expose verified local file locations; an automatic playable demo URL is not invented when the runner has not provided one. The video source panel shows captured evidence, not a retained full-video player.
+
+Visual QA: no open P0/P1/P2 issues in the reviewed desktop/mobile flow. Release status: local only; native live execution remains unverified.

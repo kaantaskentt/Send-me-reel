@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 import { parseReplicationPlan, type ReplicationPlan } from '../shared/execution-plan.js';
 
 import { GuidedBrowserRun, createOpenAIPlanner, type BrowserPlanner } from './browser.js';
+import { GuidedComputerRun, createComputerPlanner, type ComputerPlanner } from './computer.js';
+import { PeekabooAdapter, openMacHelper, type NativeAdapter, type ComputerSetup } from './native-mac.js';
 import { ChromePairing, chromePairingHtml } from './chrome-pairing.js';
 import type { ExistingChromeConnection } from './chrome-connector.js';
 import { resolveInstalledHarnesses, type Harness } from './harnesses.js';
@@ -24,7 +26,7 @@ const MAX_RUNS = 100;
 const TERMINAL = '/System/Applications/Utilities/Terminal.app';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const active = new Set(['launching', 'running', 'stopping', 'awaiting_approval', 'needs_input']);
-export interface RunState { id: string; status: string; workspace: string; updatedAt: string; error?: string; pid?: number; harness?: Harness; executor?: 'terminal' | 'browser'; terminalMode?: 'interactive' | 'exec'; connectionIds?: ConnectionId[]; launchFingerprint?: string; analysisId?: string; sourceUrl?: string; title?: string; goal?: string; createdAt?: string; canStop?: boolean; canResume?: boolean; message?: string; currentUrl?: string; history?: { action: string; status: string }[]; }
+export interface RunState { id: string; status: string; workspace: string; updatedAt: string; error?: string; pid?: number; harness?: Harness; executor?: 'terminal' | 'browser' | 'computer'; terminalMode?: 'interactive' | 'exec'; connectionIds?: ConnectionId[]; launchFingerprint?: string; analysisId?: string; sourceUrl?: string; title?: string; goal?: string; createdAt?: string; canStop?: boolean; canResume?: boolean; message?: string; currentUrl?: string; history?: { action: string; status: string }[]; }
 export interface CompanionOptions {
   token: string;
   allowedOrigins: string[];
@@ -40,6 +42,9 @@ export interface CompanionOptions {
   browserApiKey?: string;
   browserPlanner?: (plan: ReplicationPlan) => BrowserPlanner;
   browserConnection?: ExistingChromeConnection;
+  computerAdapter?: NativeAdapter;
+  computerPlanner?: (plan: ReplicationPlan) => ComputerPlanner;
+  openComputerHelper?: () => Promise<void>;
   inspectSetup?: () => Promise<SetupStatus>;
 }
 function json(response: ServerResponse, code: number, body: unknown) {
@@ -76,6 +81,18 @@ export function createCompanionServer(options: CompanionOptions) {
   const runs = new Map<string, { state: RunState; controlDir: string; requestKey?: string; persistence?: Promise<void> }>();
   const requests = new Map<string, string>();
   const browsers = new Map<string, GuidedBrowserRun>();
+  const computers = new Map<string, GuidedComputerRun>();
+  const computerAdapter = options.computerAdapter || new PeekabooAdapter({ configured: Boolean(options.browserApiKey || options.computerPlanner), platform: options.platform });
+  let computerCache: { expires: number; value: Promise<ComputerSetup> } | undefined;
+  let computerSnapshot: ComputerSetup = { configured: Boolean(options.browserApiKey || options.computerPlanner), available: false, status: 'host_unavailable', version: null, message: 'Check Mac control setup to see whether it is ready.', permissions: { screenRecording: false, accessibility: false, eventSynthesizing: false }, setupSteps: ['Open Mac control setup to check the helper and macOS permissions.'] };
+  function readComputerSetup(refresh = false) {
+    if (!computerCache || (refresh && computerCache.expires !== Infinity) || computerCache.expires < Date.now()) {
+      const entry = { expires: Infinity, value: computerAdapter.inspect() };
+      computerCache = entry;
+      void entry.value.then(value => { computerSnapshot = value; entry.expires = Date.now() + 15_000; }, () => { entry.expires = Date.now() + 5_000; });
+    }
+    return computerCache.value;
+  }
   const chromePairing = new ChromePairing();
   let preparing = false;
   let restored: Promise<void> | undefined;
@@ -98,7 +115,7 @@ export function createCompanionServer(options: CompanionOptions) {
       try {
         const manifest = JSON.parse(snapshot.text);
         const s = manifest.state;
-        if (manifest.version !== 1 || s?.id !== entry.name || !['terminal', 'browser'].includes(s.executor) || !RUN_STATUSES.has(s.status) || !Number.isFinite(Date.parse(s.createdAt))) continue;
+        if (manifest.version !== 1 || s?.id !== entry.name || !['terminal', 'browser', 'computer'].includes(s.executor) || !RUN_STATUSES.has(s.status) || !Number.isFinite(Date.parse(s.createdAt))) continue;
         if (typeof s.analysisId !== 'string' || typeof s.title !== 'string' || typeof s.sourceUrl !== 'string' || typeof s.goal !== 'string') continue;
         const state: RunState = { id: entry.name, executor: s.executor, workspace: path.join(options.rootDir, entry.name, 'project'), status: s.status, updatedAt: s.updatedAt, createdAt: s.createdAt, analysisId: s.analysisId.slice(0, 100), title: s.title.slice(0, 200), sourceUrl: s.sourceUrl.slice(0, 2048), goal: s.goal.slice(0, 1200) };
         if (s.executor === 'terminal') {
@@ -123,23 +140,24 @@ export function createCompanionServer(options: CompanionOptions) {
   async function readState(id: string): Promise<RunState | null> {
     const run = runs.get(id);
     if (!run) return null;
-    const browser = browsers.get(id);
-    if (browser) return { ...run.state, ...browser.state, canStop: browser.state.status !== 'stopped', canResume: browser.canResume };
-    const snapshot = await readRunFile(options.rootDir, id, 'control', run.state.executor === 'browser' ? 'browser-state.json' : 'status.json', 64 * 1024);
+    const browser = browsers.get(id) || computers.get(id);
+    if (browser) return { ...run.state, ...browser.state, canStop: run.state.executor === 'computer' ? active.has(browser.state.status) || browser.state.status === 'failed' : browser.state.status !== 'stopped', canResume: browser.canResume };
+    const gui = run.state.executor === 'browser' || run.state.executor === 'computer';
+    const snapshot = await readRunFile(options.rootDir, id, 'control', gui ? `${run.state.executor}-state.json` : 'status.json', 64 * 1024);
     if (snapshot && !snapshot.truncated) {
       try {
         const s = JSON.parse(snapshot.text);
-        if ((run.state.executor === 'browser' || s.id === id) && RUN_STATUSES.has(s.status)) {
+        if ((gui || s.id === id) && RUN_STATUSES.has(s.status)) {
           run.state = { ...run.state, status: s.status, updatedAt: Number.isFinite(Date.parse(s.updatedAt)) ? s.updatedAt : snapshot.updatedAt!, error: typeof s.error === 'string' ? plainText(s.error).slice(0, 2000) : undefined, message: typeof s.message === 'string' ? plainText(s.message).slice(0, 2000) : undefined, pid: Number.isSafeInteger(s.pid) && s.pid > 0 ? s.pid : undefined };
-          if (run.state.executor === 'browser') {
+          if (gui) {
             if (typeof s.currentUrl === 'string') run.state.currentUrl = s.currentUrl.slice(0, 2048);
             if (Array.isArray(s.history)) run.state.history = s.history.filter((item: unknown): item is { action: string; status: string } => Boolean(item && typeof item === 'object' && typeof (item as { action?: unknown }).action === 'string' && typeof (item as { status?: unknown }).status === 'string')).slice(-100).map((item: { action: string; status: string }) => ({ action: plainText(item.action).slice(0, 2000), status: plainText(item.status).slice(0, 100) }));
           }
         }
       } catch { /* Atomic status may not exist until Terminal starts. */ }
     }
-    if (run.state.executor === 'browser' && active.has(run.state.status)) {
-      return { ...run.state, status: 'interrupted', canStop: false, canResume: false, message: 'The companion restarted. The previous browser session cannot resume; review its saved actions before starting a new task.' };
+    if (gui && active.has(run.state.status)) {
+      return { ...run.state, status: 'interrupted', canStop: false, canResume: false, message: 'The companion restarted. The previous control session cannot resume; review its saved actions before starting a new task.' };
     }
     if (['running', 'stopping'].includes(run.state.status) && run.state.pid) {
       try { process.kill(run.state.pid, 0); } catch { run.state = { ...run.state, status: 'interrupted', error: 'The Terminal runner is no longer running. Inspect the workspace before retrying.' }; }
@@ -191,6 +209,19 @@ export function createCompanionServer(options: CompanionOptions) {
     if (request.method === 'POST' && url.pathname === '/browser/connect') {
       return json(response, 200, { setupUrl: chromePairing.create(`http://${expectedHost}`), status: chromePairing.status });
     }
+    if (request.method === 'GET' && url.pathname === '/computer/setup') {
+      try { return json(response, 200, await readComputerSetup(true)); }
+      catch { return json(response, 503, { ...computerSnapshot, available: false, status: 'host_unavailable', message: 'Mac control could not be checked. Open Peekaboo and check again.' }); }
+    }
+    if (request.method === 'POST' && url.pathname === '/computer/setup') {
+      try {
+        const body = await readBody(request) as { action?: unknown };
+        if (!body || Object.keys(body).length !== 1 || body.action !== 'open_helper') throw new Error('Choose Open Mac helper. Other setup actions are not available.');
+        await (options.openComputerHelper || openMacHelper)();
+        computerCache = undefined;
+        return json(response, 200, { status: 'opened', message: 'Peekaboo is open. Allow its permissions in macOS, then check again.' });
+      } catch (error) { return json(response, 409, { error: error instanceof Error ? error.message : 'Could not open the Mac helper.' }); }
+    }
     if (request.method === 'GET' && ['/health', '/connections'].includes(url.pathname)) {
       try {
         const setup = await readSetup();
@@ -198,7 +229,9 @@ export function createCompanionServer(options: CompanionOptions) {
         const ready = (harness: Harness) => (options.platform || process.platform) === 'darwin' && !modeUnavailableReason(harness, harness === 'claude' ? 'interactive' : options.terminalMode || 'interactive') && setup.harnesses?.[harness]?.installed === true && setup.harnesses[harness].supported === true && setup.harnesses[harness].auth === 'authenticated' && setup.harnesses[harness].available === true;
         const codex = Boolean(options.codexBinary) && ready('codex');
         const claude = Boolean(options.claudeBinary) && ready('claude');
-        return json(response, 200, { status: codex || claude ? 'ready' : 'unavailable', companion: 'reachable', platform: options.platform || process.platform, runner: codex ? 'codex' : claude ? 'claude' : null, execution: codex && options.terminalMode === 'exec' ? 'streaming-terminal' : claude ? 'interactive-terminal' : null, capabilities: { terminal: codex || claude, harnesses: { codex, claude }, browser: { configured: Boolean(options.browserApiKey || options.browserPlanner), mode: 'existing-chrome', connection: options.browserConnection?.markerUrl ? 'selected' : chromePairing.status } }, setup, version: 1 });
+        // Optional native checks must never delay the existing terminal/browser handshake.
+        void readComputerSetup().catch(() => {});
+        return json(response, 200, { status: codex || claude ? 'ready' : 'unavailable', companion: 'reachable', platform: options.platform || process.platform, runner: codex ? 'codex' : claude ? 'claude' : null, execution: codex && options.terminalMode === 'exec' ? 'streaming-terminal' : claude ? 'interactive-terminal' : null, capabilities: { terminal: codex || claude, harnesses: { codex, claude }, browser: { configured: Boolean(options.browserApiKey || options.browserPlanner), mode: 'existing-chrome', connection: options.browserConnection?.markerUrl ? 'selected' : chromePairing.status }, computer: computerSnapshot }, setup, version: 1 });
       } catch { return json(response, 503, { status: 'unavailable', error: 'Local CLI setup could not be inspected. No connection readiness has been established.' }); }
     }
     try { await (restored ??= restoreRuns()); }
@@ -227,7 +260,7 @@ export function createCompanionServer(options: CompanionOptions) {
         const target = body.target as 'workspace' | 'report';
         let filename = await resolveRunDirectory(options.rootDir, revealId, 'project');
         if (target === 'report') {
-          const report = state.executor === 'browser' ? 'BROWSER-RESULT.json' : 'CONTEXTDROP-RESULT.md';
+          const report = state.executor === 'browser' ? 'BROWSER-RESULT.json' : state.executor === 'computer' ? 'COMPUTER-RESULT.json' : 'CONTEXTDROP-RESULT.md';
           if (!await readRunFile(options.rootDir, revealId, 'project', report, 1)) throw new Error('The task has not saved a report yet. Open the workspace or review its latest message in the app.');
           filename = path.join(filename, report);
         }
@@ -243,7 +276,7 @@ export function createCompanionServer(options: CompanionOptions) {
     }
     const browserAction = url.pathname.match(/^\/runs\/([a-f0-9-]{36})\/(approve|resume|stop)$/);
     if (request.method === 'POST' && browserAction) {
-      const run = browsers.get(browserAction[1]!);
+      const run = browsers.get(browserAction[1]!) || computers.get(browserAction[1]!);
       const terminal = runs.get(browserAction[1]!);
       if (!run && terminal?.state.executor === 'terminal' && browserAction[2] === 'stop') {
         const state = await readState(browserAction[1]!);
@@ -254,7 +287,7 @@ export function createCompanionServer(options: CompanionOptions) {
           return json(response, 202, { ...state, status: 'stopping', canStop: false, message: 'Stop requested. Waiting for the Terminal runner to exit.' });
         } catch { return json(response, 500, { error: 'Could not save the stop request. Stop the session directly in Terminal.' }); }
       }
-      if (!run) return json(response, 404, { error: 'Browser run not found' });
+      if (!run) return json(response, 404, { error: 'Control session not found' });
       try {
         if (browserAction[2] === 'approve') {
           const body = await readBody(request) as { actionId?: unknown; approved?: unknown };
@@ -281,16 +314,19 @@ export function createCompanionServer(options: CompanionOptions) {
       const body = await readBody(request) as { plan?: unknown; executor?: unknown; harness?: unknown; connectionIds?: unknown };
       if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('Expected a launch request');
       if (Object.keys(body).some(field => !['plan', 'executor', 'harness', 'connectionIds', 'terminalMode', 'codexModel', 'codexBinary', 'claudeBinary'].includes(field))) throw new Error('Unknown launch field; connection definitions are owned by the local companion');
-      if (body.executor !== undefined && body.executor !== 'browser' && body.executor !== 'terminal') throw new Error('Unknown executor');
+      if (body.executor !== undefined && !['browser', 'computer', 'terminal'].includes(String(body.executor))) throw new Error('Unknown executor');
       const browserMode = body.executor === 'browser';
+      const computerMode = body.executor === 'computer';
+      const guidedMode = browserMode || computerMode;
+      const executor = computerMode ? 'computer' : browserMode ? 'browser' : 'terminal';
       if (body.harness !== undefined && body.harness !== 'codex' && body.harness !== 'claude') throw new Error('Unknown coding harness');
-      if (browserMode && body.harness !== undefined) throw new Error('Coding harness selection only applies to Terminal runs');
+      if (guidedMode && body.harness !== undefined) throw new Error('Coding harness selection only applies to Terminal runs');
       const harness: Harness = body.harness === 'claude' ? 'claude' : 'codex';
       const connectionIds: ConnectionId[] = parseConnectionIds(body.connectionIds);
-      if (browserMode && connectionIds.length) throw new Error('Connections only apply to coding harnesses');
+      if (guidedMode && connectionIds.length) throw new Error('Connections only apply to coding harnesses');
       const terminalMode = harness === 'claude' ? 'interactive' : options.terminalMode || 'interactive';
       const plan = parseReplicationPlan(body.plan);
-      const launchFingerprint = createHash('sha256').update(JSON.stringify({ plan, executor: browserMode ? 'browser' : 'terminal', harness: browserMode ? null : harness, terminalMode: browserMode ? null : terminalMode, codexModel: !browserMode && harness === 'codex' ? options.codexModel || null : null, connectionIds })).digest('hex');
+      const launchFingerprint = createHash('sha256').update(JSON.stringify({ plan, executor, harness: guidedMode ? null : harness, terminalMode: guidedMode ? null : terminalMode, codexModel: !guidedMode && harness === 'codex' ? options.codexModel || null : null, connectionIds })).digest('hex');
       if (key && requests.has(key)) {
         const prior = await readState(requests.get(key)!);
         if (prior?.launchFingerprint !== launchFingerprint) return json(response, 409, { error: 'This request key belongs to a different or legacy launch. Review the task and use a new key.' });
@@ -304,12 +340,12 @@ export function createCompanionServer(options: CompanionOptions) {
         // Keep a bounded recent registry without deleting older workspace files.
         const oldest = [...runs.values()].filter(run => !active.has(run.state.status) && (!browsers.has(run.state.id) || browsers.get(run.state.id)!.state.status === 'stopped')).sort((a, b) => (a.state.createdAt || a.state.updatedAt).localeCompare(b.state.createdAt || b.state.updatedAt))[0];
         if (!oldest) return json(response, 409, { error: 'Finish or stop an existing local task before creating more runs' });
-        runs.delete(oldest.state.id); browsers.delete(oldest.state.id);
+        runs.delete(oldest.state.id); browsers.delete(oldest.state.id); computers.delete(oldest.state.id);
         if (oldest.requestKey) requests.delete(oldest.requestKey);
       }
       const binary = harness === 'claude' ? options.claudeBinary : options.codexBinary;
-      if (!browserMode && !binary) return json(response, 409, { error: `Install and sign in to ${harness === 'claude' ? 'Claude Code with safe-mode support' : 'Codex CLI'} to enable this Terminal handoff. Browser guidance is available independently.` });
-      if (!browserMode) {
+      if (!guidedMode && !binary) return json(response, 409, { error: `Install and sign in to ${harness === 'claude' ? 'Claude Code with safe-mode support' : 'Codex CLI'} to enable this Terminal handoff. Browser guidance is available independently.` });
+      if (!guidedMode) {
         try { assertExecutionSelection(harness, terminalMode, connectionIds); }
         catch (error) { return json(response, 409, { error: (error as Error).message }); }
         const setup = await readSetup();
@@ -318,6 +354,11 @@ export function createCompanionServer(options: CompanionOptions) {
       }
       if (browserMode && !options.browserApiKey && !options.browserPlanner) return json(response, 409, { error: 'Set OPENAI_API_KEY in the local companion environment to enable browser guidance' });
       if (browserMode && !options.browserConnection?.markerUrl && !chromePairing.markerUrl) return json(response, 409, { error: 'Connect your Chrome first, then start this task again. Your signed-in Chrome will be used.' });
+      if (computerMode) {
+        if (!options.browserApiKey && !options.computerPlanner) return json(response, 409, { error: 'Add your existing OpenAI key to enable Mac control.' });
+        const setup = await readComputerSetup(true);
+        if (!setup.available) return json(response, 409, { error: setup.message, computer: setup });
+      }
       const id = randomUUID();
       const runDir = path.join(options.rootDir, id);
       const workspace = path.join(runDir, 'project');
@@ -333,11 +374,22 @@ export function createCompanionServer(options: CompanionOptions) {
       await fs.writeFile(path.join(workspace, '.gitignore'), '.contextdrop/\n.env\n.env.*\n', { mode: 0o600 });
       await execFileAsync('/usr/bin/git', ['init', '--quiet', workspace], { timeout: 10_000 });
       const now = new Date().toISOString();
-      const state: RunState = { id, status: 'launching', workspace, updatedAt: now, createdAt: now, executor: browserMode ? 'browser' : 'terminal', analysisId: plan.analysisId, sourceUrl: plan.sourceUrl, title: plan.title, goal: plan.goal, canStop: true, canResume: false, launchFingerprint, ...(!browserMode ? { harness, terminalMode, connectionIds } : {}) };
+      const state: RunState = { id, status: 'launching', workspace, updatedAt: now, createdAt: now, executor, analysisId: plan.analysisId, sourceUrl: plan.sourceUrl, title: plan.title, goal: plan.goal, canStop: true, canResume: false, launchFingerprint, ...(!guidedMode ? { harness, terminalMode, connectionIds } : {}) };
       runs.set(id, { state, controlDir, requestKey: key });
       createdId = id;
       if (key) requests.set(key, id);
       await persistRun(id);
+      if (computerMode) {
+        const computer = new GuidedComputerRun({ workspace, adapter: computerAdapter, planner: options.computerPlanner ? options.computerPlanner(plan) : createComputerPlanner(plan, options.browserApiKey!), onState: computerState => {
+          const entry = runs.get(id)!;
+          // Screenshot pixels and pending input values stay out of the saved state.
+          const compact = { ...computerState, screenshot: undefined, pendingAction: undefined };
+          entry.persistence = (entry.persistence || Promise.resolve()).then(() => writeAtomicJson(path.join(controlDir, 'computer-state.json'), compact)).catch(() => {});
+        } });
+        computers.set(id, computer);
+        void computer.start();
+        return json(response, 201, state);
+      }
       if (browserMode) {
         const browser = new GuidedBrowserRun({ workspace, connection: options.browserConnection || { mode: 'existing-chrome', markerUrl: chromePairing.markerUrl }, planner: options.browserPlanner ? options.browserPlanner(plan) : createOpenAIPlanner(plan, options.browserApiKey!), onState: (browserState) => {
           // Persist a compact action log; screenshots stay in memory.
@@ -370,7 +422,7 @@ export function createCompanionServer(options: CompanionOptions) {
       return json(response, createdId ? 500 : 400, { error: message });
     } finally { preparing = false; }
   });
-  server.on('close', () => { for (const browser of browsers.values()) void browser.stop(); });
+  server.on('close', () => { for (const browser of browsers.values()) void browser.stop(); for (const computer of computers.values()) void computer.stop(); });
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
   return server;
