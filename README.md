@@ -1,5 +1,7 @@
 # ContextDrop
 
+**Continuing this project in another AI? Start with [HANDOFF.md](HANDOFF.md).** The current development branch is `codex/contextdrop-next`; the active Mac checkout is `~/Developer/send-me-reel`.
+
 Turn an internet example into something you actually try, build, or do.
 
 ContextDrop turns videos, repositories, websites, images, PDFs, audio and text into a conversation you can act on. The local studio gives a short take, searches source details, compares saved content, remembers your project, and saves useful answers as reusable workflows. The Mac companion can guide a visible browser or hand a reviewed task to Claude Code or Codex.
@@ -33,7 +35,9 @@ flowchart LR
 - Codex builds in a fresh project folder, with streamed output and built-in approval review. Claude Code opens an interactive inspection plan; its background execution and connected tools are not enabled.
 - Download the plan as JSON or Markdown. Agent-reported completion is explicitly **unverified** until the output is checked.
 
-Browser mode uses an isolated Chromium session. It can navigate, click, fill ordinary fields, scroll, go back, and save downloads. It does not automate CAPTCHA, payment/private fields, native Mac apps, arbitrary JavaScript from the model, or file uploads. A visible browser can remain open for manual review; Stop closes it without undoing actions already performed.
+Browser mode connects to the Chrome profile you explicitly select and operates its task tabs. It can navigate, click, fill ordinary fields, scroll, go back, and save downloads. It does not automate CAPTCHA, payment/private fields, arbitrary JavaScript from the model, or file uploads. Stop ends its task session without undoing actions or closing unrelated user tabs.
+
+Native Mac app control is a separate supervised executor using the signed Peekaboo helper. It requires Screen Recording and Accessibility permission, and reviews each action. It supports Accessibility controls, not arbitrary pixel-only interfaces. Coding stays in the Codex/Claude flow. See [setup, tested boundaries and the remaining live-control check](companion/COMPUTER-CONTROL.md).
 
 ## Local setup
 
@@ -84,7 +88,7 @@ Set `CONTEXTDROP_LOCAL_STUDIO=1` and `OPENAI_API_KEY` in `web/.env.local`, and c
 
 The personal launcher selects streamed Codex builds. `CONTEXTDROP_CODEX_MODEL` optionally selects a supported model. Runs ignore project/user customizations, disable hooks, retain native CLI authentication, use a workspace sandbox with network access for dependencies, and use Codex automatic approval review when a tool needs more permission. This is not a full filesystem read-isolation boundary. Under **Change task or app**, GitHub and Vercel can be selected through existing native Codex connections; the runner must discover actual tools before claiming access. Selection expresses task intent, not a per-tool access sandbox. Publishing still needs approval of the concrete action. A zero exit means the result needs review.
 
-Captures and run state are private, ignored files under `.contextdrop/`. The downloader uses explicit `YTDLP_PATH`, then `.contextdrop/media-runtime/bin/yt-dlp` when installed, then the system executable. See [video evidence and runtime setup](docs/VIDEO_EVIDENCE.md). Browser guidance sends the isolated browser's screenshots and visible text to the configured OpenAI model; keep private fields for manual input.
+Captures and run state are private, ignored files under `.contextdrop/`. The downloader uses explicit `YTDLP_PATH`, then `.contextdrop/media-runtime/bin/yt-dlp` when installed, then the system executable. See [video evidence and runtime setup](docs/VIDEO_EVIDENCE.md). Browser guidance sends its task tabs' screenshots and visible text to the configured OpenAI model; keep private fields for manual input.
 
 The **Start rehearsal** button at `/replicate/demo` is a separate recorded-example walkthrough that makes no provider or companion requests. It is available as a clearly labelled offline fallback for presentations.
 
